@@ -1,0 +1,26 @@
+.settings-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 5rem;
+}
+
+.settings-header {
+  margin-bottom: 3rem;
+}
+
+.settings-title {
+  margin: 0;
+  line-height: 1;
+}
+
+.settings-subtitle {
+  color: var(--text-muted);
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Custom styles for the cost tracker are handled via Tailwind in the TSX for maximum precision */

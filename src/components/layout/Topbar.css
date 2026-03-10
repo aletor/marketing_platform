@@ -1,0 +1,120 @@
+.topbar {
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4rem;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: transparent;
+}
+
+.topbar-search-wrapper {
+  position: relative;
+  width: 380px;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1.5rem;
+  color: var(--text-muted);
+}
+
+.topbar-search-input {
+  width: 100%;
+  padding: 1.25rem 1.5rem 1.25rem 3.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  font-size: 1rem;
+  color: var(--text-main);
+  transition: all var(--transition-normal);
+  box-shadow: var(--shadow-sm);
+}
+
+.topbar-search-input:focus {
+  outline: none;
+  border-color: var(--secondary);
+  box-shadow: var(--shadow-md);
+  background: white;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.upgrade-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.85rem 1.75rem;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all var(--transition-normal);
+}
+
+.upgrade-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  background: var(--primary-hover);
+}
+
+.icon-button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  cursor: pointer;
+  width: 54px;
+  height: 54px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all var(--transition-normal);
+}
+
+.icon-button:hover {
+  background: white;
+  transform: scale(1.05);
+  box-shadow: var(--shadow-sm);
+}
+
+.notification-dot {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 8px;
+  height: 8px;
+  background: var(--secondary);
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+}
+
+.user-circle {
+  width: 54px;
+  height: 54px;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.user-circle:hover {
+  transform: scale(1.05);
+}

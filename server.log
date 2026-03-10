@@ -1,0 +1,105 @@
+
+> content-engine-ai@0.1.0 dev
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.65:3000
+- Environments: .env.local
+
+✓ Starting...
+✓ Ready in 315ms
+ GET /knowledge 200 in 305ms (compile: 237ms, render: 68ms)
+ GET /api/knowledge/data 200 in 34ms (compile: 29ms, render: 5ms)
+Starting analysis for: Propuesta Ticketing Clubs (1).pdf (ID: 20be1d32-1ab1-4c07-a4cd-18f0f6da2bdd)
+Failed to analyze doc 20be1d32-1ab1-4c07-a4cd-18f0f6da2bdd: IllegalLocationConstraintException: The unspecified location constraint is incompatible for the region specific endpoint this request was sent to.
+    at async getFromS3 (src/lib/s3-utils.ts:35:20)
+    at async POST (src/app/api/knowledge/analyze/route.ts:26:28)
+  33 |
+  34 |   const command = new GetObjectCommand(params);
+> 35 |   const response = await s3Client.send(command);
+     |                    ^
+  36 |   
+  37 |   if (!response.Body) {
+  38 |     throw new Error("Failed to retrieve file body from S3."); {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': [Object],
+  Code: 'IllegalLocationConstraintException',
+  RequestId: 'Z1CT8EYVRDFA658E',
+  HostId: 'YrwkHA2wzm2OAwr2RpmdXenctErDi3st3IOQoC58GUykftsTkEOGpaKQRYjqW5YMIy+1brz7KUUc5B/W3qKAtMpQ9hsVTb0j'
+}
+Starting analysis for: Investor Deck V1.pdf (ID: 4c73a279-36c5-4e3f-b422-2800e25c37ed)
+Failed to analyze doc 4c73a279-36c5-4e3f-b422-2800e25c37ed: IllegalLocationConstraintException: The unspecified location constraint is incompatible for the region specific endpoint this request was sent to.
+    at async getFromS3 (src/lib/s3-utils.ts:35:20)
+    at async POST (src/app/api/knowledge/analyze/route.ts:26:28)
+  33 |
+  34 |   const command = new GetObjectCommand(params);
+> 35 |   const response = await s3Client.send(command);
+     |                    ^
+  36 |   
+  37 |   if (!response.Body) {
+  38 |     throw new Error("Failed to retrieve file body from S3."); {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': [Object],
+  Code: 'IllegalLocationConstraintException',
+  RequestId: 'Z1CQVNKGFPEZBQ0V',
+  HostId: '/ayVxIMOP8BmR3U31Ev/YYHEqVg645feMZaYg+YXE1UohR9qLoQXYeN+0+cQPvrKTy5AeYmZ7bBTLdF9RuM6y7bdOLxSo838MxQaaZIxXlU='
+}
+Starting analysis for: Propuesta Ticketing Clubs.pdf (ID: d79415fb-046f-48ac-a081-b1cce4f848a1)
+Failed to analyze doc d79415fb-046f-48ac-a081-b1cce4f848a1: IllegalLocationConstraintException: The unspecified location constraint is incompatible for the region specific endpoint this request was sent to.
+    at async getFromS3 (src/lib/s3-utils.ts:35:20)
+    at async POST (src/app/api/knowledge/analyze/route.ts:26:28)
+  33 |
+  34 |   const command = new GetObjectCommand(params);
+> 35 |   const response = await s3Client.send(command);
+     |                    ^
+  36 |   
+  37 |   if (!response.Body) {
+  38 |     throw new Error("Failed to retrieve file body from S3."); {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': [Object],
+  Code: 'IllegalLocationConstraintException',
+  RequestId: 'Z1CXFS968CSWAB3Z',
+  HostId: 'dMiimr/3BFLxF4L2kq7DxY2ld/jHbSnUd+DmT2C+FYwSdzeAR0Zj7wsO+HYbe0u8DCtEqB+TG4c65Uy9fG/a0YNwPtQS8LJf'
+}
+Starting analysis for: Ticketera - Getafe CF (1).pdf (ID: c877a7c6-7a10-4e7c-aa58-a9e659b8a528)
+Failed to analyze doc c877a7c6-7a10-4e7c-aa58-a9e659b8a528: IllegalLocationConstraintException: The unspecified location constraint is incompatible for the region specific endpoint this request was sent to.
+    at async getFromS3 (src/lib/s3-utils.ts:35:20)
+    at async POST (src/app/api/knowledge/analyze/route.ts:26:28)
+  33 |
+  34 |   const command = new GetObjectCommand(params);
+> 35 |   const response = await s3Client.send(command);
+     |                    ^
+  36 |   
+  37 |   if (!response.Body) {
+  38 |     throw new Error("Failed to retrieve file body from S3."); {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': [Object],
+  Code: 'IllegalLocationConstraintException',
+  RequestId: 'Z1CT8PP6GHAY3BH7',
+  HostId: 'zo687CWcWVF7/72szpAVlBMU98qOl//qY02gToUajlKBiNI960WfgOCzDrOIEe8qRbtWLSxrWEEQWKRiY5x2yFt00B01BJGi'
+}
+Starting analysis for: OAROID - Aviation Jan26.pdf (ID: 968d9bfd-1692-4b90-b4a1-ab35913d88b0)
+Failed to analyze doc 968d9bfd-1692-4b90-b4a1-ab35913d88b0: IllegalLocationConstraintException: The unspecified location constraint is incompatible for the region specific endpoint this request was sent to.
+    at async getFromS3 (src/lib/s3-utils.ts:35:20)
+    at async POST (src/app/api/knowledge/analyze/route.ts:26:28)
+  33 |
+  34 |   const command = new GetObjectCommand(params);
+> 35 |   const response = await s3Client.send(command);
+     |                    ^
+  36 |   
+  37 |   if (!response.Body) {
+  38 |     throw new Error("Failed to retrieve file body from S3."); {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': [Object],
+  Code: 'IllegalLocationConstraintException',
+  RequestId: 'Z1CRC45JQVP7WJ8N',
+  HostId: 'NayRvHWIjUnjW9ohcIuW12lyF2A8GObItPfFWYeatZUN9k7fGahBA9do04Sf0wAn5ohOrLSAwUQ68jTA30Go4j1jBEWDs7OI'
+}
+ POST /api/knowledge/analyze 200 in 961ms (compile: 226ms, render: 735ms)
+[?25h

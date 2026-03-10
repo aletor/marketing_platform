@@ -1,0 +1,424 @@
+{
+  "records": [
+    {
+      "timestamp": "2026-03-10T13:06:17.155Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 329,
+      "cost": 0.0007458
+    },
+    {
+      "timestamp": "2026-03-10T13:06:18.119Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 300,
+      "cost": 0.0007283999999999999
+    },
+    {
+      "timestamp": "2026-03-10T13:25:11.690Z",
+      "model": "dall-e-3",
+      "inputTokens": 0,
+      "outputTokens": 0,
+      "cost": 0.04
+    },
+    {
+      "timestamp": "2026-03-10T14:27:00.912Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 270,
+      "cost": 0.0007104
+    },
+    {
+      "timestamp": "2026-03-10T14:27:12.830Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 296,
+      "cost": 0.000726
+    },
+    {
+      "timestamp": "2026-03-10T14:27:29.576Z",
+      "model": "gpt-4o",
+      "inputTokens": 3771,
+      "outputTokens": 398,
+      "cost": 0.024825
+    },
+    {
+      "timestamp": "2026-03-10T14:27:39.109Z",
+      "model": "gpt-4o",
+      "inputTokens": 449,
+      "outputTokens": 495,
+      "cost": 0.00967
+    },
+    {
+      "timestamp": "2026-03-10T14:28:49.341Z",
+      "model": "gpt-4o",
+      "inputTokens": 3712,
+      "outputTokens": 525,
+      "cost": 0.026435
+    },
+    {
+      "timestamp": "2026-03-10T14:30:43.214Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 314,
+      "cost": 0.0007368
+    },
+    {
+      "timestamp": "2026-03-10T14:30:51.984Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 289,
+      "cost": 0.0007218
+    },
+    {
+      "timestamp": "2026-03-10T14:30:52.305Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 300,
+      "cost": 0.0007283999999999999
+    },
+    {
+      "timestamp": "2026-03-10T14:30:56.836Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 299,
+      "cost": 0.0007278
+    },
+    {
+      "timestamp": "2026-03-10T14:32:06.571Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 283,
+      "cost": 0.0007182
+    },
+    {
+      "timestamp": "2026-03-10T14:32:13.537Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 256,
+      "cost": 0.0007019999999999999
+    },
+    {
+      "timestamp": "2026-03-10T16:32:55.204Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 253,
+      "cost": 0.0007002
+    },
+    {
+      "timestamp": "2026-03-10T16:32:56.013Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 255,
+      "cost": 0.0007014
+    },
+    {
+      "timestamp": "2026-03-10T16:34:21.590Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 304,
+      "cost": 0.0007308
+    },
+    {
+      "timestamp": "2026-03-10T16:34:25.004Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 271,
+      "cost": 0.0007109999999999999
+    },
+    {
+      "timestamp": "2026-03-10T16:34:25.006Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 306,
+      "cost": 0.000732
+    },
+    {
+      "timestamp": "2026-03-10T16:35:03.814Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 274,
+      "cost": 0.0007128
+    },
+    {
+      "timestamp": "2026-03-10T16:35:06.351Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 265,
+      "cost": 0.0007074
+    },
+    {
+      "timestamp": "2026-03-10T16:36:25.137Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 252,
+      "cost": 0.0006996
+    },
+    {
+      "timestamp": "2026-03-10T16:36:32.918Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 317,
+      "cost": 0.0007386
+    },
+    {
+      "timestamp": "2026-03-10T16:38:20.527Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 295,
+      "cost": 0.0007254
+    },
+    {
+      "timestamp": "2026-03-10T16:38:28.923Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 291,
+      "cost": 0.000723
+    },
+    {
+      "timestamp": "2026-03-10T16:42:55.733Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 280,
+      "cost": 0.0007164
+    },
+    {
+      "timestamp": "2026-03-10T16:42:59.468Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 308,
+      "cost": 0.0007332
+    },
+    {
+      "timestamp": "2026-03-10T16:47:14.219Z",
+      "model": "gpt-4o",
+      "inputTokens": 3862,
+      "outputTokens": 481,
+      "cost": 0.026525
+    },
+    {
+      "timestamp": "2026-03-10T16:47:22.503Z",
+      "model": "gpt-4o",
+      "inputTokens": 653,
+      "outputTokens": 558,
+      "cost": 0.011635000000000001
+    },
+    {
+      "timestamp": "2026-03-10T16:47:59.711Z",
+      "model": "gpt-4o",
+      "inputTokens": 3712,
+      "outputTokens": 606,
+      "cost": 0.02765
+    },
+    {
+      "timestamp": "2026-03-10T18:28:01.380Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 294,
+      "cost": 0.0007247999999999999
+    },
+    {
+      "timestamp": "2026-03-10T18:28:07.397Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 248,
+      "cost": 0.0006972
+    },
+    {
+      "timestamp": "2026-03-10T18:58:41.845Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 292,
+      "cost": 0.0007236
+    },
+    {
+      "timestamp": "2026-03-10T18:58:48.521Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 280,
+      "cost": 0.0007164
+    },
+    {
+      "timestamp": "2026-03-10T19:02:02.535Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 266,
+      "cost": 0.000708
+    },
+    {
+      "timestamp": "2026-03-10T19:02:08.464Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 255,
+      "cost": 0.0007014
+    },
+    {
+      "timestamp": "2026-03-10T19:10:10.033Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 289,
+      "cost": 0.0007218
+    },
+    {
+      "timestamp": "2026-03-10T19:10:18.452Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 288,
+      "cost": 0.0007212
+    },
+    {
+      "timestamp": "2026-03-10T19:12:14.185Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 289,
+      "cost": 0.0007218
+    },
+    {
+      "timestamp": "2026-03-10T19:12:14.238Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 261,
+      "cost": 0.000705
+    },
+    {
+      "timestamp": "2026-03-10T19:15:17.993Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 295,
+      "cost": 0.0007254
+    },
+    {
+      "timestamp": "2026-03-10T19:15:25.229Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 3656,
+      "outputTokens": 284,
+      "cost": 0.0007188
+    },
+    {
+      "timestamp": "2026-03-10T19:26:08.276Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 4140,
+      "outputTokens": 302,
+      "cost": 0.0008021999999999999
+    },
+    {
+      "timestamp": "2026-03-10T19:26:09.022Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 4140,
+      "outputTokens": 303,
+      "cost": 0.0008027999999999999
+    },
+    {
+      "timestamp": "2026-03-10T19:29:24.348Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 4140,
+      "outputTokens": 292,
+      "cost": 0.0007962
+    },
+    {
+      "timestamp": "2026-03-10T19:29:31.778Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 4140,
+      "outputTokens": 285,
+      "cost": 0.000792
+    },
+    {
+      "timestamp": "2026-03-10T19:38:33.137Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 4140,
+      "outputTokens": 279,
+      "cost": 0.0007883999999999999
+    },
+    {
+      "timestamp": "2026-03-10T19:38:40.277Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 4140,
+      "outputTokens": 293,
+      "cost": 0.0007968
+    },
+    {
+      "timestamp": "2026-03-10T19:39:43.899Z",
+      "model": "gpt-4o",
+      "inputTokens": 4346,
+      "outputTokens": 474,
+      "cost": 0.028839999999999998
+    },
+    {
+      "timestamp": "2026-03-10T19:39:51.940Z",
+      "model": "gpt-4o",
+      "inputTokens": 645,
+      "outputTokens": 621,
+      "cost": 0.012539999999999999
+    },
+    {
+      "timestamp": "2026-03-10T19:47:10.875Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 4140,
+      "outputTokens": 253,
+      "cost": 0.0007727999999999999
+    },
+    {
+      "timestamp": "2026-03-10T19:47:12.003Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 4140,
+      "outputTokens": 308,
+      "cost": 0.0008058
+    },
+    {
+      "timestamp": "2026-03-10T19:49:59.760Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 4140,
+      "outputTokens": 281,
+      "cost": 0.0007895999999999999
+    },
+    {
+      "timestamp": "2026-03-10T19:50:05.364Z",
+      "model": "gpt-4o-mini",
+      "inputTokens": 4140,
+      "outputTokens": 262,
+      "cost": 0.0007781999999999999
+    },
+    {
+      "timestamp": "2026-03-10T19:53:02.695Z",
+      "model": "gpt-4o",
+      "inputTokens": 4211,
+      "outputTokens": 266,
+      "cost": 0.025045
+    },
+    {
+      "timestamp": "2026-03-10T19:53:05.876Z",
+      "model": "gpt-4o",
+      "inputTokens": 4211,
+      "outputTokens": 277,
+      "cost": 0.02521
+    },
+    {
+      "timestamp": "2026-03-10T19:53:39.661Z",
+      "model": "gpt-4o",
+      "inputTokens": 4211,
+      "outputTokens": 252,
+      "cost": 0.024835
+    },
+    {
+      "timestamp": "2026-03-10T19:53:43.661Z",
+      "model": "gpt-4o",
+      "inputTokens": 4211,
+      "outputTokens": 268,
+      "cost": 0.025075
+    },
+    {
+      "timestamp": "2026-03-10T19:59:27.566Z",
+      "model": "gpt-4o",
+      "inputTokens": 4211,
+      "outputTokens": 284,
+      "cost": 0.025315
+    },
+    {
+      "timestamp": "2026-03-10T19:59:31.005Z",
+      "model": "gpt-4o",
+      "inputTokens": 4211,
+      "outputTokens": 279,
+      "cost": 0.025240000000000002
+    }
+  ]
+}

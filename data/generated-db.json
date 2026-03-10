@@ -1,0 +1,499 @@
+{
+  "items": [
+    {
+      "type": "marketing",
+      "title": "Plan Editorial (4 Semanas)",
+      "preview": "Planificación de contenidos educativos y redes sociales.",
+      "content": {
+        "weeks": [
+          {
+            "week": 1,
+            "items": [
+              {
+                "type": "article",
+                "title": "The Future of Smart Ticketing and Identity Management in Sports",
+                "description": "Explore how smart ticketing and digital identity solutions are revolutionizing access and security in sports organizations, paving the way for a safer and more engaging fan experience.",
+                "pillar": "captacion"
+              },
+              {
+                "type": "social",
+                "title": "Real Madrid's Success with Our Smart Ticketing Solutions",
+                "description": "Discover how Real Madrid improved fan engagement and security through our state-of-the-art digital identity management system. #SmartTicketing #FanExperience",
+                "pillar": "captacion"
+              }
+            ]
+          },
+          {
+            "week": 2,
+            "items": [
+              {
+                "type": "article",
+                "title": "Implementing Digital Identity Solutions: A Comprehensive Guide for Sports Venues",
+                "description": "Learn the step-by-step process of integrating digital identity management systems in sports venues to enhance security and fan engagement.",
+                "pillar": "educativo"
+              },
+              {
+                "type": "social",
+                "title": "How Blockchain is Transforming Ticket Security in Sports",
+                "description": "Blockchain technology is at the forefront of secure ticketing. Discover its impact on preventing fraud and enhancing fan trust in sports events. #Blockchain #TicketSecurity",
+                "pillar": "educativo"
+              }
+            ]
+          },
+          {
+            "week": 3,
+            "items": [
+              {
+                "type": "article",
+                "title": "Success Stories of Implemented Systems in Major Sports Venues",
+                "description": "Read our whitepaper on how our solutions have led to significant improvements in revenue and security in major sports organizations.",
+                "pillar": "confianza"
+              },
+              {
+                "type": "social",
+                "title": "Industry Leaders Talk About Our Identity Management Solutions",
+                "description": "Hear from industry experts and clients about the transformative impact of our secure digital identity solutions on their operations and fan relationships. #ClientSuccess #SportsTech",
+                "pillar": "confianza"
+              }
+            ]
+          },
+          {
+            "week": 4,
+            "items": [
+              {
+                "type": "article",
+                "title": "Boost Your Venue's Revenue with Smart Ticketing Solutions",
+                "description": "Discover how integrating our smart ticketing solutions can open new revenue opportunities from merchandise, sponsorships, and digital ticket sales.",
+                "pillar": "conversion"
+              },
+              {
+                "type": "social",
+                "title": "Limited-Time Offer: Transform Your Venue with Our Smart Solutions",
+                "description": "Take advantage of our limited-time offer to implement our cutting-edge smart ticketing solutions. Enhance security and fan engagement today. #VenueSolutions #IncreaseRevenue",
+                "pillar": "conversion"
+              }
+            ]
+          }
+        ]
+      },
+      "id": "112d3587-6072-4b31-9490-a66b06159571",
+      "date": "2026-03-10T19:39:51.941Z"
+    },
+    {
+      "type": "marketing",
+      "title": "Estrategia de Marketing",
+      "preview": "Estrategia generada para perfil: Scalable digital identity management and smart ticketing solutions",
+      "content": {
+        "businessProfile": {
+          "type": "Scalable digital identity management and smart ticketing solutions",
+          "features": [
+            "Biometric identity verification",
+            "Blockchain-driven data security",
+            "Real-time notifications and analytics",
+            "Digital collectible and NFT ticketing"
+          ],
+          "problemsSolved": [
+            "Unauthorized access prevention",
+            "Fan engagement through personalized experiences",
+            "Fraud mitigation via secure ticket transactions",
+            "Revenue maximization from merchandise and sponsorships"
+          ],
+          "advantages": [
+            "Integration with existing CRM systems",
+            "Decentralized identity management enhancing privacy and control",
+            "Advanced face recognition for secure access",
+            "Geo-targeted marketing and fan engagement analytics"
+          ]
+        },
+        "targetAudience": {
+          "profile": "Sports organizations and large event venues",
+          "useCases": [
+            "Securing stadium access and reducing fraud",
+            "Enhancing fan engagement through digital tools",
+            "Analyzing fan data for personalized marketing",
+            "Increasing revenue from digital ticket sales and sponsorships"
+          ]
+        },
+        "contentStrategy": {
+          "pillars": {
+            "captacion": [
+              "Blog posts about the future of smart ticketing and identity management",
+              "Social media campaigns highlighting successful collaborations with major teams like Real Madrid",
+              "Webinars on enhancing fan experience through technology"
+            ],
+            "educativo": [
+              "Case studies on fraud prevention using advanced ID systems",
+              "How-to guides on implementing digital identity solutions in sports venues",
+              "Infographics explaining the benefits of blockchain in ticket security"
+            ],
+            "confianza": [
+              "Whitepapers sharing data-backed success stories of implemented systems",
+              "Testimonials from industry leaders and clients",
+              "Annual reports showcasing revenue growth and security enhancements"
+            ],
+            "conversion": [
+              "Free demos or consultations for potential clients",
+              "Limited-time offers for integrating smart ticketing solutions",
+              "Targeted email campaigns with bespoke proposals for interested organizations"
+            ]
+          },
+          "opportunities": [
+            "Expansion into new markets beyond Europe, such as North America and the Middle East",
+            "Partnerships with additional major sports organizations and venues",
+            "Development of more in-depth analytics tools for real-time marketing"
+          ]
+        }
+      },
+      "id": "2c96429c-1df1-4433-83c8-217b02786613",
+      "date": "2026-03-10T19:39:43.902Z"
+    },
+    {
+      "type": "article",
+      "title": "Leveraging Detailed Analytics for Enhanced Fan Engagement",
+      "preview": "Las analíticas detaladas son clave para transformar la experiencia de los aficionados en los eventos deportivos. Mediante sistemas como el SMART Fan Management System, los organizadores pueden no solo controlar el acceso, sino también capturar datos valiosos de comportamiento y preferencias de los aficionados. Esto permite personalizar las interacciones y maximizar el engagement, beneficiando tanto a los aficionados como a las marcas asociadas. En última instancia, el uso de analytics reconfigura las dinámicas de relación en el campo deportivo, asegurando una experiencia enriquecedora y rentable.",
+      "content": {
+        "article": "La gestión efectiva de los aficionados en los deportes va más allá de simplemente permitir su acceso a los eventos. En un mundo cada vez más digital, es crucial aprovechar las analíticas detalladas para redefinir la experiencia del aficionado y maximizar el engagement.\n\n### Transformación del Compromiso del Aficionado mediante Analíticas\n\nUna pieza central para lograr una mayor participación de los aficionados es el despliegue de sistemas avanzados de gestión de aficionados como el **SMART Fan Management System**. Este sistema no solo controla el acceso a los eventos, sino que también rastrea de manera exhaustiva las actividades y compras de los aficionados. Tal seguimiento permite una integración con sistemas CRM que posibilitan la realización de pruebas A/B de ofertas, dirigidas a maximizar los ingresos por merchandising, alimentos y bebidas.\n\nLa capacidad de generar notificaciones en tiempo real dirigidas geográficamente representa una herramienta poderosa para el patrocinio deportivo. Ya no se trata solo de una aparición del logo sino de proporcionar datos valiosos sobre los aficionados, que puede ser utilizado para campañas más personalizadas y efectivas.\n\n### Impulsando las Relaciones entre Aficionados y Marcas\n\nLa aplicación de analíticas avanzadas potencia la capacidad de las organizaciones deportivas para formular estrategias de marketing personalizadas y ajustadas a las preferencias de los aficionados. Esto no solo aumenta los ingresos sino también el nivel de satisfacción y lealtad de los aficionados, ofreciendo promociones específicas y avances en servicios que enriquecen la experiencia del evento en vivo.\n\n### Conclusión\n\nIntegrar analíticas detalladas en la gestión de aficionados permite a los organizadores de eventos y marcas optimizar sus estrategias de interacción, asegurando que cada asistente reciba un tratamiento personalizado y memorable. Al proporcionar un ecosistema de datos sólido y bien estructurado, las oportunidades para innovar y cultivar la lealtad de los aficionados se multiplican, generando tanto satisfacción del cliente como beneficios económicos sustanciales.",
+        "summary": "Las analíticas detaladas son clave para transformar la experiencia de los aficionados en los eventos deportivos. Mediante sistemas como el SMART Fan Management System, los organizadores pueden no solo controlar el acceso, sino también capturar datos valiosos de comportamiento y preferencias de los aficionados. Esto permite personalizar las interacciones y maximizar el engagement, beneficiando tanto a los aficionados como a las marcas asociadas. En última instancia, el uso de analytics reconfigura las dinámicas de relación en el campo deportivo, asegurando una experiencia enriquecedora y rentable.",
+        "social": "En la era digital, las analíticas detalladas son el pilar para elevar la experiencia del aficionado en eventos deportivos. Aprende cómo el SMART Fan Management System no solo optimiza el acceso, sino que también potencia el engagement y maximiza ingresos a través de interacciones personalizadas. #FanEngagement #Deportes #Analíticas #OARO #InnovaciónDeportiva",
+        "imageUrl": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-kTI22xjpHgGvHZSqR3IMwxdD/user-prbs7VrOp0R23Z1KA8Vlzpv3/img-sxAEG5YYlPOtbp5LlStid1Ak.png?st=2026-03-10T15%3A48%3A11Z&se=2026-03-10T17%3A48%3A11Z&sp=r&sv=2026-02-06&sr=b&rscd=inline&rsct=image/png&skoid=ed3ea2f9-5e38-44be-9a1b-7c1e65e4d54f&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-03-10T02%3A37%3A03Z&ske=2026-03-11T02%3A37%3A03Z&sks=b&skv=2026-02-06&sig=aPDAAd5sOTxIWIaNUl0IXku4%2B2ZK9vtcV8wJ3HP0R30%3D"
+      },
+      "metadata": {
+        "audience": "general",
+        "tone": "profesional",
+        "length": "medium",
+        "network": "linkedin"
+      },
+      "id": "6fc4769c-ea2d-4586-9224-d9d82845ba94",
+      "date": "2026-03-10T16:48:11.899Z"
+    },
+    {
+      "type": "marketing",
+      "title": "Plan Editorial (4 Semanas)",
+      "preview": "Planificación de contenidos educativos y redes sociales.",
+      "content": {
+        "weeks": [
+          {
+            "week": 1,
+            "items": [
+              {
+                "type": "article",
+                "title": "The Evolution of Fan Management Systems: What Every Sports Club Needs to Know",
+                "description": "Explore how fan management systems have transformed over the years and the crucial role they play in modern sports events.",
+                "pillar": "captacion"
+              },
+              {
+                "type": "social",
+                "title": "Major Sports Clubs Transforming with SMART Fan Management",
+                "description": "Discover how top sports clubs are integrating digital and biometric ticketing to enhance fan experience and security.",
+                "pillar": "educativo"
+              }
+            ]
+          },
+          {
+            "week": 2,
+            "items": [
+              {
+                "type": "article",
+                "title": "Enhancing Security and Operational Efficiency at Events with Biometric Data",
+                "description": "A comprehensive guide on using biometric data to improve security measures and streamline operations at large events.",
+                "pillar": "educativo"
+              },
+              {
+                "type": "social",
+                "title": "Real Madrid's Success with Our SMART Fan Management System",
+                "description": "Learn how Real Madrid and other clubs have improved revenue and engagement with our system.",
+                "pillar": "confianza"
+              }
+            ]
+          },
+          {
+            "week": 3,
+            "items": [
+              {
+                "type": "article",
+                "title": "Leveraging Detailed Analytics for Enhanced Fan Engagement",
+                "description": "Understand how detailed data analytics can unlock new marketing capabilities and improve fan engagement.",
+                "pillar": "captacion"
+              },
+              {
+                "type": "social",
+                "title": "Explore Our Free Trial: Transform Your Fan Experience",
+                "description": "Sign up for a free trial of the SMART Fan Management System and see firsthand how it can revolutionize your operations.",
+                "pillar": "conversion"
+              }
+            ]
+          },
+          {
+            "week": 4,
+            "items": [
+              {
+                "type": "article",
+                "title": "Success Stories: Real Results from Our SMART Fan Management System",
+                "description": "A deep dive into different clubs' journeys and successes after implementing our system, complete with data-driven results.",
+                "pillar": "confianza"
+              },
+              {
+                "type": "social",
+                "title": "Limited-Time Offer: Early Adopter Discounts for the SMART System",
+                "description": "Take advantage of our special limited-time offer and integrate the top-rated fan management system at a discounted rate.",
+                "pillar": "conversion"
+              }
+            ]
+          }
+        ]
+      },
+      "id": "8bc104ef-c5a1-4940-a8e8-6fd32ac756af",
+      "date": "2026-03-10T16:47:22.504Z"
+    },
+    {
+      "type": "marketing",
+      "title": "Estrategia de Marketing",
+      "preview": "Estrategia generada para perfil: SMART Fan Management System",
+      "content": {
+        "businessProfile": {
+          "type": "SMART Fan Management System",
+          "features": [
+            "Access Control",
+            "Fan Engagement",
+            "Real-Time Notifications",
+            "Digital Ticketing",
+            "Operational Security"
+          ],
+          "problemsSolved": [
+            "Unauthorized access at stadiums",
+            "Fan activity tracking",
+            "Enhanced revenue from merchandising and food/beverages",
+            "Fraud reduction through biometric verification"
+          ],
+          "advantages": [
+            "Seamless integration with existing CRM and ticketing platforms",
+            "High accuracy in fan identification",
+            "Increased marketing capabilities through detailed analytics",
+            "Enhanced fan experience with real-time and personalized notifications"
+          ]
+        },
+        "targetAudience": {
+          "profile": "Major sports clubs and event venues",
+          "useCases": [
+            "Integrating digital and biometric ticketing systems",
+            "Enhancing fan engagement through targeted marketing",
+            "Improving security and operational efficiency during events",
+            "Generating additional revenue streams via detailed data analytics"
+          ]
+        },
+        "contentStrategy": {
+          "pillars": {
+            "captacion": [
+              "Create engaging thought leadership content on the evolution of fan management systems.",
+              "Utilize SEO strategies to attract sports clubs searching for advanced ticketing solutions.",
+              "Leverage social media campaigns targeting sports industry leaders."
+            ],
+            "educativo": [
+              "Develop detailed whitepapers on the benefits of SMART systems in fan management.",
+              "Offer webinars explaining integration processes and showcasing successful case studies.",
+              "Provide guides educating on the use of biometric data for event security enhancement."
+            ],
+            "confianza": [
+              "Showcase case studies with Real Madrid and other clients.",
+              "Publish data-driven reports demonstrating improvements in revenue and engagement post-implementation.",
+              "Share testimonials and success stories from clubs using the system."
+            ],
+            "conversion": [
+              "Provide demos and free trials of the SMART Fan Management System.",
+              "Offer consultancy sessions to assess individual club needs.",
+              "Promote limited-time offers or discounts for early adopters."
+            ]
+          },
+          "opportunities": [
+            "Expand into other sports and entertainment markets.",
+            "Develop partnerships for broader CRM and event platform integrations.",
+            "Explore potential cross-promotions with merchandise and food/beverage vendors."
+          ]
+        }
+      },
+      "id": "cbf9e814-20f0-4ccf-83d2-e8357697b695",
+      "date": "2026-03-10T16:47:14.222Z"
+    },
+    {
+      "type": "article",
+      "title": "CRM & Fan Loyalty: A Winning Duo",
+      "preview": "El uso de CRM en la gestión de la lealtad de los fans es crucial para optimizar la experiencia del aficionado y los ingresos de un club deportivo. Al integrar estos sistemas, los clubes pueden segmentar fácilmente su base de fans para ofrecer promociones personalizadas y experiencias memorables que fomentan la lealtad y el compromiso. En última instancia, esta estrategia no solo fortalece las relaciones con los aficionados, sino que también ofrece nuevas vías para el crecimiento y el éxito financiero.",
+      "content": {
+        "article": "En el mundo del deporte, la lealtad de los aficionados es uno de los activos más valiosos para cualquier club. Gestionar estas relaciones de manera efectiva puede ser el diferenciador clave entre una temporada de éxito y otra de oportunidades perdidas. Aquí es donde entra en juego la combinación de sistemas de gestión de relaciones con los clientes (CRM) y la fidelización de los fans, una dupla ganadora que puede transformar la experiencia del aficionado y maximizar los ingresos del club.\n\nUn sistema CRM bien integrado permite a los clubes deportivos conocer mejor a sus aficionados, entender sus preferencias y predecir comportamientos futuros. Al analizar datos de ticketing, compras de merchandising y consumo durante los partidos, los clubes pueden segmentar a sus seguidores para ofrecer promociones personalizadas, como descuentos en merchandaising o entradas para próximos eventos. Esto no solo incrementa las ventas, sino que también fortalece el vínculo entre el club y sus aficionados.\n\nPor otro lado, la fidelización de fans va más allá de las transacciones económicas. Se trata de crear experiencias memorables que permitan a los aficionados sentirse parte integral del club. Ofrecer contenido exclusivo, eventos especiales y programas de recompensas son solo algunas de las estrategias que se pueden implementar gracias a un CRM robusto. Estas iniciativas no solo aumentan la satisfacción y la retención de fanáticos, sino que también generan publicidad positiva de boca a boca, atrayendo a nuevos seguidores.\n\nEn definitiva, la sinergia entre un CRM efectivo y un sólido programa de fidelización de fans no solo optimiza la gestión de datos y mejora la experiencia del aficionado, sino que posiciona al club para enfrentar desafíos futuros con una base de seguidores comprometidos y leales.",
+        "summary": "El uso de CRM en la gestión de la lealtad de los fans es crucial para optimizar la experiencia del aficionado y los ingresos de un club deportivo. Al integrar estos sistemas, los clubes pueden segmentar fácilmente su base de fans para ofrecer promociones personalizadas y experiencias memorables que fomentan la lealtad y el compromiso. En última instancia, esta estrategia no solo fortalece las relaciones con los aficionados, sino que también ofrece nuevas vías para el crecimiento y el éxito financiero.",
+        "social": "En el mundo deportivo, entender y potenciar la lealtad de los fans es clave. Con la combinación de un CRM robusto y programas de fidelización, los clubes pueden transformar la experiencia del aficionado y maximizar sus ingresos. #CRMSuccess #FanEngagement #SportsManagement",
+        "imageUrl": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-kTI22xjpHgGvHZSqR3IMwxdD/user-prbs7VrOp0R23Z1KA8Vlzpv3/img-HZFMYgf7L0lRqwpsAwrhK3oz.png?st=2026-03-10T13%3A29%3A23Z&se=2026-03-10T15%3A29%3A23Z&sp=r&sv=2026-02-06&sr=b&rscd=inline&rsct=image/png&skoid=35890473-cca8-4a54-8305-05a39e0bc9c3&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-03-09T22%3A02%3A26Z&ske=2026-03-10T22%3A02%3A26Z&sks=b&skv=2026-02-06&sig=ecdKBKFFwptkMJx6QRLZBeUcGRWFW2iN9%2BxZLwmLAbs%3D"
+      },
+      "metadata": {
+        "audience": "general",
+        "tone": "profesional",
+        "length": "short",
+        "network": "linkedin"
+      },
+      "id": "e601bf72-7517-4790-92b3-c10d3f7e750d",
+      "date": "2026-03-10T14:29:23.758Z"
+    },
+    {
+      "type": "marketing",
+      "title": "Plan Editorial (4 Semanas)",
+      "preview": "Planificación de contenidos educativos y redes sociales.",
+      "content": {
+        "weeks": [
+          {
+            "week": 1,
+            "items": [
+              {
+                "type": "article",
+                "title": "Transforming Stadium Entry: The Power of Biometric Security",
+                "description": "Explore how biometric security is revolutionizing stadium access and enhancing fan experiences. Learn about the latest advancements and real-life implementations."
+              },
+              {
+                "type": "social",
+                "title": "Why Biometric Security is a Game-Changer for Stadium Access",
+                "description": "Discover the benefits of biometric validation in stadium environments. #StadiumSecurity #FanExperience"
+              }
+            ]
+          },
+          {
+            "week": 2,
+            "items": [
+              {
+                "type": "article",
+                "title": "Building Fan Loyalty: The Role of CRM and Data Analytics",
+                "description": "Understand how integrating CRM systems with data analytics can personalize fan engagement and boost loyalty programs for football clubs."
+              },
+              {
+                "type": "social",
+                "title": "CRM & Fan Loyalty: A Winning Duo",
+                "description": "See how CRM and data analytics are changing the game for fan loyalty. #FanEngagement #CRMMagic"
+              }
+            ]
+          },
+          {
+            "week": 3,
+            "items": [
+              {
+                "type": "article",
+                "title": "Digital Ticketing: Blockchain’s Role in Fraud Prevention",
+                "description": "Learn about blockchain's potential to prevent ticket fraud and ensure secure digital transactions for sports venues."
+              },
+              {
+                "type": "social",
+                "title": "Blockchain: The Future of Secure Digital Ticketing",
+                "description": "Discover blockchain's impact on ticket security. #DigitalTicketing #BlockchainSecurity"
+              }
+            ]
+          },
+          {
+            "week": 4,
+            "items": [
+              {
+                "type": "article",
+                "title": "Maximizing Revenue Streams: Insights from Data-Driven Strategies",
+                "description": "Delve into successful case studies where data insights have significantly enhanced revenue streams for sports venues."
+              },
+              {
+                "type": "social",
+                "title": "Data-Driven Revenue: Case Studies from the Field",
+                "description": "Explore how data-driven strategies boost stadium revenue. #RevenueMaximization #DataInsights"
+              }
+            ]
+          }
+        ]
+      },
+      "id": "66f07951-8075-4528-905d-075f011f44eb",
+      "date": "2026-03-10T14:27:39.111Z"
+    },
+    {
+      "type": "marketing",
+      "title": "Estrategia de Marketing",
+      "preview": "Estrategia generada para perfil: SMART Fan Management System",
+      "content": {
+        "businessProfile": {
+          "type": "SMART Fan Management System",
+          "features": [
+            "Access Control",
+            "Fan Engagement",
+            "Real-Time Notifications",
+            "Digital Ticketing",
+            "Operational Security",
+            "Revenue Opportunities",
+            "Performance Metrics"
+          ],
+          "problemsSolved": [
+            "Unauthorized stadium access",
+            "Fraudulent ticket usage",
+            "Engagement analysis for tailored marketing",
+            "Monetization of fan interactions",
+            "Operational inefficiencies in access control"
+          ],
+          "advantages": [
+            "Seamless fan tracking and engagement",
+            "Advanced security via biometric validation",
+            "Enhanced revenue streams through data-driven strategies",
+            "Integration with CRM and real-time data analytics",
+            "High compliance with legal frameworks"
+          ]
+        },
+        "targetAudience": {
+          "profile": "Football clubs like Real Madrid F.C., who wish to enhance fan experiences and security",
+          "useCases": [
+            "Implementing secure and efficient fan entry systems",
+            "Tracking and maximizing revenue from merchandising",
+            "Utilizing fan data for targeted marketing",
+            "Facilitating secure ticket transfers and resales"
+          ]
+        },
+        "contentStrategy": {
+          "mainThemes": [
+            "Advanced Security in Digital Ticketing",
+            "Integrated Fan Engagement and Data Analytics",
+            "Transforming Stadium Experiences through Technology",
+            "Revenue Maximization Strategies for Sports Venues"
+          ],
+          "knowledgeAreas": [
+            "Biometric Security and Identity Management",
+            "Blockchain Technology in Ticketing",
+            "CRM and Customer Experience Optimization",
+            "Data Analytics and Marketing Personalization"
+          ],
+          "opportunities": [
+            "Case studies of successful implementations with major sports teams",
+            "Webinars on enhancing fan engagement with technology",
+            "Whitepapers on fraud prevention in digital ticketing",
+            "Collaborations with CRM and data analytics providers"
+          ]
+        }
+      },
+      "id": "d03b1572-7090-488c-88a1-4d47a8328764",
+      "date": "2026-03-10T14:27:29.577Z"
+    },
+    {
+      "type": "image",
+      "title": "Imagen: equipo trabajando en exterior...",
+      "preview": "Imagen generada por IA",
+      "content": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-kTI22xjpHgGvHZSqR3IMwxdD/user-prbs7VrOp0R23Z1KA8Vlzpv3/img-qVTcTHbaSnci9q81os5aVYKq.png?st=2026-03-10T12%3A25%3A11Z&se=2026-03-10T14%3A25%3A11Z&sp=r&sv=2026-02-06&sr=b&rscd=inline&rsct=image/png&skoid=f1dafa11-a0c2-4092-91d4-10981fbda051&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-03-09T15%3A08%3A51Z&ske=2026-03-10T15%3A08%3A51Z&sks=b&skv=2026-02-06&sig=p/nMvz4aOCnBpf/tVRVDWVz1dJIoDg4ezyt2QvkYW5Y%3D",
+      "id": "a8eba89b-ba84-4c7f-95ab-72de7bd55241",
+      "date": "2026-03-10T13:25:11.691Z"
+    },
+    {
+      "type": "article",
+      "title": "Leveraging AI and Blockchain for Secure Ticketing Solutions: Insights from Claude Code",
+      "preview": "In leveraging AI and blockchain, organizations can enhance ticketing systems to provide secure, efficient, and engaging solutions. OARO's SMART Fan Management System showcases these technologies by offering dynamic access control and fraud-proof ticketing through biometric and decentralized digital identities. This integration ensures not only operational security but also maximizes fan engagement and revenue opportunities. By focusing on data-driven marketing and personalized fan experiences, stadiums like those used by Real Madrid F.C. can reshape their approach to fan interaction.",
+      "content": {
+        "article": "### Leveraging AI and Blockchain for Secure Ticketing Solutions: Insights from Claude Code\n\nThe integration of AI and blockchain technologies is revolutionizing secure ticketing solutions, a pivotal step for forward-thinking organizations. Companies like OARO are at the forefront with their SMART Fan Management System that merges advanced biometric capabilities, digital identities, and decentralized structures to streamline access control and enhance fan engagement.\n\n#### AI Enhancements in Ticketing\nArtificial Intelligence is employed for A/B testing, helping to personalize offers and optimize revenue streams from merchandising and other sales. By analyzing fan behavior and purchase patterns, the system can dynamically adjust marketing campaigns to better engage audiences and increase sales opportunities.\n\n#### Blockchain's Role in Integrity and Security\nWith blockchain, OARO transforms tickets into secure digital assets, ensuring 360° traceability and fraud-proof systems. Tickets become immutable and easily managed, elevating the fan experience by providing digital memorabilia and real-time offers based on personal preferences.\n\nBy leveraging these technologies, Real Madrid F.C. and its counterparts can ensure operational security, reducing entry fraud and enhancing fan loyalty. The combination of AI's analytical prowess and blockchain's secure infrastructure offers a path to not only maintain, but also capitalize on, fan engagement in new and innovative ways.",
+        "summary": "In leveraging AI and blockchain, organizations can enhance ticketing systems to provide secure, efficient, and engaging solutions. OARO's SMART Fan Management System showcases these technologies by offering dynamic access control and fraud-proof ticketing through biometric and decentralized digital identities. This integration ensures not only operational security but also maximizes fan engagement and revenue opportunities. By focusing on data-driven marketing and personalized fan experiences, stadiums like those used by Real Madrid F.C. can reshape their approach to fan interaction.",
+        "social": "Unlock the future of secure ticketing with AI and blockchain! 🚀 OARO's innovative solutions enhance fan experiences and operational security, ensuring fraud-proof systems and dynamic access. Discover how these technologies can revolutionize your venue management. #AI #Blockchain #SecureTicketing #Innovation #FanEngagement",
+        "imageUrl": "https://oaidalleapiprodscus.blob.core.windows.net/private/org-kTI22xjpHgGvHZSqR3IMwxdD/user-prbs7VrOp0R23Z1KA8Vlzpv3/img-w18XZyZgiXC0IBAP5ula2oVg.png?st=2026-03-10T11%3A59%3A21Z&se=2026-03-10T13%3A59%3A21Z&sp=r&sv=2026-02-06&sr=b&rscd=inline&rsct=image/png&skoid=77e5a8ec-6bd1-4477-8afc-16703a64f029&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-03-10T09%3A28%3A15Z&ske=2026-03-11T09%3A28%3A15Z&sks=b&skv=2026-02-06&sig=e8rP8CyKZ6wKY%2BxyQpr4ErnGvl3lv%2Be%2BYHPcqEpK55Y%3D"
+      },
+      "metadata": {
+        "audience": "directiva",
+        "tone": "cercano",
+        "length": "short",
+        "network": "linkedin"
+      },
+      "id": "ef72cc31-f015-4d75-b975-6c04229fc6cc",
+      "date": "2026-03-10T12:59:21.149Z"
+    }
+  ]
+}
