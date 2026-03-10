@@ -5,6 +5,7 @@ const DB_PATH = path.join(process.cwd(), 'data', 'generated-db.json');
 
 export interface GeneratedItem {
   id: string;
+  campaignId: string; // Relational link to the Campaign
   type: 'article' | 'social' | 'marketing' | 'image';
   title: string;
   date: string;
@@ -39,10 +40,11 @@ export function saveGeneratedDb(db: { items: GeneratedItem[] }) {
   }
 }
 
-export function addToGeneratedDb(item: Omit<GeneratedItem, 'id' | 'date'>) {
+export function addToGeneratedDb(item: Omit<GeneratedItem, 'id' | 'date'> & { campaignId?: string }) {
   const db = getGeneratedDb();
   const newItem: GeneratedItem = {
     ...item,
+    campaignId: item.campaignId || 'draft',
     id: crypto.randomUUID(),
     date: new Date().toISOString(),
   };

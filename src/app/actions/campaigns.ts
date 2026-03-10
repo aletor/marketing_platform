@@ -3,6 +3,7 @@
 import OpenAI from 'openai';
 import { getDb } from "@/lib/knowledge-db";
 import { addToGeneratedDb } from "@/lib/generated-db";
+import { createCampaign } from "@/lib/campaigns-db";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || "",
@@ -51,21 +52,26 @@ Genera ESTRICTAMENTE un JSON con la siguiente estructura y contenidos reales lis
       response_format: { type: "json_object" },
     });
 
-    const campaign = JSON.parse(completion.choices[0].message.content || "{}");
+    const campaignData = JSON.parse(completion.choices[0].message.content || "{}");
     
-    // Auto-save the assets to the library
-    if (campaign.article) {
+    // Create the central Campaign entity
+    const newCampaign = createCampaign(theme, campaignData);
+    
+    // Auto-save the assets to the library with campaignId
+    if (campaignData.article) {
       addToGeneratedDb({
+        campaignId: newCampaign.id,
         type: "article",
-        title: campaign.article.title,
+        title: campaignData.article.title,
         preview: "Campaña: " + theme,
-        content: campaign.article.content
+        content: campaignData.article.content
       });
     }
 
-    if (campaign.socialPosts) {
-      campaign.socialPosts.forEach((post: any, i: number) => {
+    if (campaignData.socialPosts) {
+      campaignData.socialPosts.forEach((post: any, i: number) => {
         addToGeneratedDb({
+          campaignId: newCampaign.id,
           type: "social",
           title: `Post ${i+1}: ${theme}`,
           preview: post.objective,
@@ -74,16 +80,17 @@ Genera ESTRICTAMENTE un JSON con la siguiente estructura y contenidos reales lis
       });
     }
 
-    if (campaign.useCase) {
+    if (campaignData.useCase) {
       addToGeneratedDb({
+        campaignId: newCampaign.id,
         type: "article", // Storing as article for now
-        title: "Caso de Uso: " + campaign.useCase.title,
+        title: "Caso de Uso: " + campaignData.useCase.title,
         preview: "Campaña: " + theme,
-        content: campaign.useCase.content
+        content: campaignData.useCase.content
       });
     }
 
-    return campaign;
+    return { ...campaignData, campaignId: newCampaign.id };
   } catch (error) {
     console.error("Campaign Generation Error:", error);
     throw new Error("Failed to generate campaign.");

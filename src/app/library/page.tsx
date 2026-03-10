@@ -20,15 +20,20 @@ import {
   Users,
   TrendingUp,
   X,
-  ShieldCheck
+  ShieldCheck,
+  FolderOpen
 } from "lucide-react";
 import { getLibraryItemsAction, deleteLibraryItemAction, duplicateLibraryItemAction, updateLibraryItemAction } from "@/app/actions/library";
+import { getCampaignsAction } from "@/app/actions/campaigns-db";
+import { CampaignRecord } from "@/lib/campaigns-db";
 import { GeneratedItem } from "@/lib/generated-db";
 import "./page.css";
 
 export default function Library() {
   const [items, setItems] = useState<GeneratedItem[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignRecord[]>([]);
   const [filter, setFilter] = useState("all");
+  const [campaignFilter, setCampaignFilter] = useState("all");
   const [loading, setLoading] = useState(true);
 
   const [selectedItem, setSelectedItem] = useState<GeneratedItem | null>(null);
@@ -100,19 +105,33 @@ export default function Library() {
 
 
   useEffect(() => {
-    async function fetchItems() {
-      const res = await getLibraryItemsAction();
-      if (res.success) {
-        setItems(res.items);
-      }
+    async function fetchData() {
+      const [libRes, campRes] = await Promise.all([
+        getLibraryItemsAction(),
+        getCampaignsAction()
+      ]);
+      
+      if (libRes.success) setItems(libRes.items);
+      if (campRes.success && campRes.campaigns) setCampaigns(campRes.campaigns);
+      
       setLoading(false);
+
+      // Check for deep link to open an item
+      const searchParams = new URLSearchParams(window.location.search);
+      const openId = searchParams.get('open');
+      if (openId && libRes.success) {
+        const itemToOpen = libRes.items.find(i => i.id === openId);
+        if (itemToOpen) openItem(itemToOpen);
+      }
     }
-    fetchItems();
+    fetchData();
   }, []);
 
-  const filteredItems = filter === "all" 
-    ? items 
-    : items.filter(item => item.type === filter);
+  const filteredItems = items.filter(item => {
+    const matchType = filter === "all" || item.type === filter;
+    const matchCampaign = campaignFilter === "all" || item.campaignId === campaignFilter;
+    return matchType && matchCampaign;
+  });
 
   const formatDate = (dateStr: string) => {
     try {
@@ -172,6 +191,30 @@ export default function Library() {
             <ImageIcon size={14} /> Imágenes
           </button>
         </div>
+
+        {campaigns.length > 0 && (
+          <div className="library-filters mt-4">
+            <span className="text-[#8E8B88] text-[10px] font-black uppercase tracking-widest mr-2 flex items-center gap-1">
+              <FolderOpen size={12} /> Campaña:
+            </span>
+            <button 
+              className={`filter-btn ${campaignFilter === 'all' ? 'active shadow-lg' : ''}`}
+              onClick={() => setCampaignFilter('all')}
+            >
+              Todas
+            </button>
+            {campaigns.map(c => (
+              <button 
+                key={c.id}
+                className={`filter-btn ${campaignFilter === c.id ? 'active shadow-lg' : ''}`}
+                onClick={() => setCampaignFilter(c.id)}
+                title={c.theme}
+              >
+                {c.theme.length > 20 ? c.theme.substring(0, 20) + '...' : c.theme}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       {loading ? (
