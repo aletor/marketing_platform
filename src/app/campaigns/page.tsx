@@ -44,14 +44,14 @@ export default function CampaignsDashboard() {
             Gestiona tus entornos de trabajo estratégicos. Cada campaña tiene sus propios activos y calendario.
           </p>
         </div>
-        <Link href="/campaigns/new" className="px-10 py-5 bg-[#1A1B1E] text-white rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center gap-3">
+        <Link href="/campaigns/new" className="px-10 py-5 bg-[#1A1B1E] text-white hover:text-[#FFBD1B] rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center gap-3">
           <Plus size={16} /> Nueva Campaña
         </Link>
       </header>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-50">
-          {[1,2,3].map(i => <div key={i} className="h-64 bg-[#F9F6F2] animate-pulse rounded-[2.5rem] border border-[#EBE4DC]" />)}
+        <div className="space-y-4 opacity-50">
+          {[1,2,3].map(i => <div key={i} className="h-24 bg-[#F9F6F2] animate-pulse rounded-3xl border border-[#EBE4DC]" />)}
         </div>
       ) : campaigns.length === 0 ? (
         <div className="py-24 flex flex-col items-center justify-center text-center bg-[#F9F6F2] border-2 border-dashed border-[#EBE4DC] rounded-[3rem]">
@@ -67,50 +67,54 @@ export default function CampaignsDashboard() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="space-y-4">
           {campaigns.map((campaign) => (
-            <div key={campaign.id} className="group bg-white rounded-[2.5rem] border border-[#EBE4DC] p-8 hover:border-[#1A1B1E] transition-all duration-300 hover:shadow-xl relative flex flex-col h-full">
+            <Link 
+              href={`/campaigns/${campaign.id}`} 
+              key={campaign.id} 
+              className="group bg-white rounded-3xl border border-[#EBE4DC] p-6 hover:border-[#1A1B1E] hover:shadow-lg transition-all duration-300 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative"
+            >
+              <div className="flex items-center gap-6">
+                 <div className="w-16 h-16 rounded-2xl bg-[#F9F6F2] border border-[#EBE4DC] flex items-center justify-center group-hover:bg-[#1A1B1E] group-hover:text-[#FFBD1B] transition-colors shrink-0">
+                    <FolderOpen size={24} />
+                 </div>
+                 <div>
+                    <h3 className="text-xl font-black text-[#1A1B1E] tracking-tight group-hover:text-[#FFBD1B] transition-colors mb-2">
+                       {campaign.theme}
+                    </h3>
+                    <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[#8E8B88]">
+                       <span className={`px-3 py-1 rounded-full border ${
+                         campaign.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                         campaign.status === 'Completed' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                         'bg-neutral-50 text-neutral-600 border-neutral-200'
+                       }`}>
+                         {campaign.status === 'Active' ? 'Activa' : campaign.status === 'Completed' ? 'Completada' : 'Borrador'}
+                       </span>
+                       <span className="flex items-center gap-1.5 opacity-60"><Calendar size={12}/> {new Date(campaign.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
+                    </div>
+                 </div>
+              </div>
               
-              <div className="flex justify-between items-start mb-6">
-                <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                  campaign.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                  campaign.status === 'Completed' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                  'bg-neutral-50 text-neutral-600 border-neutral-200'
-                }`}>
-                  {campaign.status === 'Active' ? 'Activa' : campaign.status === 'Completed' ? 'Completada' : 'Borrador'}
-                </span>
-                
+              <div className="flex items-center gap-4 hidden md:flex z-10">
                 <button 
                   onClick={(e) => { e.preventDefault(); handleDelete(campaign.id); }}
-                  className="p-2 text-rose-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors"
+                  className="w-12 h-12 flex items-center justify-center text-rose-300 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-colors border border-transparent hover:border-rose-100"
                   title="Eliminar Campaña"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={18} />
                 </button>
               </div>
 
-              <h3 className="text-2xl font-black text-[#1A1B1E] tracking-tight mb-4 group-hover:text-[#FFBD1B] transition-colors line-clamp-2">
-                {campaign.theme}
-              </h3>
-              
-              <div className="mt-auto pt-8 flex items-center justify-between border-t border-[#F9F6F2]">
-                <div className="flex items-center gap-2 text-[#8E8B88] text-[10px] font-bold uppercase tracking-widest">
-                  <Calendar size={12} />
-                  {new Date(campaign.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
-                </div>
-                
-                <Link 
-                  href={`/campaigns/${campaign.id}`}
-                  className="w-10 h-10 rounded-full bg-[#F9F6F2] text-[#1A1B1E] group-hover:bg-[#1A1B1E] group-hover:text-white flex items-center justify-center transition-colors border border-[#EBE4DC]"
-                  title="Entrar a la Campaña"
-                >
-                  <Plus size={16} />
-                </Link>
-              </div>
-              
-              {/* Clickable overlay to make entire card a link, minus the delete button */}
-              <Link href={`/campaigns/${campaign.id}`} className="absolute inset-0 z-0" aria-label={`Ver campaña ${campaign.theme}`} />
-            </div>
+               {/* Mobile delete button */}
+               <div className="absolute top-6 right-6 md:hidden z-10">
+                 <button 
+                    onClick={(e) => { e.preventDefault(); handleDelete(campaign.id); }}
+                    className="p-2 text-rose-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+               </div>
+            </Link>
           ))}
         </div>
       )}

@@ -9,7 +9,10 @@ import {
   Activity, 
   ShieldCheck,
   RefreshCw,
-  Cpu
+  Cpu,
+  Users,
+  UserPlus,
+  Trash2
 } from "lucide-react";
 import { getOpenAIUsageAction } from "@/app/actions/usage";
 import "./page.css";
@@ -187,6 +190,79 @@ export default function Settings() {
               </div>
             )}
           </div>
+        </section>
+
+        {/* Workspace / Team Management Section */}
+        <section className="col-span-1 lg:col-span-12 mt-4">
+           <div className="bg-white p-10 lg:p-12 rounded-[4rem] border border-[#EBE4DC] shadow-sm">
+             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+               <div className="space-y-2">
+                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest border border-blue-100 mb-2">
+                   WORKSPACE
+                 </div>
+                 <h2 className="text-3xl font-black text-[#1A1B1E] flex items-center gap-3 tracking-tighter">
+                   <Users className="w-8 h-8 text-[#FFBD1B]" />
+                   Gestión de Equipo
+                 </h2>
+                 <p className="text-[#8E8B88] text-sm font-medium">Administra los accesos y roles de tu Workspace: <strong className="text-[#1A1B1E] bg-[#F9F6F2] px-2 py-0.5 rounded">Acme Corp</strong></p>
+               </div>
+               <button className="px-8 py-5 bg-[#1A1B1E] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#FFBD1B] hover:text-[#1A1B1E] transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center gap-2">
+                 <UserPlus size={16} /> Invitar Miembro
+               </button>
+             </div>
+
+             <div className="overflow-x-auto">
+               <table className="w-full text-left border-collapse">
+                 <thead>
+                   <tr className="border-b-2 border-[#EBE4DC]">
+                     <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-[#8E8B88]">Usuario</th>
+                     <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-[#8E8B88]">Rol</th>
+                     <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-[#8E8B88]">Estado</th>
+                     <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-[#8E8B88] text-right">Acciones</th>
+                   </tr>
+                 </thead>
+                 <tbody className="divide-y divide-[#EBE4DC]">
+                   {[
+                     { name: 'Alejandro Tornero', email: 'alex@acme.com', role: 'Admin', status: 'Activo', initial: 'A', bg: 'bg-[#FFBD1B]/20 text-yellow-700' },
+                     { name: 'Sarah Connor', email: 'sarah@acme.com', role: 'Marketing Manager', status: 'Activo', initial: 'S', bg: 'bg-emerald-100 text-emerald-700' },
+                     { name: 'John Doe', email: 'john@acme.com', role: 'Editor', status: 'Invitado', initial: 'J', bg: 'bg-blue-100 text-blue-700' },
+                   ].map((user, i) => (
+                     <tr key={i} className="group hover:bg-[#F9F6F2] transition-colors">
+                       <td className="py-6">
+                         <div className="flex items-center gap-4">
+                           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg ${user.bg}`}>
+                             {user.initial}
+                           </div>
+                           <div>
+                             <p className="font-bold text-[#1A1B1E] text-base">{user.name}</p>
+                             <p className="text-[11px] font-medium text-[#8E8B88]">{user.email}</p>
+                           </div>
+                         </div>
+                       </td>
+                       <td className="py-6">
+                         <select className="bg-white border border-[#EBE4DC] rounded-xl px-4 py-2.5 text-[11px] font-black uppercase tracking-widest text-[#1A1B1E] outline-none hover:border-[#1A1B1E] transition-colors cursor-pointer appearance-none shadow-sm" defaultValue={user.role}>
+                           <option value="Admin">Admin</option>
+                           <option value="Marketing Manager">Marketing Manager</option>
+                           <option value="Editor">Editor</option>
+                           <option value="Viewer">Viewer</option>
+                         </select>
+                       </td>
+                       <td className="py-6">
+                         <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm ${user.status === 'Activo' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-neutral-50 text-neutral-500 border-neutral-200'}`}>
+                           {user.status}
+                         </span>
+                       </td>
+                       <td className="py-6 text-right">
+                         <button className="p-3 text-[#8E8B88] hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all border border-transparent hover:border-rose-100">
+                           <Trash2 size={18} />
+                         </button>
+                       </td>
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
+             </div>
+           </div>
         </section>
 
       </div>

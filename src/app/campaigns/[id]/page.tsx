@@ -5,13 +5,13 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { 
   ArrowLeft, Calendar as CalendarIcon, FileText, Image as ImageIcon, 
-  MessageSquare, LayoutDashboard, Clock, Plus, Zap
+  MessageSquare, LayoutDashboard, Clock, Plus, Zap, Sparkles, Database
 } from "lucide-react";
 import { getCampaignDetailsAction } from "@/app/actions/campaign-details";
 import { CampaignRecord } from "@/lib/campaigns-db";
 import { GeneratedItem } from "@/lib/generated-db";
 
-type TabType = 'overview' | 'assets' | 'calendar';
+type TabType = 'overview' | 'contents' | 'visuals' | 'calendar';
 
 export default function CampaignDetailsPage() {
   const params = useParams();
@@ -105,108 +105,207 @@ export default function CampaignDetailsPage() {
           onClick={() => setActiveTab('overview')}
           className={`px-8 py-4 font-black text-[10px] uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeTab === 'overview' ? 'border-[#1A1B1E] text-[#1A1B1E]' : 'border-transparent text-[#8E8B88] hover:text-[#1A1B1E]'}`}
         >
-          1️⃣ Estrategia
+          1️⃣ Resumen
         </button>
         <button 
-          onClick={() => setActiveTab('assets')}
-          className={`px-8 py-4 font-black text-[10px] uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeTab === 'assets' ? 'border-[#FFBD1B] text-[#1A1B1E]' : 'border-transparent text-[#8E8B88] hover:text-[#1A1B1E]'}`}
+          onClick={() => setActiveTab('contents')}
+          className={`px-8 py-4 font-black text-[10px] uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeTab === 'contents' ? 'border-[#FFBD1B] text-[#1A1B1E]' : 'border-transparent text-[#8E8B88] hover:text-[#1A1B1E]'}`}
         >
-          2️⃣ Contenido
+          2️⃣ Contenidos
+        </button>
+        <button 
+          onClick={() => setActiveTab('visuals')}
+          className={`px-8 py-4 font-black text-[10px] uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeTab === 'visuals' ? 'border-emerald-500 text-[#1A1B1E]' : 'border-transparent text-[#8E8B88] hover:text-[#1A1B1E]'}`}
+        >
+          3️⃣ Visuales
         </button>
         <button 
           onClick={() => setActiveTab('calendar')}
           className={`px-8 py-4 font-black text-[10px] uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeTab === 'calendar' ? 'border-blue-500 text-[#1A1B1E]' : 'border-transparent text-[#8E8B88] hover:text-[#1A1B1E]'}`}
         >
-          3️⃣ Calendario
+          4️⃣ Calendario
         </button>
       </div>
 
       {/* TAB: OVERVIEW */}
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in slide-in-from-bottom-4 duration-500">
-          <div className="bg-white p-10 rounded-[3rem] border border-[#EBE4DC] shadow-sm space-y-6">
-            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#FFBD1B]">Contexto Ocupado</h3>
-            <p className="text-lg text-[#1A1B1E] font-medium leading-relaxed">
-              Esta campaña fue orquestada automáticamente fusionando el tema <strong>"{campaign.theme}"</strong> con tu ADN Corporativo extraído de la Base de Conocimiento.
-            </p>
-            <div className="p-6 bg-[#F9F6F2] rounded-2xl border border-[#EBE4DC] mt-4">
-               <h4 className="text-[10px] font-black uppercase tracking-widest text-[#8E8B88] mb-4">Métricas del Ecosistema</h4>
-               <ul className="space-y-4">
-                 <li className="flex justify-between items-center bg-white p-4 rounded-xl border border-[#EBE4DC]"><span className="text-sm font-bold text-[#1A1B1E] flex items-center gap-2"><FileText size={16} className="text-amber-500"/> Artículos SEO</span> <span className="font-black text-lg">{assets.filter(a => a.type === 'article').length}</span></li>
-                 <li className="flex justify-between items-center bg-white p-4 rounded-xl border border-[#EBE4DC]"><span className="text-sm font-bold text-[#1A1B1E] flex items-center gap-2"><MessageSquare size={16} className="text-blue-500"/> Posts Sociales</span> <span className="font-black text-lg">{assets.filter(a => a.type === 'social').length}</span></li>
-               </ul>
+          {/* Left Column: Context & Metrics */}
+          <div className="space-y-8">
+            <div className="bg-white p-10 rounded-[3rem] border border-[#EBE4DC] shadow-sm space-y-6">
+              <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#FFBD1B]">Contexto Estratégico</h3>
+              <p className="text-lg text-[#1A1B1E] font-medium leading-relaxed">
+                Esta campaña fue orquestada automáticamente fusionando el tema <strong>"{campaign.theme}"</strong> con tu ADN Corporativo extraído de la Base de Conocimiento.
+              </p>
+              <div className="p-6 bg-[#F9F6F2] rounded-2xl border border-[#EBE4DC] mt-4">
+                 <h4 className="text-[10px] font-black uppercase tracking-widest text-[#8E8B88] mb-4">Ecosistema Actual</h4>
+                 <ul className="space-y-4">
+                   <li className="flex justify-between items-center bg-white p-4 rounded-xl border border-[#EBE4DC]"><span className="text-sm font-bold text-[#1A1B1E] flex items-center gap-2"><FileText size={16} className="text-amber-500"/> Artículos SEO</span> <span className="font-black text-lg">{assets.filter(a => a.type === 'article').length}</span></li>
+                   <li className="flex justify-between items-center bg-white p-4 rounded-xl border border-[#EBE4DC]"><span className="text-sm font-bold text-[#1A1B1E] flex items-center gap-2"><MessageSquare size={16} className="text-blue-500"/> Posts Sociales</span> <span className="font-black text-lg">{assets.filter(a => a.type === 'social').length}</span></li>
+                 </ul>
+              </div>
             </div>
+            
+            {/* Hidden Raw Prompts area previously here - moved to visuals completely */}
           </div>
           
-          {campaign.briefing && (
-            <div className="bg-[#1A1B1E] p-10 rounded-[3rem] shadow-xl text-white overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-10 opacity-10 pointer-events-none">
-                 <Zap size={200} />
+          {/* Right Column: Structured Brief */}
+          <div className="bg-white p-10 rounded-[3rem] border border-[#EBE4DC] shadow-sm flex flex-col h-full">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center border border-emerald-100">
+                <LayoutDashboard size={18} className="text-emerald-500" />
               </div>
-              <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#FFBD1B] mb-8 relative z-10">Prompt de Orquestación Visual</h3>
-              {campaign.briefing.imagePrompts && campaign.briefing.imagePrompts.map((prompt: string, i: number) => (
-                <div key={i} className="mb-6 relative z-10">
-                  <span className="inline-block px-3 py-1 bg-white/10 text-white rounded text-[10px] font-black uppercase tracking-widest mb-2 border border-white/20">Prompt {i+1}</span>
-                  <p className="text-sm font-mono text-neutral-300 bg-black/30 p-4 rounded-xl leading-relaxed border border-white/10">{prompt}</p>
-                </div>
-              ))}
+              <h3 className="text-2xl font-black text-[#1A1B1E] tracking-tight">Brief de Campaña</h3>
             </div>
-          )}
+            
+            <div className="flex-1 space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="p-6 bg-[#F9F6F2] rounded-2xl border border-[#EBE4DC]">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#8E8B88] block mb-2">Objetivo</span>
+                  <p className="text-sm font-bold text-[#1A1B1E]">{campaign.briefing?.objective || 'Captación de Leads / Posicionamiento'}</p>
+                </div>
+                <div className="p-6 bg-[#F9F6F2] rounded-2xl border border-[#EBE4DC]">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#8E8B88] block mb-2">Audiencia</span>
+                  <p className="text-sm font-bold text-[#1A1B1E]">{campaign.briefing?.audience || 'Decision Makers & Directores de Marketing B2B'}</p>
+                </div>
+              </div>
+              
+              <div className="p-6 bg-[#F9F6F2] rounded-2xl border border-[#EBE4DC]">
+                <span className="text-[10px] font-black uppercase tracking-widest text-rose-500 block mb-2">Problema Principal del Cliente</span>
+                <p className="text-sm font-bold text-[#1A1B1E] leading-relaxed">{campaign.briefing?.problem || 'Fricción operativa entre equipos, procesos desconectados que derivan en pérdida de leads en la capa media del embudo y falta de claridad analítica.'}</p>
+              </div>
+
+              <div className="p-6 bg-blue-50 rounded-2xl border border-blue-100">
+                <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 block mb-2">Mensaje Principal</span>
+                <p className="text-sm font-bold text-[#1A1B1E] leading-relaxed">{campaign.briefing?.message || `Orquestar una solución nativa donde: "${campaign.theme}" se posiciona como el estándar para integrar y resolver esta fricción.`}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div className="p-6 bg-[#F9F6F2] rounded-2xl border border-[#EBE4DC]">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#8E8B88] block mb-2">Ángulo</span>
+                  <p className="text-sm font-bold text-[#1A1B1E] leading-relaxed">{campaign.briefing?.angle || 'Autoridad / Novedad / Solucionador'}</p>
+                </div>
+                <div className="p-6 bg-[#1A1B1E] rounded-2xl border border-black text-white shadow-md">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#FFBD1B] block mb-2">CTA Final</span>
+                  <p className="text-sm font-bold leading-relaxed">{campaign.briefing?.cta || 'Agendar Demo de Arquitectura / Iniciar Prueba Gratuita'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* TAB: ASSETS */}
-      {activeTab === 'assets' && (
-        <div className="animate-in slide-in-from-bottom-4 duration-500 space-y-8">
+      {/* TAB: CONTENTS */}
+      {activeTab === 'contents' && (
+        <div className="animate-in slide-in-from-bottom-4 duration-500 space-y-12">
           
-          {/* Quick Generators for this Campaign */}
-          <div className="flex flex-wrap gap-4 p-6 bg-[#F9F6F2] border border-[#EBE4DC] rounded-[2rem]">
-            <div className="w-full mb-2">
-               <h4 className="text-[10px] font-black uppercase tracking-widest text-[#8E8B88]">Añadir Nuevo Contenido a la Campaña</h4>
-            </div>
-            <Link href={`/article?campaignId=${id}`} className="px-6 py-3 bg-white border border-[#EBE4DC] text-[#1A1B1E] rounded-xl font-black text-[9px] uppercase tracking-widest hover:border-[#1A1B1E] transition-all flex items-center gap-2 shadow-sm">
-              <FileText size={14} className="text-[#FFBD1B]" /> Crear Artículo
-            </Link>
-            <Link href={`/social?campaignId=${id}`} className="px-6 py-3 bg-white border border-[#EBE4DC] text-[#1A1B1E] rounded-xl font-black text-[9px] uppercase tracking-widest hover:border-[#1A1B1E] transition-all flex items-center gap-2 shadow-sm">
-              <MessageSquare size={14} className="text-blue-500" /> Crear Post
-            </Link>
-            <Link href={`/image?campaignId=${id}`} className="px-6 py-3 bg-white border border-[#EBE4DC] text-[#1A1B1E] rounded-xl font-black text-[9px] uppercase tracking-widest hover:border-[#1A1B1E] transition-all flex items-center gap-2 shadow-sm">
-              <ImageIcon size={14} className="text-emerald-500" /> Crear Imagen
-            </Link>
+          {/* Action Header */}
+          <div className="flex justify-between items-center pb-4 border-b border-[#EBE4DC]">
+             <h3 className="text-xl font-black text-[#1A1B1E] tracking-tight">Piezas de Campaña</h3>
+             <div className="flex gap-4">
+                <Link href={`/article?campaignId=${id}`} className="px-4 py-2 border border-[#EBE4DC] text-[#1A1B1E] rounded-xl font-black text-[9px] uppercase tracking-widest hover:border-[#1A1B1E] transition-all flex items-center gap-2">
+                  <Plus size={12} /> Post Principal
+                </Link>
+                <Link href={`/social?campaignId=${id}`} className="px-4 py-2 border border-[#EBE4DC] text-[#1A1B1E] rounded-xl font-black text-[9px] uppercase tracking-widest hover:border-[#1A1B1E] transition-all flex items-center gap-2">
+                  <Plus size={12} /> Post Educativo
+                </Link>
+             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-           {assets.length === 0 ? (
-             <div className="col-span-full py-20 text-center text-[#8E8B88] font-bold">No hay activos generados para esta campaña.</div>
-           ) : (
-             assets.map(item => (
-              <div key={item.id} className="bg-white rounded-[2.5rem] p-6 border border-[#EBE4DC] hover:border-[#1A1B1E] transition-all group flex flex-col min-h-[300px]">
-                <div className="flex justify-between items-start mb-4">
-                  <span className={`px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border flex items-center gap-2 ${
-                    item.type === 'article' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                    item.type === 'social' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                    'bg-neutral-50 text-neutral-600 border-neutral-100'
-                  }`}>
-                    {item.type === 'article' && <FileText size={12}/>}
-                    {item.type === 'social' && <MessageSquare size={12}/>}
-                    {item.type.toUpperCase()}
-                  </span>
-                  <span className="text-[10px] font-bold text-[#8E8B88]">{new Date(item.date).toLocaleDateString()}</span>
-                </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+             {/* Left Area: Main Article (Nucleo) */}
+             <div className="lg:col-span-8 space-y-6">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-[#8E8B88] flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#1A1B1E]"></div> Núcleo de la Campaña</h4>
                 
-                <h3 className="text-xl font-black text-[#1A1B1E] leading-tight mb-3 line-clamp-3">{item.title}</h3>
-                <p className="text-sm text-[#8E8B88] line-clamp-2 mb-6 font-medium">{item.preview}</p>
+                {assets.filter(a => a.type === 'article' && !a.title.includes('Caso de Uso')).map(article => (
+                  <div key={article.id} className="bg-white p-10 rounded-[4rem] border border-[#EBE4DC] relative overflow-hidden group hover:border-[#FFBD1B] hover:shadow-xl transition-all h-full min-h-[400px] flex flex-col">
+                     <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-20 transition-opacity"><FileText size={100} className="text-[#FFBD1B]"/></div>
+                     <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-100 px-3 py-1 rounded-full font-black uppercase tracking-widest self-start mb-6">Post Principal</span>
+                     <h2 className="text-3xl lg:text-4xl font-black text-[#1A1B1E] leading-tight mb-6 max-w-2xl">{article.title}</h2>
+                     <p className="text-base text-[#8E8B88] font-medium leading-relaxed max-w-2xl line-clamp-4">{article.preview}</p>
+                     <div className="mt-auto pt-8">
+                       <Link href={`/library?open=${article.id}`} className="inline-flex items-center justify-center px-8 py-4 bg-[#1A1B1E] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-colors">
+                         Leer Post Principal
+                       </Link>
+                     </div>
+                  </div>
+                ))}
+
+                {assets.filter(a => a.type === 'article' && !a.title.includes('Caso de Uso')).length === 0 && (
+                  <div className="bg-[#F9F6F2] p-10 rounded-[4rem] border border-[#EBE4DC] border-dashed flex items-center justify-center text-[#8E8B88] text-sm font-bold uppercase tracking-widest h-[400px]">
+                    No se ha generado Post Principal
+                  </div>
+                )}
+             </div>
+
+             {/* Right Area: Derived Content (Social, Use Cases) */}
+             <div className="lg:col-span-4 space-y-6">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-[#8E8B88] flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Contenido Derivado</h4>
                 
-                <div className="mt-auto pt-6 border-t border-[#F9F6F2]">
-                  {/* Link al Library Modal global enviando el ID para abrirlo directo (MVP) */}
-                  <Link href={`/library?open=${item.id}`} className="block w-full text-center py-3 bg-[#F9F6F2] hover:bg-[#1A1B1E] hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors border border-[#EBE4DC]">
-                    Ver Detalle
-                  </Link>
+                <div className="space-y-4">
+                   {/* Social Posts */}
+                   {assets.filter(a => a.type === 'social').map((post, i) => (
+                      <div key={post.id} className="bg-white p-6 rounded-[2rem] border border-[#EBE4DC] group hover:border-[#1A1B1E] transition-all cursor-pointer relative overflow-hidden flex flex-col min-h-[150px]">
+                         <div className="absolute top-4 right-4 text-blue-100 group-hover:text-blue-200 transition-colors"><MessageSquare size={24}/></div>
+                         <h3 className="text-sm font-black text-[#1A1B1E] mb-2 pr-8">{post.title || `Post Educativo ${i+1}`}</h3>
+                         <p className="text-xs text-[#8E8B88] font-medium line-clamp-2 leading-relaxed flex-1">{post.preview}</p>
+                         <Link href={`/library?open=${post.id}`} className="mt-4 text-[9px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-800">Ver Post →</Link>
+                         <Link href={`/library?open=${post.id}`} className="absolute inset-0" aria-label="Ver post" />
+                      </div>
+                   ))}
+
+                   {/* Use Cases */}
+                   {assets.filter(a => a.title.includes('Caso de Uso')).map(uc => (
+                      <div key={uc.id} className="bg-[#1A1B1E] p-6 rounded-[2rem] text-white group cursor-pointer relative overflow-hidden shadow-lg min-h-[150px] flex flex-col">
+                         <div className="absolute top-4 right-4 text-white/10 group-hover:text-white/20 transition-colors"><Database size={24}/></div>
+                         <span className="text-[9px] bg-white/10 text-[#FFBD1B] border border-white/20 px-2 py-1 rounded inline-block font-black uppercase tracking-widest self-start mb-3">Caso de Éxito</span>
+                         <h3 className="text-sm font-black leading-tight mb-2 pr-8">{uc.title.replace('Caso de Uso: ', '')}</h3>
+                         <p className="text-xs text-neutral-400 font-medium line-clamp-2 leading-relaxed flex-1">{uc.preview}</p>
+                         <Link href={`/library?open=${uc.id}`} className="mt-4 text-[9px] font-black uppercase tracking-widest text-[#FFBD1B] hover:text-white">Ver Caso →</Link>
+                         <Link href={`/library?open=${uc.id}`} className="absolute inset-0" aria-label="Ver caso de uso" />
+                      </div>
+                   ))}
                 </div>
-              </div>
-             ))
-           )}
+             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB: VISUALS */}
+      {activeTab === 'visuals' && (
+        <div className="animate-in slide-in-from-bottom-4 duration-500 space-y-8">
+           <div className="p-10 bg-[#F9F6F2] rounded-[3rem] border border-[#EBE4DC]">
+              <div className="mb-10 max-w-2xl">
+                 <h2 className="text-3xl font-black text-[#1A1B1E] flex items-center gap-3 tracking-tight mb-4">
+                   <ImageIcon className="text-emerald-500" size={32} /> Visual Assets Sugeridos
+                 </h2>
+                 <p className="text-[#8E8B88] text-lg font-medium leading-relaxed">
+                   Estos prompts visuales (opcionales) han sido diseñados específicamente para acompañar al núcleo de esta campaña y a sus contenidos derivados, manteniendo el ADN corporativo. Usa Midjourney o DALL-E para generarlos.
+                 </p>
+              </div>
+
+              {(!campaign.briefing?.imagePrompts || campaign.briefing.imagePrompts.length === 0) ? (
+                 <div className="py-20 text-center text-[#8E8B88] font-bold">No hay sugerencias visuales generadas para esta campaña.</div>
+              ) : (
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {campaign.briefing.imagePrompts.map((prompt:string, i:number) => (
+                       <div key={i} className="bg-white p-8 rounded-[2rem] border border-[#EBE4DC] hover:border-emerald-300 transition-colors shadow-sm relative group overflow-hidden">
+                          <span className="absolute -top-4 -left-4 w-12 h-12 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center text-sm font-black">
+                             {i+1}
+                          </span>
+                          <p className="text-sm font-mono text-[#1A1B1E] leading-relaxed pt-2">
+                             {prompt}
+                          </p>
+                          <div className="mt-6">
+                             <button className="px-4 py-2 bg-[#F9F6F2] text-[#8E8B88] hover:text-[#1A1B1E] hover:bg-[#EBE4DC] rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                                <FileText size={12} /> Copiar Prompt
+                             </button>
+                          </div>
+                       </div>
+                    ))}
+                 </div>
+              )}
+           </div>
         </div>
       )}
 

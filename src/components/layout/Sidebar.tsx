@@ -33,8 +33,12 @@ export function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="logo-container">
-          <Zap className="logo-icon" />
-          <span className="logo-text">NeuralMarketing<span className="logo-highlight">OS</span></span>
+          <div className="flex flex-col items-center gap-1">
+            <div className="w-14 h-14 bg-[#1A1B1E] rounded-2xl flex items-center justify-center text-[#FFBD1B] shadow-xl border border-[#333] mb-2 transform hover:rotate-12 transition-transform">
+              <Zap size={32} fill="currentColor" />
+            </div>
+            <span className="logo-text">NeuralMarketing<span className="logo-highlight font-black">OS</span></span>
+          </div>
         </div>
       </div>
       
@@ -75,15 +79,6 @@ export function Sidebar() {
         </div>
       </nav>
 
-      <div className="sidebar-footer">
-        <div className="user-profile glass-panel">
-          <div className="avatar">N</div>
-          <div className="user-info">
-            <span className="user-name">Neuromarketing</span>
-            <span className="user-role">OS Workspace</span>
-          </div>
-        </div>
-      </div>
     </aside>
   );
 }

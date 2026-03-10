@@ -1,176 +1,245 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
-import { Zap, LayoutDashboard, Database, RefreshCw, FileText, MessageSquare, ImageIcon, CheckCircle, ArrowRight } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Zap, LayoutDashboard, Database, RefreshCw, CheckCircle2, ArrowRight, Target, LayoutGrid, Check } from "lucide-react";
 import Link from "next/link";
 import { generateCampaignAction } from "@/app/actions/campaigns";
 
-export default function CampaignsPage() {
+const GENERATION_STEPS = [
+  "Analizando conocimiento empresarial (ADN)",
+  "Generando estrategia de contenido",
+  "Creando artículo principal",
+  "Creando posts sociales",
+  "Creando caso de uso",
+  "Generando prompts visuales"
+];import { Suspense } from 'react';
+
+function CampaignsNewInner() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const idea = searchParams.get('idea') || "";
   
   const [theme, setTheme] = useState(idea);
+  const [objective, setObjective] = useState("Generar Leads");
+  const [channels, setChannels] = useState<string[]>(["Blog", "LinkedIn"]);
+  
   const [generating, setGenerating] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [generationStep, setGenerationStep] = useState(0);
   const [error, setError] = useState("");
 
   const handleGenerate = async () => {
     if (!theme) return;
     setGenerating(true);
     setError("");
-    setResult(null);
+    setGenerationStep(0);
+    
+    // Simulate pipeline steps visually
+    const interval = setInterval(() => {
+      setGenerationStep(prev => prev < GENERATION_STEPS.length - 1 ? prev + 1 : prev);
+    }, 4000);
+
     try {
-      const data = await generateCampaignAction(theme);
-      setResult(data);
+      // Pass objective and channels to the action if supported backend, otherwise just theme for now
+      // Backend action currently only takes theme. We can append it to theme.
+      const fullContextTheme = `Tema: ${theme}. Objetivo: ${objective}. Canales: ${channels.join(', ')}`;
+      const data = await generateCampaignAction(fullContextTheme);
+      
+      clearInterval(interval);
+      setGenerationStep(GENERATION_STEPS.length - 1); // Ensure it reaches the end
+      
+      // Short delay before redirecting
+      setTimeout(() => {
+         router.push(`/campaigns/${data.campaignId}`);
+      }, 1000);
+
     } catch (e: any) {
+      clearInterval(interval);
       setError(e.message || "Error al orquestar la campaña");
-    } finally {
       setGenerating(false);
     }
   };
 
   useEffect(() => {
-    if (idea && !result && !generating) {
+    if (idea && !generating) {
       setTheme(idea);
     }
   }, [idea]);
 
+  const toggleChannel = (ch: string) => {
+    if (channels.includes(ch)) {
+       if (channels.length > 1) setChannels(channels.filter(c => c !== ch));
+    } else {
+       setChannels([...channels, ch]);
+    }
+  };
+
   return (
-    <div className="max-w-[1200px] mx-auto py-12 px-6 lg:px-12 space-y-12 animate-in fade-in duration-1000">
+    <div className="max-w-[1000px] mx-auto py-12 px-6 lg:px-12 animate-in fade-in duration-1000">
       
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-10 border-b border-neutral-200 pb-12">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-10 border-b border-[#EBE4DC] pb-12 mb-12">
         <div className="space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1A1B1E]/5 border border-[#EBE4DC] text-[#1A1B1E] text-[10px] font-black uppercase tracking-[0.2em]">
-            <Zap size={12} className="text-[#FFBD1B]" /> Orquestador
+            <Zap size={12} className="text-[#FFBD1B]" /> Orquestador Estratégico
           </div>
           <h1 className="text-5xl lg:text-7xl font-black tracking-tight text-[#1A1B1E]">
-            Campañas <span className="text-neutral-400">Marketing</span>
+            Crear <span className="text-neutral-400">Campaña</span>
           </h1>
           <p className="text-[#8E8B88] text-xl font-medium max-w-xl leading-relaxed">
-            Convierte un tema en un ecosistema completo de contenidos: Artículo, Redes Sociales y Casos de Uso integrados.
+            Define tu estrategia. La IA consultará tu ADN Corporativo para generar el ecosistema completo.
           </p>
         </div>
       </header>
 
-      <section className="bg-white p-10 rounded-[4rem] border border-[#EBE4DC] shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#FFBD1B]/5 rounded-bl-full blur-3xl pointer-events-none"></div>
-        
-        <div className="max-w-3xl relative z-10">
-          <label className="block text-sm font-black text-[#1A1B1E] uppercase tracking-widest mb-4">¿De qué va esta campaña?</label>
-          <div className="flex flex-col md:flex-row gap-4">
-            <input 
-              type="text" 
-              value={theme}
-              onChange={e => setTheme(e.target.value)}
-              placeholder="Ej: Smart ticketing en eventos deportivos masivos..."
-              className="flex-1 bg-[#F9F6F2] border border-[#EBE4DC] rounded-3xl px-8 py-5 text-lg font-bold focus:ring-2 focus:ring-[#FFBD1B] focus:bg-white transition-all outline-none"
-              disabled={generating}
-            />
-            <button
-              onClick={handleGenerate}
-              disabled={generating || !theme}
-              className={`px-10 py-5 rounded-3xl font-black text-[12px] uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-3 ${
-                generating 
-                  ? "bg-neutral-100 text-neutral-400 shadow-none cursor-not-allowed" 
-                  : "bg-[#1A1B1E] hover:bg-black text-white hover:scale-105 active:scale-95"
-              }`}
-            >
-              {generating ? (
-                <><RefreshCw className="animate-spin" size={18} /> Orquestando Universo...</>
-              ) : (
-                <><Zap size={18} fill="currentColor" /> Lanzar Campaña</>
-              )}
-            </button>
-          </div>
-          {error && <p className="text-rose-500 text-sm font-bold mt-4">{error}</p>}
-        </div>
-      </section>
-
-      {generating && (
-        <section className="bg-[#F9F6F2] p-12 rounded-[4rem] border border-[#EBE4DC] text-center space-y-6 animate-pulse">
-           <Zap size={48} className="mx-auto text-[#FFBD1B] animate-bounce" />
-           <h3 className="text-2xl font-black text-[#1A1B1E]">Cruzando datos con tu ADN Corporativo...</h3>
-           <p className="text-[#8E8B88] font-medium max-w-lg mx-auto">Nuestros agentes IA están sincronizando la propuesta de valor de tu negocio para generar artículos y posts perfectamente alienados. Esto puede tomar hasta un minuto.</p>
+      {generating ? (
+        <section className="bg-[#1A1B1E] p-12 lg:p-16 rounded-[4rem] shadow-2xl relative overflow-hidden text-white animate-in zoom-in-95 duration-500">
+           <div className="absolute top-0 right-0 w-96 h-96 bg-[#FFBD1B]/10 rounded-full blur-3xl pointer-events-none translate-x-1/3 -translate-y-1/3"></div>
            
-           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8 max-w-4xl mx-auto opacity-50">
-             {[1,2,3,4].map(i => <div key={i} className="h-24 bg-white rounded-3xl border border-[#EBE4DC]"></div>)}
+           <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto space-y-10">
+              <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center border border-white/20 relative">
+                 <div className="absolute inset-0 border-2 border-[#FFBD1B] rounded-full border-t-transparent animate-spin"></div>
+                 <Database size={40} className="text-[#FFBD1B]" />
+              </div>
+              
+              <div className="space-y-4">
+                 <h2 className="text-3xl font-black text-white tracking-tight">Cruces de Información Activos</h2>
+                 <p className="text-neutral-400 font-medium text-lg">
+                   Contenido generado basado en tu <span className="text-white font-bold border-b border-neutral-600">ADN Corporativo</span>.
+                 </p>
+              </div>
+
+              {/* Progress Pipeline */}
+              <div className="w-full space-y-6 text-left pt-6">
+                 {GENERATION_STEPS.map((step, idx) => {
+                    const isActive = idx === generationStep;
+                    const isDone = idx < generationStep;
+                    const isPending = idx > generationStep;
+
+                    return (
+                      <div key={idx} className={`flex items-center gap-4 transition-all duration-500 ${isPending ? 'opacity-30' : 'opacity-100'}`}>
+                         <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 
+                           ${isDone ? 'bg-emerald-500 border-emerald-500 text-white' : 
+                             isActive ? 'border-[#FFBD1B] text-[#FFBD1B]' : 
+                             'border-neutral-700 text-neutral-600'}`
+                         }>
+                           {isDone ? <Check size={16} /> : isActive ? <RefreshCw size={14} className="animate-spin" /> : <div className="w-2 h-2 rounded-full bg-neutral-600"></div>}
+                         </div>
+                         <span className={`text-sm font-bold uppercase tracking-widest ${isDone ? 'text-neutral-300' : isActive ? 'text-white' : 'text-neutral-500'}`}>
+                           {step}
+                         </span>
+                      </div>
+                    )
+                 })}
+              </div>
+
+              {/* Overall Progress Bar */}
+              <div className="w-full pt-8">
+                 <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#FFBD1B] transition-all duration-500 ease-out" style={{ width: `${((generationStep + 1) / GENERATION_STEPS.length) * 100}%` }}></div>
+                 </div>
+              </div>
            </div>
         </section>
-      )}
-
-      {result && !generating && (
-        <section className="animate-in slide-in-from-bottom-8 duration-700 space-y-12">
+      ) : (
+        <section className="bg-white p-10 lg:p-14 rounded-[4rem] border border-[#EBE4DC] shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#EBE4DC]/30 rounded-bl-full blur-3xl pointer-events-none"></div>
           
-          <div className="flex items-center gap-4 bg-emerald-50 text-emerald-600 p-6 rounded-3xl border border-emerald-100">
-             <CheckCircle className="shrink-0" />
-             <div>
-               <h4 className="font-black uppercase tracking-widest text-[10px]">Campaña Orquestada con Éxito</h4>
-               <p className="font-medium text-sm">Todos los activos han sido guardados automáticamente en tu biblioteca.</p>
-             </div>
-             <Link href="/library" className="ml-auto px-6 py-2 bg-white rounded-2xl text-[10px] font-black uppercase tracking-widest text-[#1A1B1E] border border-emerald-200 hover:border-[#1A1B1E] transition-all">
-               Ir a Biblioteca
-             </Link>
-          </div>
+          <div className="max-w-2xl relative z-10 space-y-12">
+            
+            {/* Tema */}
+            <div>
+               <label className="flex items-center gap-3 text-sm font-black text-[#1A1B1E] uppercase tracking-widest mb-4">
+                  <span className="w-6 h-6 rounded-full bg-[#1A1B1E] text-white flex items-center justify-center text-[10px]">1</span> 
+                  ¿De qué va esta campaña?
+               </label>
+               <input 
+                 type="text" 
+                 value={theme}
+                 onChange={e => setTheme(e.target.value)}
+                 placeholder="Ej: IA aplicada al ticketing deportivo..."
+                 className="w-full bg-[#F9F6F2] border border-[#EBE4DC] rounded-3xl px-8 py-6 text-xl font-bold focus:ring-2 focus:ring-[#FFBD1B] transition-all outline-none text-[#1A1B1E] placeholder:text-neutral-400 shadow-inner"
+               />
+            </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Activos Generados */}
-            <div className="lg:col-span-8 space-y-8">
-               <div className="bg-white p-10 rounded-[4rem] border border-[#EBE4DC] shadow-sm relative overflow-hidden group hover:border-[#FFBD1B] transition-colors">
-                  <div className="absolute top-0 right-0 p-6 opacity-20 group-hover:opacity-100 transition-opacity"><FileText size={64} className="text-[#FFBD1B]"/></div>
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-[#8E8B88] mb-4">Post Principal (Blog/Newsletter)</h3>
-                  <h4 className="text-2xl font-black text-[#1A1B1E] leading-tight max-w-md">{result.article.title}</h4>
-                  <div className="mt-6 flex flex-wrap gap-2">
-                    {result.article.seoKeywords?.map((k:string, i:number) => (
-                      <span key={i} className="text-[9px] font-black uppercase tracking-widest bg-[#F9F6F2] border border-[#EBE4DC] px-3 py-1 rounded-lg text-[#8E8B88]">{k}</span>
-                    ))}
-                  </div>
-               </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                 {result.socialPosts?.map((post:any, i:number) => (
-                    <div key={i} className="bg-white p-8 rounded-[3rem] border border-[#EBE4DC] shadow-sm hover:border-[#1A1B1E] transition-all flex flex-col justify-between">
-                      <div>
-                        <MessageSquare size={24} className="text-blue-500 mb-4" />
-                        <span className="text-[9px] font-black uppercase tracking-widest bg-blue-50 text-blue-600 px-3 py-1 rounded-lg mb-4 inline-block">{post.objective}</span>
-                        <p className="text-xs font-medium text-[#1A1B1E] line-clamp-4 leading-relaxed">{post.content}</p>
-                      </div>
-                    </div>
-                 ))}
-               </div>
-
-               <div className="bg-[#1A1B1E] p-10 rounded-[4rem] shadow-xl text-white relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-6 opacity-10"><Database size={64} /></div>
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-4">Caso de Uso (Nutrición)</h3>
-                  <h4 className="text-xl font-black leading-tight max-w-md mb-4">{result.useCase?.title}</h4>
-                  <p className="text-xs font-medium text-neutral-300 line-clamp-2 leading-relaxed max-w-lg">{result.useCase?.content}</p>
+            {/* Objetivo */}
+            <div>
+               <label className="flex items-center gap-3 text-sm font-black text-[#1A1B1E] uppercase tracking-widest mb-4">
+                  <span className="w-6 h-6 rounded-full bg-[#1A1B1E] text-white flex items-center justify-center text-[10px]">2</span> 
+                  Objetivo Principal
+               </label>
+               <div className="flex flex-wrap gap-4">
+                  {['Generar Leads', 'Posicionamiento (Brand)', 'Awareness (Alcance)'].map(obj => (
+                     <button
+                        key={obj}
+                        onClick={() => setObjective(obj)}
+                        className={`px-6 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border shadow-sm flex items-center gap-2 ${
+                          objective === obj 
+                             ? 'bg-[#1A1B1E] text-white border-[#1A1B1E] ring-2 ring-[#1A1B1E] ring-offset-2' 
+                             : 'bg-white text-[#8E8B88] border-[#EBE4DC] hover:border-[#1A1B1E] hover:text-[#1A1B1E]'
+                        }`}
+                     >
+                        <Target size={14} className={objective === obj ? 'text-[#FFBD1B]' : ''} /> {obj}
+                     </button>
+                  ))}
                </div>
             </div>
 
-            {/* Asset Recomendado */}
-            <div className="lg:col-span-4 max-w-full">
-              <div className="bg-[#F9F6F2] p-8 rounded-[3rem] border border-[#EBE4DC] shadow-sm h-full">
-                 <h3 className="text-xs font-black uppercase tracking-widest text-[#1A1B1E] mb-6 flex items-center gap-2">
-                   <ImageIcon size={16} /> Asset Visual Suggestions
-                 </h3>
-                 <div className="space-y-4">
-                   {result.imagePrompts?.map((prompt:string, i:number) => (
-                     <div key={i} className="bg-white p-4 rounded-3xl border border-[#EBE4DC] text-xs font-medium text-[#8E8B88] leading-relaxed relative group cursor-pointer hover:border-[#FFBD1B]">
-                       <span className="absolute -top-2 -left-2 w-6 h-6 bg-[#1A1B1E] text-white rounded-full flex items-center justify-center text-[10px] font-black">{i+1}</span>
-                       <p className="pt-2">{prompt}</p>
-                     </div>
-                   ))}
-                 </div>
-
-                 <Link href="/image" className="mt-8 flex w-full items-center justify-center gap-2 px-6 py-4 bg-white border border-[#EBE4DC] rounded-2xl text-[10px] font-black uppercase tracking-widest text-[#1A1B1E] hover:border-[#FFBD1B] hover:bg-[#FFBD1B]/5 transition-all shadow-sm active:scale-95">
-                   Ir a Estudio Visual <ArrowRight size={14} />
-                 </Link>
-              </div>
+            {/* Canales */}
+            <div>
+               <label className="flex items-center gap-3 text-sm font-black text-[#1A1B1E] uppercase tracking-widest mb-4">
+                  <span className="w-6 h-6 rounded-full bg-[#1A1B1E] text-white flex items-center justify-center text-[10px]">3</span> 
+                  Canales de Distribución
+               </label>
+               <div className="flex flex-wrap gap-4">
+                  {['Blog', 'LinkedIn', 'Newsletter', 'Twitter'].map(ch => (
+                     <button
+                        key={ch}
+                        onClick={() => toggleChannel(ch)}
+                        className={`px-6 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border shadow-sm flex items-center gap-2 ${
+                          channels.includes(ch)
+                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                             : 'bg-white text-[#8E8B88] border-[#EBE4DC] hover:border-emerald-200 hover:text-emerald-700 hover:bg-emerald-50/50'
+                        }`}
+                     >
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${channels.includes(ch) ? 'bg-emerald-500 border-emerald-500' : 'border-[#EBE4DC]'}`}>
+                           {channels.includes(ch) && <Check size={10} className="text-white" />}
+                        </div>
+                        {ch}
+                     </button>
+                  ))}
+               </div>
             </div>
+
+            <div className="pt-6 border-t border-[#F9F6F2]">
+              <button
+                onClick={handleGenerate}
+                disabled={!theme}
+                className={`w-full py-6 rounded-3xl font-black text-[13px] uppercase tracking-[0.15em] transition-all shadow-xl flex items-center justify-center gap-3 ${
+                  !theme 
+                    ? "bg-[#EBE4DC] text-[#8E8B88] cursor-not-allowed shadow-none" 
+                    : "bg-[#1A1B1E] hover:bg-black text-white hover:text-[#FFBD1B] hover:-translate-y-1 active:scale-95 shadow-[0_20px_40px_-15px_rgba(26,27,30,0.5)]"
+                }`}
+              >
+                <Zap size={20} fill={theme ? "currentColor" : "none"} /> Generar Ecosistema de Campaña
+              </button>
+              {error && <p className="text-rose-500 text-sm font-bold mt-6 text-center">{error}</p>}
+            </div>
+
           </div>
         </section>
       )}
-
     </div>
   );
+}
+
+export default function CampaignsNewPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F9F6F2] flex items-center justify-center p-6 text-[#8E8B88] font-black uppercase tracking-widest text-xs">
+         Preparando Orquestador...
+      </div>
+    }>
+      <CampaignsNewInner />
+    </Suspense>
+  )
 }

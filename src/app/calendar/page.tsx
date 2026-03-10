@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Zap, Calendar as CalendarIcon, Clock, MoveRight, FileText, MessageSquare, ImageIcon, LayoutDashboard, Plus } from "lucide-react";
+import { Zap, Calendar as CalendarIcon, Clock, MoveRight, FileText, MessageSquare, ImageIcon, LayoutDashboard, Plus, PieChart } from "lucide-react";
 import { getLibraryItemsAction, updateLibraryItemAction } from "@/app/actions/library";
 import { GeneratedItem } from "@/lib/generated-db";
 
@@ -72,6 +72,42 @@ export default function CalendarPage() {
           <Zap size={16} fill="currentColor" /> Crear Campaña
         </Link>
       </header>
+
+      {/* FUNNEL BALANCE PANEL */}
+      <section className="mb-4">
+        <div className="bg-white p-6 md:p-8 rounded-[3rem] border border-[#EBE4DC] shadow-sm flex flex-col lg:flex-row items-center gap-8 justify-between">
+           <div className="flex items-center gap-4">
+             <div className="w-12 h-12 rounded-full bg-[#1A1B1E] text-white flex items-center justify-center shrink-0">
+               <PieChart size={20} />
+             </div>
+             <div>
+               <h3 className="text-sm font-black text-[#1A1B1E]">Equilibrio del Embudo</h3>
+               <p className="text-[9px] font-bold text-[#8E8B88] uppercase tracking-widest">Distribución semanal de contenidos</p>
+             </div>
+           </div>
+           
+           <div className="flex-1 w-full flex h-3 rounded-full overflow-hidden bg-[#F9F6F2]">
+              <div className="h-full bg-blue-500" style={{ width: '60%' }} title="Captación (60%)"></div>
+              <div className="h-full bg-[#FFBD1B]" style={{ width: '25%' }} title="Educación (25%)"></div>
+              <div className="h-full bg-emerald-500" style={{ width: '15%' }} title="Conversión (15%)"></div>
+           </div>
+           
+           <div className="flex flex-wrap gap-6 min-w-max justify-center">
+             <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#1A1B1E]">Captación (60%)</span>
+             </div>
+             <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#FFBD1B]"></div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#1A1B1E]">Educación (25%)</span>
+             </div>
+             <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#1A1B1E]">Conversión (15%)</span>
+             </div>
+           </div>
+        </div>
+      </section>
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-7 gap-4 opacity-50">

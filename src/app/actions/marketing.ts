@@ -55,15 +55,16 @@ Responde ESTRICTAMENTE en JSON con esta estructura:
         { role: "system", content: systemPrompt },
         { role: "user", content: `Analiza este contexto corporativo y genera la estrategia:\n\n${corporateContext}` }
       ],
-      model: "gpt-4o",
+      model: "gpt-5.2",
       response_format: { type: "json_object" },
     });
 
-    logUsage("gpt-4o", completion.usage?.prompt_tokens || 0, completion.usage?.completion_tokens || 0);
+    logUsage("gpt-5.2", completion.usage?.prompt_tokens || 0, completion.usage?.completion_tokens || 0);
 
     const strategy = JSON.parse(completion.choices[0].message.content || "{}");
     
     addToGeneratedDb({
+      campaignId: "draft",
       type: "marketing",
       title: "Estrategia de Marketing",
       preview: `Estrategia generada para perfil: ${strategy.businessProfile?.type}`,
@@ -107,15 +108,16 @@ Responde ESTRICTAMENTE en JSON con esta estructura:
         { role: "system", content: systemPrompt },
         { role: "user", content: `Genera un plan editorial para esta estrategia:\n\n${JSON.stringify(strategy)}` }
       ],
-      model: "gpt-4o",
+      model: "gpt-5.2",
       response_format: { type: "json_object" },
     });
 
-    logUsage("gpt-4o", completion.usage?.prompt_tokens || 0, completion.usage?.completion_tokens || 0);
+    logUsage("gpt-5.2", completion.usage?.prompt_tokens || 0, completion.usage?.completion_tokens || 0);
 
     const plan = JSON.parse(completion.choices[0].message.content || "{}");
 
     addToGeneratedDb({
+      campaignId: "draft",
       type: "marketing",
       title: "Plan Editorial (4 Semanas)",
       preview: "Planificación de contenidos educativos y redes sociales.",
@@ -157,11 +159,11 @@ Responde ESTRICTAMENTE en JSON con esta estructura:
         { role: "system", content: systemPrompt },
         { role: "user", content: `Contexto Corporativo (ADN):\n\n${corporateContext}` }
       ],
-      model: "gpt-4o",
+      model: "gpt-5.2",
       response_format: { type: "json_object" },
     });
 
-    logUsage("gpt-4o", completion.usage?.prompt_tokens || 0, completion.usage?.completion_tokens || 0);
+    logUsage("gpt-5.2", completion.usage?.prompt_tokens || 0, completion.usage?.completion_tokens || 0);
 
     const data = JSON.parse(completion.choices[0].message.content || '{"recommendations": []}');
     return data.recommendations;

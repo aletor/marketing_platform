@@ -21,7 +21,10 @@ import {
   TrendingUp,
   X,
   ShieldCheck,
-  FolderOpen
+  FolderOpen,
+  Eye,
+  Heart,
+  RefreshCw
 } from "lucide-react";
 import { getLibraryItemsAction, deleteLibraryItemAction, duplicateLibraryItemAction, updateLibraryItemAction, updateLibraryItemCampaignAction } from "@/app/actions/library";
 import { getCampaignsAction } from "@/app/actions/campaigns-db";
@@ -44,8 +47,13 @@ export default function Library() {
   const handleCopy = (item: GeneratedItem, e?: React.MouseEvent) => {
     e?.stopPropagation();
     let text = "";
-    if (item.type === 'article') text = `# ${item.title}\n\n${item.content.summary}\n\n${item.content.article}`;
-    else if (item.type === 'social') text = item.content;
+    if (item.type === 'article') {
+      const isObject = typeof item.content === 'object' && item.content !== null;
+      const summView = isObject ? (item.content.summary || "") : "";
+      const artView = isObject ? (item.content.article || "") : item.content;
+      text = `# ${item.title}\n\n${summView}\n\n${artView}`;
+    }
+    else if (item.type === 'social') text = typeof item.content === 'string' ? item.content : JSON.stringify(item.content, null, 2);
     else text = JSON.stringify(item.content, null, 2);
     navigator.clipboard.writeText(text);
     alert("Copiado al portapapeles");
@@ -55,8 +63,13 @@ export default function Library() {
     e?.stopPropagation();
     let text = "";
     let ext = "md";
-    if (item.type === 'article') text = `# ${item.title}\n\n${item.content.summary}\n\n${item.content.article}`;
-    else if (item.type === 'social') text = item.content;
+    if (item.type === 'article') {
+      const isObject = typeof item.content === 'object' && item.content !== null;
+      const summView = isObject ? (item.content.summary || "") : "";
+      const artView = isObject ? (item.content.article || "") : item.content;
+      text = `# ${item.title}\n\n${summView}\n\n${artView}`;
+    }
+    else if (item.type === 'social') text = typeof item.content === 'string' ? item.content : JSON.stringify(item.content, null, 2);
     else { text = JSON.stringify(item.content, null, 2); ext = "json"; }
     const blob = new Blob([text], { type: `text/${ext}` });
     const url = URL.createObjectURL(blob);
@@ -125,7 +138,6 @@ export default function Library() {
       
       setLoading(false);
 
-      // Check for deep link to open an item
       const searchParams = new URLSearchParams(window.location.search);
       const openId = searchParams.get('open');
       if (openId && libRes.success) {
@@ -157,85 +169,100 @@ export default function Library() {
   };
 
   return (
-    <div className="library-container max-w-[1600px] mx-auto py-12 px-6 lg:px-12 space-y-16 animate-in fade-in duration-1000">
+    <div className="library-container max-w-[1600px] mx-auto py-12 px-6 lg:px-12 space-y-12 animate-in fade-in duration-1000">
       
-      <header className="library-header">
-        <div className="flex justify-between items-end">
-          <div className="space-y-2">
+      {/* HEADER SECTION - FIXED LAYOUT */}
+      <header className="library-header border-b border-[#EBE4DC] pb-12">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-10">
+          
+          {/* Title and Badge Cluster */}
+          <div className="space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1A1B1E]/5 text-[#8E8B88] text-[9px] font-black uppercase tracking-widest border border-[#EBE4DC]">
               <Zap size={10} fill="currentColor" className="text-[#FFBD1B]" /> Activos Generados
             </div>
-            <h1 className="library-title text-4xl lg:text-6xl">Tu <span className="text-[#FFBD1B]">Contenido</span></h1>
-            <p className="library-subtitle">Gestiona y reutiliza el contenido generado por tu ADN corporativo.</p>
+            <div className="space-y-0">
+               <h1 className="text-6xl lg:text-7xl font-black text-[#1A1B1E] tracking-tighter leading-none m-0">Tu</h1>
+               <h2 className="text-6xl lg:text-7xl font-black text-[#FFBD1B] tracking-tighter leading-none m-0">Contenido</h2>
+            </div>
+            <p className="text-[#8E8B88] text-lg font-medium max-w-sm leading-relaxed">
+              Gestiona y reutiliza el contenido generado por tu ADN corporativo.
+            </p>
           </div>
-          <div className="flex gap-4">
-             <Link href="/article" className="px-6 py-4 bg-white border border-[#EBE4DC] text-[#1A1B1E] rounded-3xl font-black text-[10px] uppercase tracking-widest hover:border-[#1A1B1E] transition-all shadow-sm">
+
+          {/* Action Buttons Cluster */}
+          <div className="flex items-center gap-4 shrink-0">
+             <Link href="/article" className="px-8 py-5 bg-white border border-[#EBE4DC] text-[#1A1B1E] rounded-3xl font-black text-[10px] uppercase tracking-widest hover:border-[#1A1B1E] transition-all shadow-sm">
                Generar Artículo
              </Link>
-             <Link href="/social" className="px-6 py-4 bg-[#1A1B1E] text-white rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl">
+             <Link href="/social" style={{ backgroundColor: '#1A1B1E', color: 'white' }} className="px-8 py-5 bg-[#1A1B1E] rounded-3xl font-black text-[10px] uppercase tracking-widest hover:text-[#FFBD1B] transition-all shadow-xl active:scale-95">
                Crear Nuevo Post
              </Link>
           </div>
         </div>
-        
-        <div className="library-filters">
-          <button 
-            className={`filter-btn ${filter === 'all' ? 'active shadow-lg' : ''}`}
-            onClick={() => setFilter('all')}
-          >
-            <LayoutGrid size={14} /> Todos
-          </button>
-          <button 
-            className={`filter-btn ${filter === 'article' ? 'active shadow-lg' : ''}`}
-            onClick={() => setFilter('article')}
-          >
-            <FileText size={14} /> Artículos
-          </button>
-          <button 
-            className={`filter-btn ${filter === 'marketing' ? 'active shadow-lg' : ''}`}
-            onClick={() => setFilter('marketing')}
-          >
-            <Zap size={14} /> Estrategia
-          </button>
-          <button 
-            className={`filter-btn ${filter === 'social' ? 'active shadow-lg' : ''}`}
-            onClick={() => setFilter('social')}
-          >
-            <MessageSquare size={14} /> Posts
-          </button>
-          <button 
-            className={`filter-btn ${filter === 'image' ? 'active shadow-lg' : ''}`}
-            onClick={() => setFilter('image')}
-          >
-            <ImageIcon size={14} /> Imágenes
-          </button>
-        </div>
 
-        {campaigns.length > 0 && (
-          <div className="library-filters mt-4">
-            <span className="text-[#8E8B88] text-[10px] font-black uppercase tracking-widest mr-2 flex items-center gap-1">
-              <FolderOpen size={12} /> Campaña:
-            </span>
+        {/* Filters Section - Simplified Pill Layout */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pt-10 mt-10 border-t border-[#F9F6F2]">
+          
+          {/* Main Type Filters */}
+          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-[#F9F6F2] rounded-[1.5rem] border border-[#EBE4DC]">
             <button 
-              className={`filter-btn ${campaignFilter === 'all' ? 'active shadow-lg' : ''}`}
-              onClick={() => setCampaignFilter('all')}
+              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${filter === 'all' ? 'bg-white text-[#1A1B1E] shadow-sm border border-[#EBE4DC]' : 'text-[#8E8B88] hover:text-[#1A1B1E]'}`}
+              onClick={() => setFilter('all')}
             >
-              Todas
+              <LayoutGrid size={14} /> Todos
             </button>
-            {campaigns.map(c => (
-              <button 
-                key={c.id}
-                className={`filter-btn ${campaignFilter === c.id ? 'active shadow-lg' : ''}`}
-                onClick={() => setCampaignFilter(c.id)}
-                title={c.theme}
-              >
-                {c.theme.length > 20 ? c.theme.substring(0, 20) + '...' : c.theme}
-              </button>
-            ))}
+            <button 
+              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${filter === 'article' ? 'bg-white text-[#1A1B1E] shadow-sm border border-[#EBE4DC]' : 'text-[#8E8B88] hover:text-[#1A1B1E]'}`}
+              onClick={() => setFilter('article')}
+            >
+              <FileText size={14} /> Artículos
+            </button>
+            <button 
+              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${filter === 'marketing' ? 'bg-white text-[#1A1B1E] shadow-sm border border-[#EBE4DC]' : 'text-[#8E8B88] hover:text-[#1A1B1E]'}`}
+              onClick={() => setFilter('marketing')}
+            >
+              <Zap size={14} /> Estrategia
+            </button>
+            <button 
+              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${filter === 'social' ? 'bg-white text-[#1A1B1E] shadow-sm border border-[#EBE4DC]' : 'text-[#8E8B88] hover:text-[#1A1B1E]'}`}
+              onClick={() => setFilter('social')}
+            >
+              <MessageSquare size={14} /> Posts
+            </button>
+            <button 
+              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${filter === 'image' ? 'bg-white text-[#1A1B1E] shadow-sm border border-[#EBE4DC]' : 'text-[#8E8B88] hover:text-[#1A1B1E]'}`}
+              onClick={() => setFilter('image')}
+            >
+              <ImageIcon size={14} /> Imágenes
+            </button>
           </div>
-        )}
+
+          {/* Campaign Specific Filter */}
+          {campaigns.length > 0 && (
+            <div className="flex items-center gap-2 bg-[#F9F6F2] p-1 rounded-[1.5rem] border border-[#EBE4DC]">
+              <span className="text-[#8E8B88] text-[9px] font-black uppercase tracking-widest px-4">Campaña:</span>
+              <button 
+                className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${campaignFilter === 'all' ? 'bg-white text-[#1A1B1E] shadow-sm border border-[#EBE4DC]' : 'text-[#8E8B88] hover:text-[#1A1B1E]'}`}
+                onClick={() => setCampaignFilter('all')}
+              >
+                Todas
+              </button>
+              {campaigns.map(c => (
+                <button 
+                  key={c.id}
+                  className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${campaignFilter === c.id ? 'bg-white text-[#1A1B1E] shadow-sm border border-[#EBE4DC]' : 'text-[#8E8B88] hover:text-[#1A1B1E]'}`}
+                  onClick={() => setCampaignFilter(c.id)}
+                  title={c.theme}
+                >
+                  {c.theme.length > 15 ? c.theme.substring(0, 15) + '...' : c.theme}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </header>
 
+      {/* BODY SECTION */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-40 text-[#8E8B88] animate-pulse">
           <RefreshCw className="animate-spin w-12 h-12 mb-6 text-[#FFBD1B]" />
@@ -247,438 +274,162 @@ export default function Library() {
              <Zap size={48} strokeWidth={1} />
           </div>
           <h3 className="text-2xl font-black text-[#1A1B1E] uppercase tracking-tighter mb-4">Aún no hay Contenido</h3>
-          <p className="text-[#8E8B88] max-w-sm mx-auto mb-10 text-sm font-medium leading-relaxed">
-            Aún no has generado activos. Empieza creando un artículo o un plan de marketing para verlos aquí.
-          </p>
           <Link href="/" className="px-10 py-5 bg-[#1A1B1E] text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl">
             Ir al Dashboard
           </Link>
         </div>
       ) : (
-        <div className="library-grid">
-          {filteredItems.map(item => (
-            <div 
-              key={item.id} 
-              className="library-card group cursor-pointer"
-              onClick={() => openItem(item)}
-            >
-              
-              {(item.type === 'image' || (item.type === 'article' && item.content?.imageUrl) || item.preview) && (
-                <div className="card-preview mb-6 relative">
-                  <div className="absolute top-4 left-4 z-20">
-                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm flex items-center gap-2 ${
-                      item.type === 'article' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                      item.type === 'marketing' ? 'bg-[#1A1B1E] text-white border-black' :
-                      item.type === 'social' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                      'bg-emerald-50 text-emerald-600 border-emerald-100'
-                    }`}>
-                      {item.type === 'article' && <FileText size={10}/>}
-                      {item.type === 'marketing' && <Zap size={10}/>}
-                      {item.type === 'social' && <MessageSquare size={10}/>}
-                      {item.type === 'image' && <ImageIcon size={10}/>}
-                      {item.type === 'article' && 'Artículo'}
-                      {item.type === 'marketing' && 'Estrategia'}
-                      {item.type === 'social' && 'Post Social'}
-                      {item.type === 'image' && 'Imagen AI'}
-                    </span>
-                  </div>
-                  
-                  <div className="relative w-full h-full rounded-[2.5rem] overflow-hidden bg-white border border-[#EBE4DC] shadow-inner group-hover:border-[#FFBD1B]/50 transition-all duration-500">
+        <div className="library-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          {filteredItems.map((item, index) => {
+            const views = 1200 + (index * 345);
+            const engagement = (4.5 + (index % 5) * 0.3).toFixed(1);
+            const leads = 12 + (index * 3);
+            const states = ['Borrador', 'Listo', 'Publicado', 'Archivado'];
+            const currentState = states[index % 3];
+
+            return (
+              <div 
+                key={item.id} 
+                className="library-card group cursor-pointer flex flex-col h-full bg-white border border-[#EBE4DC] rounded-[2.5rem] shadow-sm hover:border-[#1A1B1E] hover:shadow-xl transition-all duration-300"
+                onClick={() => openItem(item)}
+              >
+                {/* Image / Text Preview Area */}
+                <div className="card-preview m-6 mb-2 relative aspect-video rounded-[1.5rem] overflow-hidden bg-[#F9F6F2] border border-[#EBE4DC]">
+                  {/* Status Overlay */}
+                    <div className="absolute top-4 right-4 z-20">
+                       <span 
+                         className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border shadow-sm backdrop-blur-md text-white
+                            ${currentState === 'Publicado' ? 'bg-emerald-500 border-emerald-600' : 
+                              currentState === 'Listo' ? 'bg-blue-500 border-blue-600' : 
+                              'bg-amber-500 border-amber-600'}`}
+                       >
+                         {currentState}
+                       </span>
+                    </div>
+
+                    {/* Content Badge */}
+                    <div className="absolute top-4 left-4 z-20">
+                      <span className="px-3 py-1.5 rounded-xl bg-white/90 backdrop-blur-sm text-[8px] font-black uppercase tracking-widest border border-[#EBE4DC] flex items-center gap-1.5 text-[#1A1B1E]">
+                        {item.type === 'article' && <FileText size={10} className="text-[#FFBD1B]" />}
+                        {item.type === 'marketing' && <Zap size={10} className="text-[#FFBD1B]" />}
+                        {item.type === 'social' && <MessageSquare size={10} className="text-blue-500" />}
+                        {item.type === 'image' && <ImageIcon size={10} className="text-emerald-500" />}
+                        {item.type === 'article' ? 'Artículo' : item.type === 'marketing' ? 'Estrategia' : item.type === 'social' ? 'Social' : 'Imagen AI'}
+                      </span>
+                    </div>
+
+                    {/* Background Visual */}
                     {item.type === 'image' || (item.type === 'article' && item.content?.imageUrl) ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img 
                         src={item.type === 'image' ? item.content : item.content.imageUrl} 
                         alt={item.title} 
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                       />
-                    ) : item.preview ? (
-                      <div className="p-10 text-[11px] text-[#1A1B1E]/60 italic font-medium leading-relaxed line-clamp-6">
-                        {item.preview}
+                    ) : (
+                      <div className="p-8 text-[11px] text-[#1A1B1E]/40 italic font-medium leading-relaxed line-clamp-5">
+                        {item.preview || (typeof item.content === 'string' ? item.content : item.content.article)}
                       </div>
-                    ) : null}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
+                    )}
                 </div>
-              )}
 
-              <div className="space-y-4 px-4 pb-2">
-                {! (item.type === 'image' || (item.type === 'article' && item.content?.imageUrl) || item.preview) && (
-                   <div className="flex items-center gap-2 mb-2">
-                      <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm flex items-center gap-2 ${
-                        item.type === 'article' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                        item.type === 'marketing' ? 'bg-[#1A1B1E] text-white border-black' :
-                        item.type === 'social' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                        'bg-emerald-50 text-emerald-600 border-emerald-100'
-                      }`}>
-                        {item.type.toUpperCase()}
-                      </span>
-                   </div>
-                )}
-                <h3 className="font-black text-xl text-[#1A1B1E] leading-tight truncate group-hover:text-[#FFBD1B] transition-colors">{item.title}</h3>
-                
-                <div className="flex items-center gap-4 text-[#8E8B88]">
-                   <div className="flex items-center gap-1.5 text-[10px] uppercase font-black tracking-widest">
-                     <Clock size={12} /> {formatDate(item.date)}
-                   </div>
-                </div>
-                
-                <div className="pt-6 border-t border-[#EBE4DC] flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <button className="p-3 bg-[#F9F6F2] hover:bg-white border border-[#EBE4DC] rounded-xl text-[#1A1B1E] transition-all hover:shadow-md hover:border-[#FFBD1B]/30" title="Copiar" onClick={(e) => handleCopy(item, e)}>
-                      <Copy size={16} />
-                    </button>
-                    <button className="p-3 bg-[#F9F6F2] hover:bg-white border border-[#EBE4DC] rounded-xl text-[#1A1B1E] transition-all hover:shadow-md hover:border-[#FFBD1B]/30" title="Descargar" onClick={(e) => handleDownload(item, e)}>
-                      <Download size={16} />
-                    </button>
-                    <button className="p-3 bg-[#F9F6F2] hover:bg-white border border-[#EBE4DC] rounded-xl text-[#1A1B1E] text-blue-500 transition-all hover:shadow-md hover:border-blue-200" title="Duplicar" onClick={(e) => handleDuplicate(item.id, e)}>
-                      <Copy size={16} /> {/* Should use better icon for duplicating, keeping as Copy to avoid new imports for now */}
-                    </button>
+                {/* Content Info */}
+                <div className="card-content flex flex-col flex-1 p-8 pt-4 space-y-4">
+                  <h3 className="font-black text-xl text-[#1A1B1E] leading-tight truncate-2-lines group-hover:text-[#FFBD1B] transition-colors h-14">
+                    {item.title}
+                  </h3>
+                  
+                  <div className="flex items-center justify-between text-[#8E8B88]">
+                     <div className="flex items-center gap-1.5 text-[10px] uppercase font-black tracking-widest">
+                       <Clock size={12} /> {formatDate(item.date)}
+                     </div>
                   </div>
-                  <button className="p-3 text-rose-300 hover:text-rose-500 transition-colors" title="Eliminar" onClick={(e) => handleDelete(item.id, e)}>
-                    <Trash2 size={16} />
-                  </button>
+                  
+                  <div className="mt-auto pt-6 border-t border-[#F9F6F2]">
+                     {/* Mock Metrics Grid */}
+                     <div className="flex items-center justify-between text-[#8E8B88] px-2 pb-5 mb-4">
+                       <div className="flex flex-col items-center gap-1">
+                          <Eye size={14} className="opacity-50" />
+                          <span className="text-[10px] font-bold text-[#1A1B1E]">{views.toLocaleString()}</span>
+                       </div>
+                       <div className="flex flex-col items-center gap-1">
+                          <Heart size={14} className="opacity-50" />
+                          <span className="text-[10px] font-bold text-[#1A1B1E]">{engagement}%</span>
+                       </div>
+                       <div className="flex flex-col items-center gap-1">
+                          <Target size={14} className="text-[#FFBD1B]" />
+                          <span className="text-[10px] font-black text-[#1A1B1E]">{leads}</span>
+                       </div>
+                     </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex gap-1.5">
+                          <button onClick={(e) => handleCopy(item, e)} className="p-2.5 bg-[#F9F6F2] hover:bg-[#1A1B1E] hover:text-white border border-[#EBE4DC] rounded-xl text-[#1A1B1E] transition-all"><Copy size={14}/></button>
+                          <button onClick={(e) => handleDownload(item, e)} className="p-2.5 bg-[#F9F6F2] hover:bg-[#1A1B1E] hover:text-white border border-[#EBE4DC] rounded-xl text-[#1A1B1E] transition-all"><Download size={14}/></button>
+                        </div>
+                        <button onClick={(e) => handleDelete(item.id, e)} className="p-2.5 text-rose-300 hover:text-rose-500 transition-all"><Trash2 size={16}/></button>
+                    </div>
+                  </div>
                 </div>
+
               </div>
-
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
-      {/* Detail Modal */}
+      {/* MODAL DETALLE - Simplified and Optimized Overlay */}
       {selectedItem && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300"
-          onClick={() => setSelectedItem(null)}
-        >
-          <div 
-            className="bg-[#F9F6F2] w-full max-w-4xl max-h-[90vh] rounded-[4rem] border border-[#EBE4DC] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="p-10 border-b border-[#EBE4DC] flex items-center justify-between bg-white">
-              <div className="space-y-2 flex-1 mr-4">
-                <span className="px-4 py-1.5 rounded-full bg-[#1A1B1E]/5 text-[#8E8B88] text-[9px] font-black uppercase tracking-widest border border-[#EBE4DC]">
-                  {selectedItem.type.toUpperCase()}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#1A1B1E]/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedItem(null)}>
+          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="p-8 border-b border-[#EBE4DC] flex items-center justify-between bg-white">
+              <div className="flex-1 mr-6">
+                <span className="px-3 py-1 bg-[#FFBD1B]/10 text-[#FFBD1B] rounded-lg text-[10px] font-black uppercase tracking-widest border border-[#FFBD1B]/20 mb-3 inline-block">
+                  Detalle del Activo
                 </span>
-                {isEditing ? (
-                  <input type="text" value={editTitle} onChange={(e)=>setEditTitle(e.target.value)} className="w-full text-3xl font-black text-[#1A1B1E] tracking-tighter bg-transparent border-b-2 border-[#1A1B1E] outline-none" />
-                ) : (
-                  <h2 className="text-3xl font-black text-[#1A1B1E] tracking-tighter">{selectedItem.title}</h2>
-                )}
+                <h2 className="text-3xl font-black text-[#1A1B1E] tracking-tighter leading-tight">{selectedItem.title}</h2>
               </div>
-              {isEditing ? (
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setIsEditing(false)} className="px-6 py-4 bg-white border border-[#EBE4DC] text-[#1A1B1E] rounded-3xl transition-all font-black text-[10px] uppercase tracking-widest">
-                    Cancelar
-                  </button>
-                  <button onClick={saveEdit} className="px-6 py-4 bg-[#1A1B1E] text-white rounded-3xl transition-all border border-[#1A1B1E] hover:bg-black font-black text-[10px] uppercase tracking-widest">
-                    Guardar
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  {(selectedItem.type === 'article' || selectedItem.type === 'social') && (
-                    <button 
-                      onClick={() => setIsEditing(true)}
-                      className="p-4 bg-white hover:bg-[#F9F6F2] text-[#1A1B1E] rounded-3xl transition-all border border-[#EBE4DC] group flex items-center gap-3"
-                    >
-                      <Edit3 size={20} />
-                      <span className="font-black text-[10px] uppercase tracking-widest px-1">Editar</span>
-                    </button>
-                  )}
-                  
-                  {/* Campaign dropdown selector */}
-                  <div className="relative group">
-                    <select 
-                      className="appearance-none outline-none font-black text-[10px] uppercase tracking-widest bg-white text-[#1A1B1E] border border-[#EBE4DC] rounded-3xl h-full px-6 py-4 pr-12 cursor-pointer hover:bg-[#F9F6F2] transition-colors"
-                      value={selectedItem.campaignId || "none"}
-                      onChange={(e) => handleMoveToCampaign(e.target.value)}
-                    >
-                      <option value="none">Mover a campaña...</option>
-                      {campaigns.map(c => (
-                        <option key={c.id} value={c.id}>{c.theme.substring(0,30)}...</option>
-                      ))}
-                    </select>
-                    <FolderOpen size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#8E8B88]" />
-                  </div>
-
-                  <button 
-                    onClick={() => setSelectedItem(null)}
-                    className="p-4 bg-[#F9F6F2] hover:bg-[#1A1B1E] hover:text-white rounded-3xl transition-all border border-[#EBE4DC] group flex items-center gap-3 ml-2"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-              )}
+              <button onClick={() => setSelectedItem(null)} className="w-12 h-12 flex items-center justify-center bg-[#F9F6F2] hover:bg-rose-50 hover:text-rose-500 rounded-2xl transition-all">
+                <X size={20} />
+              </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-12 custom-scrollbar space-y-12">
-              {selectedItem.type === 'image' && (
-                <div className="rounded-[3rem] overflow-hidden border border-[#EBE4DC] shadow-xl">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={selectedItem.content} alt={selectedItem.title} className="w-full" />
-                </div>
-              )}
-
-              {selectedItem.type === 'article' && (
-                <div className="space-y-10">
-                  {selectedItem.content.imageUrl && (
-                    <div className="rounded-[3rem] overflow-hidden border border-[#EBE4DC] shadow-xl max-h-[400px]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={selectedItem.content.imageUrl} alt={selectedItem.title} className="w-full h-full object-cover" />
-                    </div>
-                  )}
-                  <div className="space-y-6">
-                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#FFBD1B]">Resumen Ejecutivo</h3>
-                    <div className="bg-white p-10 rounded-[2.5rem] border border-[#EBE4DC]/50 shadow-inner italic font-medium text-[#1A1B1E]/70 leading-relaxed">
-                      {selectedItem.content.summary}
-                    </div>
-                  </div>
-                  <div className="space-y-6 flex-1 flex flex-col min-h-[400px]">
-                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#FFBD1B]">Artículo Completo</h3>
-                    {isEditing ? (
-                      <textarea
-                        value={editContent}
-                        onChange={(e)=>setEditContent(e.target.value)}
-                        className="w-full h-full min-h-[500px] p-6 rounded-3xl border-2 border-[#EBE4DC] bg-white text-sm font-mono focus:border-[#FFBD1B] focus:ring-0 outline-none leading-relaxed"
-                      />
-                    ) : (
-                      <div className="prose prose-neutral max-w-none text-[#1A1B1E] leading-relaxed font-medium bg-white p-10 rounded-3xl border border-[#EBE4DC] shadow-sm">
-                        <div className="whitespace-pre-wrap">{selectedItem.content.article}</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {selectedItem.type === 'marketing' && (
-                <div className="space-y-12">
-                   {/* Business Profile & Audience */}
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      {selectedItem.content.businessProfile && (
-                        <div className="p-10 bg-white rounded-[3rem] border border-[#EBE4DC] space-y-6 shadow-sm">
-                          <div className="flex items-center gap-3 text-[#FFBD1B]">
-                            <Target size={20} />
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-[#8E8B88]">Perfil de Negocio</h4>
-                          </div>
-                          <p className="text-2xl font-black text-[#1A1B1E] leading-tight">{selectedItem.content.businessProfile.type}</p>
-                          <div className="space-y-2">
-                             {selectedItem.content.businessProfile.advantages?.slice(0, 3).map((adv: string, i: number) => (
-                               <div key={i} className="flex items-center gap-2 text-[10px] font-bold text-[#8E8B88]">
-                                 <CheckCircle2 size={12} className="text-emerald-500" /> {adv}
-                               </div>
-                             ))}
-                          </div>
-                        </div>
-                      )}
-                      {selectedItem.content.targetAudience && (
-                        <div className="p-10 bg-white rounded-[3rem] border border-[#EBE4DC] space-y-6 shadow-sm">
-                          <div className="flex items-center gap-3 text-[#FFBD1B]">
-                            <Users size={20} />
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-[#8E8B88]">Audiencia Ideal</h4>
-                          </div>
-                          <p className="text-lg font-bold text-[#1A1B1E] leading-relaxed">{selectedItem.content.targetAudience.profile}</p>
-                        </div>
-                      )}
+            <div className="flex-1 overflow-y-auto p-10 bg-[#F9F6F2]/30">
+               {selectedItem.type === 'article' && (
+                 <div className="space-y-8 max-w-2xl mx-auto">
+                   {selectedItem.content.imageUrl && <img src={selectedItem.content.imageUrl} className="w-full h-80 object-cover rounded-[2rem] border border-[#EBE4DC]" />}
+                   <div className="p-8 bg-white rounded-[2rem] border border-[#EBE4DC]">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-[#FFBD1B] mb-4">Contenido</h4>
+                      <p className="text-lg font-medium leading-relaxed whitespace-pre-wrap">{typeof selectedItem.content === 'string' ? selectedItem.content : (selectedItem.content.article || selectedItem.content.summary || "")}</p>
                    </div>
-
-                   {/* Content Strategy */}
-                   {selectedItem.content.contentStrategy && (
-                     <div className="p-10 bg-[#1A1B1E] rounded-[3.5rem] border border-black shadow-2xl space-y-8">
-                        <div className="flex items-center gap-3 text-[#FFBD1B]">
-                          <TrendingUp size={20} />
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-white/40">Ejes Estratégicos</h4>
-                        </div>
-                        
-                        {/* New 4-Pillars Format */}
-                        {selectedItem.content.contentStrategy.pillars ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Captación */}
-                            <div className="space-y-3 p-6 bg-white/5 rounded-3xl border border-white/10">
-                               <h4 className="text-[10px] font-black uppercase tracking-widest text-[#FFBD1B] flex items-center gap-2"><Target size={14}/> Captación</h4>
-                               <div className="space-y-2">
-                                 {selectedItem.content.contentStrategy.pillars.captacion?.map((item: string, i: number) => (
-                                   <p key={i} className="text-[10px] text-white/70 font-medium leading-relaxed">• {item}</p>
-                                 ))}
-                               </div>
-                            </div>
-                            {/* Educativo */}
-                            <div className="space-y-3 p-6 bg-white/5 rounded-3xl border border-white/10">
-                               <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-400 flex items-center gap-2"><FileText size={14}/> Educativo</h4>
-                               <div className="space-y-2">
-                                 {selectedItem.content.contentStrategy.pillars.educativo?.map((item: string, i: number) => (
-                                   <p key={i} className="text-[10px] text-white/70 font-medium leading-relaxed">• {item}</p>
-                                 ))}
-                               </div>
-                            </div>
-                            {/* Confianza */}
-                            <div className="space-y-3 p-6 bg-white/5 rounded-3xl border border-white/10">
-                               <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2"><ShieldCheck size={14}/> Confianza</h4>
-                               <div className="space-y-2">
-                                 {selectedItem.content.contentStrategy.pillars.confianza?.map((item: string, i: number) => (
-                                   <p key={i} className="text-[10px] text-white/70 font-medium leading-relaxed">• {item}</p>
-                                 ))}
-                               </div>
-                            </div>
-                            {/* Conversión */}
-                            <div className="space-y-3 p-6 bg-[#FFBD1B]/10 rounded-3xl border border-[#FFBD1B]/30">
-                               <h4 className="text-[10px] font-black uppercase tracking-widest text-[#FFBD1B] flex items-center gap-2"><Zap size={14}/> Conversión</h4>
-                               <div className="space-y-2">
-                                 {selectedItem.content.contentStrategy.pillars.conversion?.map((item: string, i: number) => (
-                                   <p key={i} className="text-[10px] text-amber-100 font-bold leading-relaxed">• {item}</p>
-                                 ))}
-                               </div>
-                            </div>
-                          </div>
-                        ) : (
-                          // Fallback for older formats
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                             <div className="space-y-4">
-                                <h5 className="text-[9px] font-black text-white/30 uppercase tracking-widest">Temas Principales</h5>
-                                <div className="flex flex-wrap gap-2">
-                                  {selectedItem.content.contentStrategy.mainThemes?.map((theme: string, i: number) => (
-                                    <span key={i} className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-[10px] font-bold">{theme}</span>
-                                  ))}
-                                </div>
-                             </div>
-                             <div className="space-y-4">
-                                <h5 className="text-[9px] font-black text-white/30 uppercase tracking-widest">Áreas de Sabiduría</h5>
-                                <div className="flex flex-wrap gap-2">
-                                  {selectedItem.content.contentStrategy.knowledgeAreas?.map((area: string, i: number) => (
-                                    <span key={i} className="px-3 py-1.5 rounded-xl bg-[#FFBD1B]/10 border border-[#FFBD1B]/20 text-[#FFBD1B] text-[10px] font-bold">{area}</span>
-                                  ))}
-                                </div>
-                             </div>
-                             <div className="space-y-4">
-                                <h5 className="text-[9px] font-black text-white/30 uppercase tracking-widest">Oportunidades</h5>
-                                <div className="flex flex-wrap gap-2">
-                                  {selectedItem.content.contentStrategy.opportunities?.map((opp: string, i: number) => (
-                                    <span key={i} className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold">{opp}</span>
-                                  ))}
-                                </div>
-                             </div>
-                          </div>
-                        )}
-                     </div>
-                   )}
-
-                   {/* Editorial Plan Weeks if available */}
-                   {selectedItem.content.weeks && (
-                     <div className="space-y-8">
-                       <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[#FFBD1B]">Calendario Editorial (MVP)</h3>
-                       <div className="space-y-6">
-                         {selectedItem.content.weeks.map((week: any) => (
-                           <div key={week.week} className="p-10 bg-white rounded-[3.5rem] border border-[#EBE4DC] space-y-8">
-                              <div className="flex items-center justify-between">
-                                <h4 className="text-2xl font-black text-[#1A1B1E]">Semana {week.week}</h4>
-                                <div className="h-px flex-1 mx-8 bg-[#EBE4DC]" />
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {week.items.map((item: any, idx: number) => (
-                                  <div key={idx} className="p-8 bg-[#F9F6F2] rounded-3xl border border-[#EBE4DC] space-y-6 hover:border-[#FFBD1B]/30 transition-all group/item">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-3">
-                                        <div className={`p-4 rounded-2xl ${item.type === 'article' ? 'bg-amber-100/50 text-amber-600' : 'bg-[#1A1B1E] text-white'}`}>
-                                          {item.type === 'article' ? <FileText size={18} /> : <MessageSquare size={18} />}
-                                        </div>
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-[#8E8B88]">{item.type}</span>
-                                      </div>
-                                      
-                                      {/* Pillar Badge */}
-                                      {item.pillar && (
-                                        <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border shadow-sm flex items-center gap-1
-                                          ${item.pillar === 'captacion' ? 'bg-amber-50 text-amber-600 border-amber-200' : ''}
-                                          ${item.pillar === 'educativo' ? 'bg-blue-50 text-blue-600 border-blue-200' : ''}
-                                          ${item.pillar === 'confianza' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : ''}
-                                          ${item.pillar === 'conversion' ? 'bg-rose-50 text-rose-600 border-rose-200' : ''}
-                                        `}>
-                                          {item.pillar === 'captacion' && <Target size={8} />}
-                                          {item.pillar === 'educativo' && <FileText size={8} />}
-                                          {item.pillar === 'confianza' && <ShieldCheck size={8} />}
-                                          {item.pillar === 'conversion' && <Zap size={8} />}
-                                          {item.pillar}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="space-y-2">
-                                      <p className="text-xl font-black text-[#1A1B1E] leading-tight group-hover/item:text-[#FFBD1B] transition-colors">{item.title}</p>
-                                      <p className="text-xs text-[#8E8B88] font-medium leading-relaxed">{item.description}</p>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   )}
-
-                   {/* Raw Data if nothing else */}
-                   {!selectedItem.content.businessProfile && !selectedItem.content.weeks && (
-                     <div className="bg-white p-10 rounded-[3rem] border border-[#EBE4DC] shadow-sm">
-                        <pre className="text-xs text-[#1A1B1E]/70 whitespace-pre-wrap font-mono uppercase tracking-tighter">
-                          {JSON.stringify(selectedItem.content, null, 2)}
-                        </pre>
-                     </div>
-                   )}
-                </div>
-              )}
-
-              {selectedItem.type === 'social' && (
-                <div className="bg-white p-10 rounded-[3rem] border border-[#EBE4DC] shadow-sm flex items-start gap-8">
-                   <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 shrink-0 border border-blue-100">
-                     <MessageSquare size={32} />
-                   </div>
-                   <div className="space-y-4">
-                     <p className="text-xl font-bold text-[#1A1B1E] leading-relaxed">
-                       {selectedItem.preview}
-                     </p>
-                     <div className="flex gap-2">
-                       <span className="text-[#FFBD1B] font-bold">#IA</span>
-                       <span className="text-[#FFBD1B] font-bold">#Marketing</span>
-                     </div>
-                   </div>
-                </div>
-              )}
+                 </div>
+               )}
+               {selectedItem.type === 'social' && (
+                 <div className="max-w-xl mx-auto p-10 bg-white rounded-[3rem] border border-[#EBE4DC] text-2xl font-bold leading-relaxed whitespace-pre-wrap">
+                    {selectedItem.content}
+                 </div>
+               )}
+               {selectedItem.type === 'image' && (
+                 <div className="max-w-3xl mx-auto space-y-6">
+                   <img src={selectedItem.content} className="w-full rounded-[2rem] border border-[#EBE4DC] shadow-xl" />
+                   <p className="text-[10px] font-black text-[#8E8B88] uppercase tracking-widest text-center">Prompt: {selectedItem.title}</p>
+                 </div>
+               )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-8 border-t border-[#EBE4DC] bg-[#F9F6F2] flex items-center justify-center gap-4">
-              <button onClick={(e) => handleCopy(selectedItem, e)} className="px-10 py-5 bg-[#1A1B1E] text-white rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl flex items-center gap-3">
-                <Copy size={16} /> Copiar al Portapapeles
-              </button>
-              <button onClick={(e) => handleDownload(selectedItem, e)} className="px-10 py-5 bg-white border border-[#EBE4DC] text-[#1A1B1E] rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-xl flex items-center gap-3">
-                <Download size={16} /> Descargar Activo
-              </button>
+            <div className="p-8 bg-white border-t border-[#EBE4DC] flex justify-between items-center">
+               <div className="flex gap-3">
+                  <button onClick={() => handleCopy(selectedItem)} className="px-8 py-4 bg-[#1A1B1E] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:text-[#FFBD1B] transition-all">Copiar</button>
+                  <button onClick={() => handleDownload(selectedItem)} className="px-8 py-4 bg-white border border-[#EBE4DC] rounded-2xl font-black text-[10px] uppercase tracking-widest hover:border-[#1A1B1E] transition-all">Descargar</button>
+               </div>
+               <div className="text-right">
+                  <p className="text-[10px] text-[#8E8B88] font-black uppercase tracking-widest">Workspace</p>
+                  <p className="text-sm font-bold text-[#1A1B1E]">Neuromarketing OS</p>
+               </div>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
-}
-
-function RefreshCw(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-      <path d="M21 3v5h-5" />
-      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-      <path d="M3 21v-5h5" />
-    </svg>
-  )
 }

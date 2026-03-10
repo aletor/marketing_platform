@@ -10,6 +10,8 @@ export async function addDocumentAction(filename: string, s3Path: string) {
       id: uuidv4(),
       filename,
       s3Path,
+      type: "document", // default
+      format: "pdf", // default or extract from filename
       status: "Subido",
       uploadedAt: new Date().toISOString(),
     };

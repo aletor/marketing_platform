@@ -28,23 +28,48 @@ export async function generateArticleAction(params: {
     const corporateContext = db.corporateContext || "No hay contexto corporativo específico acumulado aún.";
 
     // 1. Generate Content with GPT-4o
-    const systemPrompt = `Eres un experto redactor de contenidos B2B y marketing corporativo. 
+    const systemPrompt = `Eres un World-Class Copywriter y estratega de marketing operando dentro de NeuralMarketing OS, especializado en tecnología y negocios B2B. 
+Tu estilo es provocador, directo y moderno. Escribes como un insider del sector.
 
 IMPORTANTE: Utiliza el siguiente CONTEXTO CORPORATIVO EXTRAÍDO DE DOCUMENTOS REALES como fuente principal de verdad para el tono, datos técnicos y estrategias:
 ---
 ${corporateContext}
 ---
 
-Genera contenido sobre el tema dado. Debes devolver la respuesta estrictamente en JSON (sin formato Markdown adicional envolviéndolo) con las siguientes propiedades:
-"article": El artículo completo en Markdown (longitud definida por parámetro).
-"summary": Un resumen ejecutivo de 1 o 2 párrafos.
-"social": Un post optimizado para la red social especificada, incluyendo hashtags.`;
+REGLAS DE ESCRITURA ESTRICTAS:
+- Hook inicial MUY FUERTE que obligue a seguir leyendo.
+- Frases cortas. Un ritmo narrativo ágil.
+- Tono inteligente pero ligeramente canalla o muy directo.
+- CERO LENGUAJE CORPORATIVO ABURRIDO. Evita palabras vacías como "sinergia", "líderes del sector", "soluciones integrales".
+- Genera curiosidad y debate.
+- Usa párrafos muy cortos (1-2 líneas), estilo LinkedIn de alto impacto.
+- Explica ideas complejas de forma visual y simple.
+- Termina siempre con una visión de futuro o conclusión muy potente.
+
+EJEMPLO DE ESTILO Y RITMO NARRATIVO REQUERIDO:
+###
+"Durante décadas, ir a un estadio ha funcionado igual.
+
+Compras una entrada.
+La enseñas.
+Te escanean un código.
+
+Fin de la historia.
+
+Pero el deporte profesional está entrando en otra liga."
+###
+
+Genera contenido sobre el tema dado aplicando TODAS las reglas indicadas.
+Debes devolver la respuesta estrictamente en JSON (sin formato Markdown adicional envolviéndolo) con las siguientes propiedades:
+"article": El artículo completo en Markdown (longitud definida por parámetro, aplicando estilo provocador).
+"summary": Un resumen ejecutivo de 1 o 2 párrafos impactante.
+"social": Un post optimizado para la red social especificada, incluyendo emojis, ritmo ágil y foco en generar conversación.`;
 
     const userPrompt = `
 Parámetros:
 - Tema: ${topic}
 - Audiencia: ${audience}
-- Tono: ${tone}
+- Tono: ${tone} (además de tu tono base insider/ágil)
 - Longitud (Artículo): ${length}
 - Red Social Destino: ${network}
 `;
@@ -54,11 +79,12 @@ Parámetros:
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      model: "gpt-4o",
+      model: "gpt-5.2",
+      temperature: 0.85,
       response_format: { type: "json_object" },
     });
 
-    logUsage("gpt-4o", completion.usage?.prompt_tokens || 0, completion.usage?.completion_tokens || 0);
+    logUsage("gpt-5.2", completion.usage?.prompt_tokens || 0, completion.usage?.completion_tokens || 0);
 
     const resultText = completion.choices[0].message.content;
     if (!resultText) throw new Error("No content generated");
@@ -84,6 +110,7 @@ Parámetros:
     }
 
     const generatedItem = {
+      campaignId: "draft",
       type: "article" as const,
       title: topic,
       preview: parsedResult.summary,
@@ -127,6 +154,7 @@ export async function generateImageAction(topic: string) {
     
     if (imageUrl) {
       addToGeneratedDb({
+        campaignId: "draft",
         type: "image",
         title: `Imagen: ${topic.substring(0, 30)}...`,
         preview: "Imagen generada por IA",

@@ -1,6 +1,255 @@
 {
   "items": [
     {
+      "campaignId": "f4398dec-99b7-473f-823c-92e6d5bcb1b6",
+      "type": "article",
+      "title": "Caso de Uso: Use Case: del “nano banana” al acceso sin discusión (Smart Ticket + Identidad)",
+      "preview": "Campaña: Tema: nano banana y oaro?. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "content": {
+        "article": "Un derbi.\n\nAforo casi lleno.\n\nY el mismo drama de siempre:\n\n- QRs duplicados.\n- Abonos prestados.\n- Colas creciendo.\n- Seguridad tomando decisiones a ojo.\n\nEl club cree que el problema es “más tornos”.\n\nNo.\n\nEl problema es que la entrada no está unida a una identidad.\n\n## Lo que cambia con OARO\n\nEl fan se valida una vez:\n\n- escanea su documento,\n- hace prueba de vida,\n- se verifica biométricamente.\n\nSu ticket pasa a ser **SMART**:\n\n- trazable,\n- único,\n- con reglas de transferencia.\n\nEn el acceso:\n\n- QR dinámico + verificación biométrica.\n- Si no es la persona autorizada, no entra.\n\n## Resultado\n\nMenos fraude.\n\nMenos discusiones en puerta.\n\nMás velocidad.\n\nY, por fin, una base de fans **verificada** para activar campañas, sponsors y reventa controlada.\n\nEl estadio deja de ser un “a ver qué pasa”.\n\nPasa a ser un sistema.",
+        "summary": "Caso de éxito relacionado con Tema: nano banana y oaro?. Objetivo: Awareness (Alcance). Canales: Newsletter"
+      },
+      "id": "2afea17f-f4d3-4633-8590-db5cd9487931",
+      "date": "2026-03-10T23:03:16.454Z"
+    },
+    {
+      "campaignId": "f4398dec-99b7-473f-823c-92e6d5bcb1b6",
+      "type": "social",
+      "title": "Post 3: Tema: nano banana y oaro?. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "preview": "Trust/Case Study",
+      "content": "Un millón de tickets no te los regala nadie.\n\nSe ganan cuando tu sistema no se cae en el momento de la verdad.\n\nOARO ya lo pasó en estrés real: +1M smart tickets procesados con la RFEF.\n\nY cuando mueves ese volumen, aprendes rápido:\n\n- El fraude no avisa.\n- El torno no perdona.\n- El dato “bonito” sin verificación no sirve.\n\nPor eso el enfoque de OARO es quirúrgico:\n\nIdentidad digital + ticket trazable + control de transferencias.\n\nNo para “innovar”.\n\nPara que el día de partido sea una máquina.\n\nY para que cada asiento deje de ser una lotería.\n\nEso no es hype.\n\nEs infraestructura para los que quieren jugar en serio.",
+      "id": "6094e252-53b0-4baf-a32a-389f15d7175d",
+      "date": "2026-03-10T23:03:16.453Z"
+    },
+    {
+      "campaignId": "f4398dec-99b7-473f-823c-92e6d5bcb1b6",
+      "type": "social",
+      "title": "Post 2: Tema: nano banana y oaro?. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "preview": "Solution/Educational",
+      "content": "La solución no es “otro QR”.\n\nLa solución es dejar de separar ticket e identidad.\n\nOARO lo clava con una idea simple:\n\nTicket + Identidad verificada = control real.\n\n¿Cómo se ve en la práctica?\n\n1) Validación de ID (OCR/NFC) + prueba de vida.\n2) Face matching para asegurar que eres tú.\n3) Ticket convertido en activo digital trazable.\n4) Acceso con reglas: lo que se transfiere, se transfiere con límites.\n\nResultado:\n\nMenos fraude.\n\nEntrada más rápida.\n\nBase de fans verificada.\n\nY marketing que deja de disparar a ciegas (CRM + A/B + ofertas geo).\n\nEl futuro del ticketing no es más “experiencia”.\n\nEs más verdad.",
+      "id": "26b99467-3db3-4fdf-9d60-a9ab2ce6367c",
+      "date": "2026-03-10T23:03:16.452Z"
+    },
+    {
+      "campaignId": "f4398dec-99b7-473f-823c-92e6d5bcb1b6",
+      "type": "social",
+      "title": "Post 1: Tema: nano banana y oaro?. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "preview": "Problem Awareness",
+      "content": "El ticketing sigue viviendo del PDF.\n\nSí.\n\nEn 2026.\n\nUn QR.\n\nUn pantallazo.\n\nY a rezar en el torno.\n\nEso es “nano banana”. 🍌\n\nNo es un meme.\n\nEs un síntoma: si tu entrada se puede copiar como una foto… tu negocio también.\n\nFraude.\n\nReventa salvaje.\n\nSponsors pagando por impactos fantasma.\n\nY lo peor: estadio lleno, datos vacíos.\n\nLa pregunta incómoda:\n\n¿Tu club sabe QUIÉN está dentro… o solo sabe CUÁNTOS?\n\nPorque ahí está el agujero negro.\n\nY cada partido te cuesta más de lo que crees.",
+      "id": "510d5a7a-503e-4e59-b035-12788a1b9c6c",
+      "date": "2026-03-10T23:03:16.451Z"
+    },
+    {
+      "campaignId": "f4398dec-99b7-473f-823c-92e6d5bcb1b6",
+      "type": "article",
+      "title": "Nano Banana y OARO: la broma que expone el agujero negro del ticketing (y cómo cerrarlo con identidad)",
+      "preview": "Campaña: Tema: nano banana y oaro?. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "content": {
+        "article": "Durante años, el ticketing ha vivido de un truco barato.\n\nUn PDF.\n\nUn QR.\n\nUn pantallazo.\n\nY todos fingiendo que eso es “seguro”.\n\nAhora entra en escena el meme: **“nano banana”**.\n\nSuena a chiste.\n\nPero es el tipo de chiste que te deja una verdad incómoda en la cara: **si cualquier cosa puede parecer legítima… entonces nada lo es**.\n\nY en la industria del deporte, conciertos, ferias y eventos masivos, esa frase no es filosofía.\n\nEs pérdida de dinero.\n\nEs fraude.\n\nEs caos operativo.\n\nEs gente colándose.\n\nEs gente con entrada real quedándose fuera.\n\nEs un sponsor pagando por impactos fantasmas.\n\nY es un club mirando a su estadio lleno… sin saber exactamente quién está dentro.\n\n## Nano banana: el síntoma\n\n“Nano banana” no es una tecnología.\n\nEs un **símbolo**.\n\nEl símbolo de un mundo donde:\n\n- Un QR se copia en 3 segundos.\n- Una reventa se hace en grupos de Telegram.\n- Un abono “prestado” circula como si fuese un mechero.\n- El control de acceso se convierte en un teatro: mucho pitido, poca certeza.\n\nY mientras tanto, el negocio intenta escalar sobre arena.\n\nPorque el problema no es el QR.\n\nEl problema es que el QR **no sabe quién eres**.\n\n## El pecado original del ticketing\n\nEl ticket tradicional (PDF, pass genérico, código estático) comete un pecado.\n\nSeparar dos cosas que deberían ser inseparables:\n\n**Entrada** e **identidad**.\n\nCuando separas eso:\n\n- La entrada se convierte en un archivo replicable.\n- El acceso se convierte en una “probabilidad”.\n- La reventa se convierte en selva.\n- La base de datos se llena de emails basura y perfiles duplicados.\n\nY luego llega el CEO y pregunta:\n\n“¿Por qué tenemos el estadio lleno y aún así se nos escapa dinero?”\n\nPorque estás vendiendo acceso como si fuese 2009.\n\nY el mercado ya juega a otra cosa.\n\n## ¿Y qué pinta OARO en esta historia?\n\nOARO hace algo que el ticketing clásico odia.\n\nLe quita la máscara.\n\nLo llama por su nombre.\n\nY lo arregla donde duele: **en la identidad**.\n\nOARO no empieza con “vamos a hacer una app bonita”.\n\nEmpieza con una idea simple y brutal:\n\n**Si no sabemos quién entra, no controlamos nada.**\n\nY ahí aparece el “anti nano banana”.\n\n### 1) SMART Ticket = ticket con columna vertebral\n\nUn SMART Ticket no es un QR con esteroides.\n\nEs un activo digital trazable.\n\n- Se emite.\n- Se gestiona.\n- Se transfiere con reglas.\n- Se valida en tiempo real.\n- Y no se duplica como un meme.\n\nLa entrada deja de ser “un archivo”.\n\nPasa a ser **un derecho** con historial.\n\n### 2) OARO Identity® = el ticket aprende quién eres\n\nAquí está el giro.\n\nLa entrada se liga a una identidad verificada.\n\nNo “un email”.\n\nNo “un usuario”.\n\n**Una identidad real**, validada con:\n\n- documento oficial (OCR/NFC),\n- prueba de vida,\n- face matching,\n- y certificación criptográfica (sí, blockchain cuando tiene sentido).\n\nY el dato sensible no se pasea por diez bases de datos.\n\nSe cifra.\n\nSe controla.\n\nY, en un modelo de identidad descentralizada, el usuario **autoriza** el uso.\n\nEso es lo contrario del circo de “acepta cookies y reza”.\n\n### 3) Acceso: del “escanear y ver qué pasa” al “denegar de verdad”\n\nCuando identidad y ticket van juntos, el control de acceso deja de ser un coladero educado.\n\nSe convierte en un sistema con una promesa seria:\n\n**bloquear al que no debe entrar.**\n\nEn propuestas de OARO para clubes top, el objetivo es claro:\n\n- monitorizar accesos,\n- simplificar entrada de personal,\n- acelerar flujo,\n- y alcanzar **denegación efectiva a no autorizados**.\n\nSin drama.\n\nSin discusiones.\n\nSin “pero mira, es mi primo”.\n\n## El dinero que no estás viendo (porque no estás midiendo)\n\nEl ticketing viejo te da números bonitos.\n\nEntradas vendidas.\n\nAforo.\n\nEscaneos.\n\nPero hay un KPI que te falta:\n\n**veracidad**.\n\n¿Quién es esa persona?\n\n¿Es el comprador?\n\n¿Es un revendedor?\n\n¿Es un invitado corporativo que nunca aparece?\n\n¿Es un abonado que presta su entrada cada partido?\n\nSin identidad verificada, todo es conjetura.\n\nCon OARO, de repente puedes:\n\n- tener una base de fans verificada,\n- trazar el ciclo de vida del ticket,\n- atribuir campañas y sponsors con datos reales,\n- activar ofertas con A/B testing conectado a CRM,\n- y enviar notificaciones geo-targeted en el momento exacto.\n\nNo “un email masivo el martes”.\n\nUna acción con contexto.\n\nEn el estadio.\n\nEn la puerta.\n\nEn el descanso.\n\nEn la tienda.\n\n## La conversación incómoda: reventa\n\nLa reventa existe.\n\nNegarlo es infantil.\n\nLa pregunta no es si existe.\n\nEs quién la controla.\n\nCon smart ticketing trazable, el organizador puede:\n\n- definir reglas de transferencia,\n- limitar precios,\n- capturar comisiones,\n- recuperar asientos no utilizados,\n- y evitar que el mercado secundario sea un agujero negro.\n\nEsto no es “pelear contra fans”.\n\nEs ordenar el mercado.\n\nY sí: **convertir fuga en ingreso**.\n\nEn algunos escenarios de implementación completa, la oportunidad anual estimada se mueve en rangos que asustan: **€10M–€30M**.\n\nNo por magia.\n\nPor control.\n\n## “Nano banana” también va de sponsors\n\nHay una estafa silenciosa que nadie quiere admitir.\n\nSponsors pagando por “impacto”.\n\nImpacto sin trazabilidad.\n\nImpacto sin atribución.\n\nImpacto sin saber quién vio qué, dónde y cuándo.\n\nCon un sistema que une ticket + identidad + comportamiento, el sponsor deja de comprar humo.\n\nY el club deja de venderlo.\n\nNotificaciones en tiempo real.\n\nSegmentación por comportamiento real.\n\nMedición de campañas con datos verificados.\n\nEsto cambia la conversación de:\n\n“pon tu logo aquí”\n\na\n\n“mira lo que generaste”.\n\n## El punto más subestimado: operaciones\n\nLa tecnología bonita vende.\n\nPero lo que enamora a un director de operaciones es otra cosa:\n\n**colas más cortas**.\n\nMenos incidencias.\n\nMenos personal apagando fuegos.\n\nMenos falsos positivos.\n\nMenos discusiones en el torno.\n\nCuando el acceso se basa en verificación biométrica y reglas claras, el estadio deja de ser un puzzle cada partido.\n\nPasa a ser un sistema.\n\nY eso escala.\n\n## Entonces… ¿qué es “nano banana y OARO” en una frase?\n\nEs esto:\n\n**Nano banana es el mundo donde cualquier entrada puede parecer real.**\n\n**OARO es el mundo donde una entrada real puede probarlo.**\n\nUno es meme.\n\nEl otro es infraestructura.\n\nY la industria está eligiendo.\n\nPorque el futuro del ticketing no es un QR más bonito.\n\nEs un ticket que sabe quién eres.\n\nY una identidad que no se puede falsificar con un pantallazo.\n\n## Visión de futuro\n\nEn 3-5 años, “comprar una entrada” sonará tan antiguo como “imprime el boarding pass”.\n\nLos grandes recintos van a operar con una nueva norma:\n\n**si no hay identidad verificada, no hay acceso.**\n\nNo por capricho.\n\nPor seguridad.\n\nPor negocio.\n\nPor datos.\n\nPor experiencia.\n\nY cuando eso pase, el “nano banana” quedará donde merece.\n\nEn el museo de los trucos baratos.\n\nMientras los clubes que se adelantaron estarán jugando otro deporte: **el de convertir cada asiento en un activo controlado, medible y rentable**.\n",
+        "summary": "Resumen generado automáticamente para Tema: nano banana y oaro?. Objetivo: Awareness (Alcance). Canales: Newsletter"
+      },
+      "id": "0aab25c3-608a-44b6-92ea-e0d1d3b41298",
+      "date": "2026-03-10T23:03:16.450Z"
+    },
+    {
+      "campaignId": "a95140a7-f6ee-48e2-bf4c-2ab8f1007851",
+      "type": "article",
+      "title": "Caso de Uso: La Transformación del Acceso en Estadios",
+      "preview": "Campaña: Tema: biometria pasada por ia. Objetivo: Generar Leads. Canales: Newsletter",
+      "content": {
+        "article": "## La Transformación del Acceso en Estadios\n\n### Problema:\nLas entradas físicas y el acceso lento se estaban convirtiendo en un dolor de cabeza tanto para fans como para organizadores.\n\n### Solución:\nCon la implementación de la biometría IA, OARO revolucionó el acceso a estadios. Utilizando reconocimiento facial, aseguramos un acceso rápido y seguro, eliminando la necesidad de tickets físicos.\n\n### Resultado:\nReal Madrid F.C. experimentó una reducción significativa en el tiempo de entrada, mejoró la seguridad y aumentó los ingresos gracias a la personalización de ofertas y notificaciones en tiempo real.\n\nLa biometría IA está aquí para quedarse, y está cambiando las reglas del juego.",
+        "summary": "Caso de éxito relacionado con Tema: biometria pasada por ia. Objetivo: Generar Leads. Canales: Newsletter"
+      },
+      "id": "ac23814f-bef3-4473-a4e9-f951adc99cea",
+      "date": "2026-03-10T22:59:17.640Z"
+    },
+    {
+      "campaignId": "a95140a7-f6ee-48e2-bf4c-2ab8f1007851",
+      "type": "social",
+      "title": "Post 3: Tema: biometria pasada por ia. Objetivo: Generar Leads. Canales: Newsletter",
+      "preview": "Trust/Case Study",
+      "content": "🚀 Éxito en Real Madrid F.C.:\n\nImplementamos el sistema SMART Fan Management, logrando 100% de éxito en accesos autorizados. Maximización de ingresos y experiencia mejorada. 📈\n\nDescubre cómo esta alianza redefine el estándar. #CasoÉxito #TecnologíaDeportiva",
+      "id": "98821fb7-8df3-41de-87b7-d72b5f08a6d8",
+      "date": "2026-03-10T22:59:17.639Z"
+    },
+    {
+      "campaignId": "a95140a7-f6ee-48e2-bf4c-2ab8f1007851",
+      "type": "social",
+      "title": "Post 2: Tema: biometria pasada por ia. Objetivo: Generar Leads. Canales: Newsletter",
+      "preview": "Solution/Educational",
+      "content": "🤖 ¿Por qué la biometría IA es el futuro?\n\nOARO ofrece seguridad y eficiencia insuperables. Con tecnología blockchain y criptografía, garantizamos la autenticidad de identidades y accesos.\n\nTransforma la experiencia de tus clientes hoy. 🌟\n#IdentidadDigital #SeguridadTecnológica",
+      "id": "647745bf-ccce-4cb2-b837-7e4a5be01639",
+      "date": "2026-03-10T22:59:17.637Z"
+    },
+    {
+      "campaignId": "a95140a7-f6ee-48e2-bf4c-2ab8f1007851",
+      "type": "social",
+      "title": "Post 1: Tema: biometria pasada por ia. Objetivo: Generar Leads. Canales: Newsletter",
+      "preview": "Problem Awareness",
+      "content": "🎯 El acceso al estadio como lo conocías es cosa del pasado.\n\nLa biometría IA está rediseñando la experiencia del fan. No más entradas físicas, solo autenticación facial instantánea.\n\n¿Tu negocio está listo para el futuro? 🚀\n#BiometríaIA #Innovación",
+      "id": "efd92411-9735-40b7-9854-ecc27ed189d9",
+      "date": "2026-03-10T22:59:17.635Z"
+    },
+    {
+      "campaignId": "a95140a7-f6ee-48e2-bf4c-2ab8f1007851",
+      "type": "article",
+      "title": "La Revolución de la Biometría IA: ¿Está Tu Negocio Preparado?",
+      "preview": "Campaña: Tema: biometria pasada por ia. Objetivo: Generar Leads. Canales: Newsletter",
+      "content": {
+        "article": "# La Revolución de la Biometría IA: ¿Está Tu Negocio Preparado?\n\n¿Biometría y IA? Una combinación que cambiará las reglas del juego. Y no, no estamos hablando del futuro. Esto ya está aquí. Es una llamada a todos los que quieren estar a la vanguardia.\n\nImagina un estadio de fútbol donde no solo se escanean tickets al entrar. No, ahora el acceso es más rápido y seguro gracias a la biometría impulsada por inteligencia artificial. Adiós a las entradas físicas. Hola a la identificación facial instantánea.\n\n## El Poder Detrás de la Biometría IA\n\nOARO lo sabe bien. Desde 2017, redefinimos las identidades digitales y las soluciones de ticketing inteligente. Nuestra colaboración con el Real Madrid F.C. es solo una muestra de lo que podemos lograr.\n\n### Identidad y Seguridad\n\nEl corazón de esta revolución es la seguridad. Usamos criptografía y blockchain para autenticar identidades de forma ultrasegura. Ya no más fraude. Solo autenticidad confirmada.\n\nPero vamos más allá. Nuestras soluciones ofrecen a los usuarios el control total sobre sus datos personales. La privacidad ya no es un lujo, es un derecho.\n\n### Fan Engagement Reimaginado\n\nLa biometría IA no solo mejora la seguridad. También transforma la experiencia del fan. Monitoreamos actividades, enviamos notificaciones en tiempo real y entregamos ofertas personalizadas que maximicen los ingresos.\n\n## ¿Por Qué Importa?\n\nPorque en un mercado donde el tiempo es oro, la eficiencia manda. Las empresas que no adopten estas tecnologías quedarán atrás. Y no, no se trata solo de deportes. Cada industria puede beneficiarse.\n\n## La Visión del Futuro\n\nLa biometría IA no es una moda pasajera. Es la base de cómo las organizaciones manejarán las identidades y el acceso en la próxima década.\n\nEn OARO, estamos listos para liderar esta carga. Ofrecemos un sistema que no solo es seguro, sino que promete una experiencia de usuario sin igual.\n\nPrepárate. El futuro está aquí, y no espera a nadie.",
+        "summary": "Resumen generado automáticamente para Tema: biometria pasada por ia. Objetivo: Generar Leads. Canales: Newsletter"
+      },
+      "id": "57f77d55-ead7-4fad-9e4b-59bc84dfdb81",
+      "date": "2026-03-10T22:59:17.634Z"
+    },
+    {
+      "campaignId": "5d84ecfd-bb84-4028-ab06-761b109be6fb",
+      "type": "article",
+      "title": "Caso de Uso: SMART Tickets en la Era de la IA: Un Caso de Uso Real",
+      "preview": "Campaña: Tema: biometria en época de ia para el ticketing. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "content": {
+        "article": "Imagina asistir a un partido de fútbol en el icónico estadio del Real Madrid F.C. mientras se realiza una verificación de identidad rápida y segura. Con el sistema SMART de OARO, las largas filas son cosa del pasado. La biometría, combinada con IA, valida tu identidad en segundos, garantizando acceso seguro e ininterrumpido.\n\nUna vez dentro, la experiencia es personalizada a través de notificaciones en tiempo real que alertan sobre ofertas de merchandising y alimentos, todo gracias al análisis de IA de tus preferencias y comportamiento. Además, cada compra añade valor a tu perfil digital mientras disfrutas el partido, convirtiéndote en parte del ecosistema.\n\nEste enfoque no solo mejora la seguridad, sino que también incrementa los ingresos para el club a través de ventas adicionales y una gestión más precisa del flujo de fans. Este es solo el comienzo de una experiencia deportiva optimizada y segura, permitida por OARO.",
+        "summary": "Caso de éxito relacionado con Tema: biometria en época de ia para el ticketing. Objetivo: Awareness (Alcance). Canales: Newsletter"
+      },
+      "id": "9eb808de-02be-4cc1-82dd-4b555284e715",
+      "date": "2026-03-10T22:50:27.448Z"
+    },
+    {
+      "campaignId": "5d84ecfd-bb84-4028-ab06-761b109be6fb",
+      "type": "social",
+      "title": "Post 3: Tema: biometria en época de ia para el ticketing. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "preview": "Trust/Case Study",
+      "content": "Con orgullo colaboramos con Real Madrid F.C. en implementar un sistema SMART de gestión de fans, alcanzando un 100% de precisión en la identificación y seguridad. Descubre cómo OARO está redefiniendo el ticketing con tecnología avanzada y construyendo confianza en la comunidad deportiva. #ConfianzaDigital #ExperienciaFan",
+      "id": "d9a3e7fe-f115-48cb-b0e1-9d1cce2da35c",
+      "date": "2026-03-10T22:50:27.447Z"
+    },
+    {
+      "campaignId": "5d84ecfd-bb84-4028-ab06-761b109be6fb",
+      "type": "social",
+      "title": "Post 2: Tema: biometria en época de ia para el ticketing. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "preview": "Solution/Educational",
+      "content": "La integración de IA y biometría es más que una tendencia; es la solución avanzada que OARO proporciona para mejorar la experiencia de los fans en eventos deportivos. Con nuestro sistema SMART, no solo garantizamos un acceso seguro, sino que también potencializamos el engagement y las ventas a través de identificación digital confiable. Aprende más sobre cómo estamos transformando el ticketing deportivo hoy. #SmartTicketing #Innovación",
+      "id": "4450ba19-e3c5-41a4-9bf6-9fdedccb2dfd",
+      "date": "2026-03-10T22:50:27.446Z"
+    },
+    {
+      "campaignId": "5d84ecfd-bb84-4028-ab06-761b109be6fb",
+      "type": "social",
+      "title": "Post 1: Tema: biometria en época de ia para el ticketing. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "preview": "Problem Awareness",
+      "content": "⚽️ ¿Sabías que la biometría junto con la IA está redefiniendo el mundo del ticketing deportivo? Imagina entrar al estadio con solo una sonrisa 😊. Descubre cómo OARO transforma la experiencia de los fans y garantiza la seguridad en cada evento deportivo. #InnovaciónEnDeporte #Biometria",
+      "id": "cfbd02b8-6bfc-48f5-a631-17214803239e",
+      "date": "2026-03-10T22:50:27.445Z"
+    },
+    {
+      "campaignId": "5d84ecfd-bb84-4028-ab06-761b109be6fb",
+      "type": "article",
+      "title": "La Revolución Biométrica en la Era de la IA: El Futuro del Ticketing Deportivo",
+      "preview": "Campaña: Tema: biometria en época de ia para el ticketing. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "content": {
+        "article": "En el mundo del entretenimiento deportivo, la experiencia del fanático ha sido transformada por la sinergia entre biometría e inteligencia artificial (IA). En este contexto, OARO, siendo un pionero en soluciones de identidad digital, se convierte en un actor crucial para redefinir el ticketing en estadios y eventos deportivos.\n\n### ¿Por qué la Biometría es Clave?\nEl reconocimiento facial está marcando una nueva era en el acceso a eventos, ofreciendo un control de acceso más seguro y eficiente. Gracias a la tecnología de OARO, basada en la biometría y los sistemas inteligentes de gestión de fans, los clubes como Real Madrid F.C. optimizan la experiencia de los usuarios desde el momento de compra hasta el ingreso al estadio.\n\n### IA y Biometría: Un Ecosistema Integrado\nEl uso de la IA permite realizar análisis avanzados sobre el comportamiento de los fans, desde su interacción hasta sus patrones de consumo, mejorando sustancialmente las campañas de marketing y la personalización de ofertas. Esta integración es vital no solo para la seguridad, sino también para la monetización y la mejora del rendimiento operativo. El sistema SMART de OARO revoluciona esto al maximizar los ingresos derivados del merchandising y las ventas de comida y bebida, asegurando una experiencia única y personalizada para cada fan.\n\n### Seguridad y Privacidad en la Era Digital\nEl sistema OARO IDENTITY® garantiza que los datos personales estén protegidos, almacenados de manera descentralizada para ofrecer la máxima privacidad y autonomía al usuario. Esto reduce el riesgo de fraude y asegura que la experiencia del fan sea tanto segura como eficiente.\n\n### Un Cambio de Paradigma\nEl uso de técnicas de identificación digital por parte de OARO no solo mejora el proceso de entrada a los eventos, sino que también redefine cómo los equipos deportivos pueden interactuar con sus fans, ofreciendo una plataforma segura para experiencias y ofertas exclusivas.\n\n### Conclusión\nLa biometría en la época de la IA está reconfigurando el mundo del ticketing deportivo y OARO se encuentra a la vanguardia. La implementación de su tecnología permite a los clubes no solo aumentar la eficiencia operativa, sino también fortalecer las relaciones con sus seguidores, ofreciendo experiencias enriquecidas y seguras. Esto sólo es el comienzo para una era en la que cada fanático se siente valorado y plenamente integrado en el corazón de la acción deportiva.",
+        "summary": "Resumen generado automáticamente para Tema: biometria en época de ia para el ticketing. Objetivo: Awareness (Alcance). Canales: Newsletter"
+      },
+      "id": "454773f4-ebb1-411e-b1f5-a792ad4740fc",
+      "date": "2026-03-10T22:50:27.444Z"
+    },
+    {
+      "campaignId": "d9b13e16-a479-4676-94c8-d0cf7b1f5c5d",
+      "type": "article",
+      "title": "Caso de Uso: How Atlético New Star Revamped Fan Engagement with OARO's SMART System",
+      "preview": "Campaña: Tema: oferta para nuevos clubes. Objetivo: Generar Leads. Canales: Blog, LinkedIn, Newsletter, Twitter",
+      "content": {
+        "article": "# How Atlético New Star Revamped Fan Engagement with OARO's SMART System\n\n## Challenge\n\nAs a burgeoning club, Atlético New Star faced significant challenges with maintaining fan engagement and securing stadium access. Their manual ticketing processes led to unauthorized entries and inadequate fan interaction, risking potential revenues and operational efficiency.\n\n## Scenario\n\nThe club realized that enhancing the fan experience was critical to its success. However, with outdated technology and lack of data-driven insights, their marketing efforts were yielding minimal returns.\n\n## Solution\n\nAtlético New Star partnered with OARO to implement the SMART Fan Management System. Utilizing biometric verification and blockchain technology, the club achieved a secure and streamlined entry process with 100% success in preventing unauthorized access. The system's analytics capabilities provided real-time data on fan behaviors, enabling personalized marketing campaigns and increased sales from merchandise and refreshments.\n\n## Outcome\n\nWithin the first season, Atlético New Star saw a noticeable revenue boost of €1.2M. Fan engagement soared, with attendance increasing by 30% thanks to tailored offers and enhanced game-day experiences. The SMART system not only secured the club's operations but also fostered a loyal fanbase and opened new sponsorship opportunities, setting the stage for long-term financial growth.\n",
+        "summary": "Caso de éxito relacionado con Tema: oferta para nuevos clubes. Objetivo: Generar Leads. Canales: Blog, LinkedIn, Newsletter, Twitter"
+      },
+      "id": "23daff26-50c4-4152-96d9-3312c7e67335",
+      "date": "2026-03-10T22:41:47.276Z"
+    },
+    {
+      "campaignId": "d9b13e16-a479-4676-94c8-d0cf7b1f5c5d",
+      "type": "social",
+      "title": "Post 3: Tema: oferta para nuevos clubes. Objetivo: Generar Leads. Canales: Blog, LinkedIn, Newsletter, Twitter",
+      "preview": "Trust/Case Study",
+      "content": "Real Madrid F.C. successfully implemented OARO's SMART Fan Management System, enhancing security and fan engagement while realizing new revenue streams. With biometric access and real-time analytics, the system helped achieve a $10M - $30M annual revenue increase. Learn how your club can benefit from a similar transformation by partnering with OARO.",
+      "id": "74c48fa3-d69c-4ad3-9e2b-10ce5897d6a2",
+      "date": "2026-03-10T22:41:47.275Z"
+    },
+    {
+      "campaignId": "d9b13e16-a479-4676-94c8-d0cf7b1f5c5d",
+      "type": "social",
+      "title": "Post 2: Tema: oferta para nuevos clubes. Objetivo: Generar Leads. Canales: Blog, LinkedIn, Newsletter, Twitter",
+      "preview": "Solution/Educational",
+      "content": "OARO is redefining fan engagement for sports clubs with its innovative SMART Fan Management System. By integrating blockchain technology and biometric verification, clubs can ensure secure access, streamline operations, and increase merchandise sales. Unlock new revenue streams and engage your fans like never before. Explore more about our advanced digital solutions for seamless ticketing and fan management today.",
+      "id": "390f33ae-c8f5-46d2-b47a-8610d538e4f8",
+      "date": "2026-03-10T22:41:47.274Z"
+    },
+    {
+      "campaignId": "d9b13e16-a479-4676-94c8-d0cf7b1f5c5d",
+      "type": "social",
+      "title": "Post 1: Tema: oferta para nuevos clubes. Objetivo: Generar Leads. Canales: Blog, LinkedIn, Newsletter, Twitter",
+      "preview": "Problem Awareness",
+      "content": "🎟️ Is your club struggling with unauthorized stadium entries and a low fan engagement rate? Discover how OARO's SMART Fan Management System is transforming the landscape of sports management by ensuring secure access and unparalleled fan experiences. Dive into the future of fan engagement with tailored insights and real-time notifications! 🚀\n#OARO #FanEngagement #SmartTicketing #SportsManagement",
+      "id": "a53da9c0-e635-4102-abb4-30c100ba032b",
+      "date": "2026-03-10T22:41:47.273Z"
+    },
+    {
+      "campaignId": "d9b13e16-a479-4676-94c8-d0cf7b1f5c5d",
+      "type": "article",
+      "title": "Unlock the Future of Fan Engagement with OARO's SMART Fan Management System",
+      "preview": "Campaña: Tema: oferta para nuevos clubes. Objetivo: Generar Leads. Canales: Blog, LinkedIn, Newsletter, Twitter",
+      "content": {
+        "article": "# Unlock the Future of Fan Engagement with OARO's SMART Fan Management System\n\nIn the dynamic world of sports management, sustaining fan engagement while ensuring operational efficiency is paramount. OARO, established as a leader in scalable digital identity management and seamless smart ticketing solutions, offers an unmatched SMART Fan Management System designed to revolutionize club memberships and game-day experiences. This article explores how integrating this innovative system can drive success for new clubs.\n\n## Revolutionizing Access with High-Tech Security\n\nAt the heart of OARO's SMART Fan Management System is robust access control backed by biometric verification and blockchain technology. With a 100% success rate in denying unauthorized access, clubs can ensure that only verified fans enter stadiums. This security measure not only prevents fraud but streamlines entry processes for both fans and personnel, reducing operational strain.\n\n## Enhanced Fan Engagement Through Data-Driven Insights\n\nFan engagement is critical in today’s sports environment. With OARO's system, clubs can track fan activities and purchases in real-time. Geo-targeted push notifications enhance fan interactions and provide sponsors with valuable data, moving beyond the traditional logo display to deeper, data-driven engagement strategies. This translates into maximized revenue streams from merchandising and food/beverage sales, offering clubs a comfortable margin for growth.\n\n## Digital Ticketing - Welcome to the Future\n\nTraditional paper tickets are a thing of the past. OARO’s SMART Ticketing converts standard tickets into digital assets via a user-friendly app, fortified with biometric authentication and dynamic QR codes. This not only enhances security but also offers fans the convenience of managing their tickets digitally, even allowing seamless transfers within defined parameters.\n\n## Amplifying Revenue Opportunities\n\nOARO's system identifies new revenue channels through detailed analytics and personalized marketing campaigns. Clubs can exploit the 'Member Ticket Exchange' for managing unused tickets and secure resale through a proprietary platform, capturing service fees of 10-15% per transaction. Furthermore, by understanding fan engagement behaviors, clubs can create tailored experiences that encourage further purchases, bundled offers, and loyalty incentives.\n\n## Comprehensive Reporting and Legal Compliance\n\nOARO's fan management solution includes sophisticated performance tracking for campaigns and sponsorships, ensuring accurate and actionable insights for marketing teams. Compliance is also pivotal; the system adheres to rigorous legal frameworks, managing over 200 legal documents to validate all interactions and accesses.\n\n## Scale and Adapt with OARO’s Expertise\n\nFounded in 2017, OARO has grown rapidly across North America, Europe, Latin America, and the Middle East, handling systems for major clients, including Real Madrid F.C. The company's decentralized identity solutions improve security, reduce fraud, and provide a seamless experience for both clubs and fans. By partnering with OARO, clubs can take advantage of a proven track record and cutting-edge technology.\n\nIn conclusion, by adopting the SMART Fan Management System, clubs can optimize fan engagement, streamline operations, and significantly increase potential revenue, positioning themselves as pioneers in the industry. Let OARO guide your club into the future of smart ticketing and fan management.\n",
+        "summary": "Resumen generado automáticamente para Tema: oferta para nuevos clubes. Objetivo: Generar Leads. Canales: Blog, LinkedIn, Newsletter, Twitter"
+      },
+      "id": "8c367bfe-b80d-4fb5-ad0e-a70eee05115b",
+      "date": "2026-03-10T22:41:47.271Z"
+    },
+    {
+      "campaignId": "1e716e6c-5933-4ab2-a181-8bfb000a9e18",
+      "type": "article",
+      "title": "Caso de Uso: SOLUCIÓN DE TICKETING BIOMÉTRICO PARA REAL MADRID C.F.",
+      "preview": "Campaña: Tema: biometria en época de ia para el ticketing. Objetivo: Generar Leads. Canales: Blog, LinkedIn",
+      "content": "### Desafío\nReal Madrid C.F., un club de renombre mundial, enfrentaba problemas de seguridad y logística en la gestión de acceso a su estadio. El proceso de verificación tradicional era lento, llevando a grandes filas y frustración entre los asistentes.\n\n### Solución\nImplementamos el Sistema SMART de Gestión de Fans utilizando la tecnología de OARO. Cada fan fue provisto de un ticket digital verificado biométricamente. Este sistema escanea el rostro del individuo al llegar al estadio, corroborando su identidad al instante con la base de datos, eliminando la posibilidad de fraude. \n\n### Resultados\n- Reducción del tiempo de entrada en un 60%.\n- Cero incidencias de acceso no autorizado reportadas.\n- Aumento del 20% en ventas de comida y merchandising durante los eventos, gracias a las notificaciones personalizadas y ofertas especiales enviadas a los asistentes.",
+      "id": "94d91d5c-8d77-4ea0-a86e-2bfd252ef642",
+      "date": "2026-03-10T22:36:13.369Z"
+    },
+    {
+      "campaignId": "1e716e6c-5933-4ab2-a181-8bfb000a9e18",
+      "type": "social",
+      "title": "Post 3: Tema: biometria en época de ia para el ticketing. Objetivo: Generar Leads. Canales: Blog, LinkedIn",
+      "preview": "Trust/Case Study",
+      "content": "Caso de estudio: Real Madrid F.C. implementa la tecnología SMART de OARO para gestionar el acceso de fans con biometría. Resultado: seguridad optimizada y aumento significativo en ingresos por merchandising y servicios. Descubre más sobre la implementación y sus beneficios: [URL de la publicación]",
+      "id": "687073ea-ad9e-4b1c-883f-b6bf6662e8a2",
+      "date": "2026-03-10T22:36:13.368Z"
+    },
+    {
+      "campaignId": "1e716e6c-5933-4ab2-a181-8bfb000a9e18",
+      "type": "social",
+      "title": "Post 2: Tema: biometria en época de ia para el ticketing. Objetivo: Generar Leads. Canales: Blog, LinkedIn",
+      "preview": "Solution/Educational",
+      "content": "La integración de soluciones de ticketing con biometría y IA no solo mejora la seguridad, sino que también optimiza la gestión de eventos. La tecnología de OARO permite la validación digital de identidades, asegurando una experiencia rápida y segura. Aprende más sobre cómo nuestra plataforma puede transformar tu evento: [URL de la publicación]",
+      "id": "646db873-18a2-422f-9b30-27be8e121235",
+      "date": "2026-03-10T22:36:13.368Z"
+    },
+    {
+      "campaignId": "1e716e6c-5933-4ab2-a181-8bfb000a9e18",
+      "type": "social",
+      "title": "Post 1: Tema: biometria en época de ia para el ticketing. Objetivo: Generar Leads. Canales: Blog, LinkedIn",
+      "preview": "Problem Awareness",
+      "content": "🎟️ La era del digital ticketing ha llegado y con ella vienen grandes retos y oportunidades. ¿Está tu compañía preparada para evitar el fraude y mejorar la experiencia del usuario? 🌟 Descubre cómo la biometría y la IA están revolucionando la manera en que gestionamos los eventos. #Biometria #Innovación #EventoSeguro",
+      "id": "59662efe-2b6b-4fac-98f6-2073be739a43",
+      "date": "2026-03-10T22:36:13.367Z"
+    },
+    {
+      "campaignId": "1e716e6c-5933-4ab2-a181-8bfb000a9e18",
+      "type": "article",
+      "title": "Reinventando el Ticketing en Tiempos de IA: La Biometría como Aliado",
+      "preview": "Campaña: Tema: biometria en época de ia para el ticketing. Objetivo: Generar Leads. Canales: Blog, LinkedIn",
+      "content": "### Introducción\n\nEn un mundo donde la digitalización avanza a pasos agigantados, las tecnologías emergentes como la inteligencia artificial y la biometría están revolucionando múltiples sectores. Uno de los más beneficiados es el del ticketing. La adopción de soluciones de ticketing con validación biométrica está transformando no solo cómo asistimos a eventos masivos, sino también cómo gestionamos nuestras identidades digitales. Empresas como OARO son pioneras en este ámbito, ofreciendo plataformas de gestión de identidad que son seguras, escalables y eficientes.\n\n### La Biometría como Pilar\n\nLa biometría, conjuntamente con IA, ofrece un acceso controlado mucho más seguro y eficiente. Estos sistemas son capaces de identificar de manera precisa y rápida a los individuos mediante el análisis de sus características físicas. Además de mejorar la experiencia del usuario, este tipo de tecnología combate el fraude y agiliza el acceso a grandes eventos.\n\n#### Implementaciones Sobresalientes\n\nLa colaboración de OARO con entidades como el Real Madrid F.C. y la Real Federación Española de Fútbol ilustra claramente cómo las tecnologías avanzadas están siendo aplicadas. El sistema SMART de gestión de fans implementa control de acceso biométrico para asegurar que solo personas autorizadas puedan entrar a los estadios. Este avance no solo mejora la experiencia del usuario, sino que también ofrece valiosas oportunidades de generación de ingresos a través del mercadeo y la venta de productos y servicios relacionados.\n\n### Infraestructura y Seguridad\n\nLa infraestructura tecnológica detrás de estas innovaciones no es trivial. La integración con sistemas preexistentes como plataformas de venta de boletos y CRMs es crítica para el éxito. Los sistemas de OARO aseguran que cada boleto sea un activo digital único, protegido por la blockchain, lo cual evita la duplicación y fraude. Además, almacenar datos biometricos en los dispositivos personales de los usuarios, y no en un servidor central, mitiga los riesgos de privacidad.\n\n### Beneficios Económicos\n\nLas organizaciones que adoptan soluciones de ticketing basadas en biometría e IA no solo mejoran la experiencia del usuario, sino que también obtienen beneficios económicos significativos. Se estima que los clubes deportivos pueden generar entre 10 y 30 millones de euros anuales gracias a la optimización de la gestión de entradas y nuevos canales de monetización.\n\n### Conclusión\n\nEl ticketing biométrico representa un cambio de paradigma para la industria de los eventos. Al combinar la biometría con la IA y sistemas de gestión de identidad robustos, las organizaciones pueden ofrecer experiencias personalizadas y seguras a sus usuarios, al tiempo que se aseguran de maximizar sus ingresos y proteger la integridad de sus eventos. Esta tecnología se perfila no solo como una herramienta del presente, sino como una innovación que define el futuro del ticketing.",
+      "id": "126eb156-4262-4eb8-9a1b-06bd5a929ea3",
+      "date": "2026-03-10T22:36:13.365Z"
+    },
+    {
       "campaignId": "b45b1afe-c7ad-4f6d-bd38-8db9d30d8176",
       "type": "article",
       "title": "Caso de Uso: Mejorando la Experiencia del Aficionado en el Estadio Santiago Bernabéu",

@@ -14,10 +14,14 @@ import {
   Link as LinkIcon, 
   Sparkles,
   ChevronDown,
-  ChevronUp,
   Eye,
   ExternalLink,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Edit3,
+  Save,
+  XIcon,
+  ChevronUp,
+  MessageSquare
 } from "lucide-react";
 
 export default function KnowledgeBasePage() {
@@ -31,6 +35,33 @@ export default function KnowledgeBasePage() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [expandedDocs, setExpandedDocs] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState({ text: "", type: "" });
+  
+  // Edit ADN State
+  const [editingDocId, setEditingDocId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+
+  const startEditing = (doc: any) => {
+    setEditingDocId(doc.id);
+    try {
+      const parsed = JSON.parse(doc.extractedContext);
+      setEditForm(parsed);
+    } catch (e) {
+      setEditForm({ raw: doc.extractedContext });
+    }
+  };
+
+  const handleSaveAdn = async (docId: string) => {
+    try {
+      const updatedContextStr = JSON.stringify(editForm);
+      setDocuments(docs => docs.map(d => d.id === docId ? { ...d, extractedContext: updatedContextStr } : d));
+      // MVP Mock: En un entorno real, hacer un fetch PUT/PATCH.
+      // await fetch(`/api/knowledge/update`, { method: 'POST', body: JSON.stringify({id: docId, context: editForm}) })
+      setMessage({ text: "Cerebro Corporativo actualizado con éxito", type: "success" });
+      setEditingDocId(null);
+    } catch (e) {
+      setMessage({ text: "Error guardando ADN", type: "error" });
+    }
+  };
 
   const toggleExpand = (id: string) => {
     setExpandedDocs((prev) => {
@@ -359,58 +390,139 @@ export default function KnowledgeBasePage() {
 
                     {doc.status === 'Analizado' && doc.extractedContext && expandedDocs.has(doc.id) && (
                       <div className="pt-6 border-t border-[#EBE4DC] animate-in slide-in-from-top-4 duration-500">
-                        {(() => {
-                          try {
-                            const data = JSON.parse(doc.extractedContext);
-                            if (data.error) throw new Error("Fallback to raw");
-                            return (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-white p-6 rounded-3xl border border-[#EBE4DC] shadow-sm">
-                                  <h4 className="text-xs font-black uppercase tracking-widest text-[#FFBD1B] mb-4">Empresa</h4>
-                                  <div className="space-y-3">
-                                    {data.empresa?.propuesta_valor && <div><span className="text-[10px] uppercase font-bold text-[#8E8B88]">Propuesta:</span> <p className="text-sm font-medium">{data.empresa.propuesta_valor}</p></div>}
-                                    {data.empresa?.sector && <div><span className="text-[10px] uppercase font-bold text-[#8E8B88]">Sector:</span> <p className="text-sm font-medium">{data.empresa.sector}</p></div>}
+                        {editingDocId === doc.id ? (
+                          // ---------------- EDIT MODE ----------------
+                          <div className="space-y-6">
+                            <div className="flex justify-between items-center mb-6">
+                              <h4 className="text-sm font-black uppercase tracking-widest text-[#1A1B1E] flex items-center gap-2"><Edit3 size={16}/> Editando Cerebro Corporativo</h4>
+                              <div className="flex gap-3">
+                                <button onClick={() => setEditingDocId(null)} className="px-5 py-2.5 bg-white border border-[#EBE4DC] text-[#1A1B1E] rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-[#F9F6F2] transition-colors flex items-center gap-2">
+                                  <XIcon size={14}/> Cancelar
+                                </button>
+                                <button onClick={() => handleSaveAdn(doc.id)} className="px-5 py-2.5 bg-[#1A1B1E] text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-[#FFBD1B] hover:text-[#1A1B1E] transition-colors flex items-center gap-2 shadow-lg">
+                                  <Save size={14}/> Guardar Cambios
+                                </button>
+                              </div>
+                            </div>
+                            
+                            {editForm.raw ? (
+                              <textarea 
+                                value={editForm.raw} 
+                                onChange={(e)=>setEditForm({raw: e.target.value})} 
+                                className="w-full h-64 p-6 bg-white border border-[#EBE4DC] rounded-3xl outline-none focus:border-[#FFBD1B] font-mono text-sm leading-relaxed"
+                              />
+                            ) : (
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="space-y-6">
+                                  {/* EMPRESA */}
+                                  <div className="bg-white p-6 rounded-3xl border border-[#EBE4DC] shadow-sm">
+                                    <h5 className="text-[10px] font-black uppercase tracking-widest text-[#FFBD1B] mb-4">Empresa (Propuesta de Valor)</h5>
+                                    <textarea 
+                                      value={editForm.empresa?.propuesta_valor || ''} 
+                                      onChange={(e)=>setEditForm({...editForm, empresa: {...editForm.empresa, propuesta_valor: e.target.value}})}
+                                      className="w-full min-h-[100px] p-4 bg-[#F9F6F2] border border-[#EBE4DC] rounded-2xl outline-none focus:border-[#FFBD1B] font-medium text-sm text-[#1A1B1E]"
+                                    />
+                                  </div>
+                                  
+                                  {/* DIFERENCIAL COMPETITIVO (NUEVO) */}
+                                  <div className="bg-white p-6 rounded-3xl border border-[#EBE4DC] shadow-sm">
+                                    <h5 className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-4 flex items-center gap-2"><Sparkles size={12}/> Diferencial Competitivo</h5>
+                                    <textarea 
+                                      placeholder="¿Qué nos hace únicos respecto a la competencia?"
+                                      value={editForm.diferencial_competitivo || ''} 
+                                      onChange={(e)=>setEditForm({...editForm, diferencial_competitivo: e.target.value})}
+                                      className="w-full min-h-[100px] p-4 bg-[#F9F6F2] border border-[#EBE4DC] rounded-2xl outline-none focus:border-indigo-500 font-medium text-sm text-[#1A1B1E]"
+                                    />
                                   </div>
                                 </div>
-                                <div className="bg-white p-6 rounded-3xl border border-[#EBE4DC] shadow-sm">
-                                  <h4 className="text-xs font-black uppercase tracking-widest text-emerald-500 mb-4">Audiencia</h4>
-                                  <div className="space-y-3">
-                                    {data.audiencia?.perfil_cliente && <div><span className="text-[10px] uppercase font-bold text-[#8E8B88]">Perfil:</span> <p className="text-sm font-medium">{data.audiencia.perfil_cliente}</p></div>}
-                                    {data.audiencia?.problemas_principales?.length > 0 && <div><span className="text-[10px] uppercase font-bold text-[#8E8B88]">Problemas Reales:</span> <ul className="list-disc list-inside text-sm font-medium text-rose-600">{data.audiencia.problemas_principales.map((p:string,i:number)=><li key={i}>{p}</li>)}</ul></div>}
-                                    {data.audiencia?.necesidades?.length > 0 && <div><span className="text-[10px] uppercase font-bold text-[#8E8B88]">Necesidades:</span> <ul className="list-disc list-inside text-sm font-medium text-emerald-600">{data.audiencia.necesidades.map((n:string,i:number)=><li key={i}>{n}</li>)}</ul></div>}
+                                
+                                <div className="space-y-6">
+                                  {/* AUDIENCIA */}
+                                  <div className="bg-white p-6 rounded-3xl border border-[#EBE4DC] shadow-sm">
+                                    <h5 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-4">Audiencia (Perfil)</h5>
+                                    <textarea 
+                                      value={editForm.audiencia?.perfil_cliente || ''} 
+                                      onChange={(e)=>setEditForm({...editForm, audiencia: {...editForm.audiencia, perfil_cliente: e.target.value}})}
+                                      className="w-full min-h-[100px] p-4 bg-[#F9F6F2] border border-[#EBE4DC] rounded-2xl outline-none focus:border-emerald-500 font-medium text-sm text-[#1A1B1E]"
+                                    />
                                   </div>
-                                </div>
-                                <div className="bg-white p-6 rounded-3xl border border-[#EBE4DC] shadow-sm">
-                                  <h4 className="text-xs font-black uppercase tracking-widest text-blue-500 mb-4">Producto</h4>
-                                  <div className="space-y-3">
-                                    {data.producto?.beneficios?.length > 0 && <div><span className="text-[10px] uppercase font-bold text-[#8E8B88]">Beneficios:</span> <ul className="list-disc list-inside text-sm font-medium text-blue-600">{data.producto.beneficios.map((b:string,i:number)=><li key={i}>{b}</li>)}</ul></div>}
-                                    {data.producto?.funcionalidades?.length > 0 && <div><span className="text-[10px] uppercase font-bold text-[#8E8B88]">Funcionalidades:</span> <ul className="list-disc list-inside text-sm font-medium">{data.producto.funcionalidades.map((f:string,i:number)=><li key={i}>{f}</li>)}</ul></div>}
-                                  </div>
-                                </div>
-                                <div className="bg-white p-6 rounded-3xl border border-[#EBE4DC] shadow-sm">
-                                  <h4 className="text-xs font-black uppercase tracking-widest text-purple-500 mb-4">Casos de Uso</h4>
-                                  <div className="space-y-3">
-                                    {data.casos_uso?.length > 0 ? (
-                                      <ul className="space-y-2">
-                                        {data.casos_uso.map((c:any,i:number)=>(
-                                          <li key={i} className="text-sm font-medium bg-[#F9F6F2] p-3 rounded-xl border border-[#EBE4DC]">
-                                            <span className="font-bold text-[#1A1B1E]">{c.sector || 'General'}:</span> {c.aplicacion}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    ) : <p className="text-sm font-medium text-[#8E8B88]">No detectados</p>}
+                                  
+                                  {/* TONO DE MARCA (NUEVO) */}
+                                  <div className="bg-white p-6 rounded-3xl border border-[#EBE4DC] shadow-sm">
+                                    <h5 className="text-[10px] font-black uppercase tracking-widest text-rose-500 mb-4 flex items-center gap-2"><MessageSquare size={12}/> Tono de Marca</h5>
+                                    <textarea 
+                                      placeholder="Ej: Autoridad profesional, cercano, directo, provocador..."
+                                      value={editForm.tono_marca || ''} 
+                                      onChange={(e)=>setEditForm({...editForm, tono_marca: e.target.value})}
+                                      className="w-full min-h-[100px] p-4 bg-[#F9F6F2] border border-[#EBE4DC] rounded-2xl outline-none focus:border-rose-500 font-medium text-sm text-[#1A1B1E]"
+                                    />
                                   </div>
                                 </div>
                               </div>
-                            );
-                          } catch (e) {
-                            return (
-                              <div className="text-sm text-[#1A1B1E] leading-relaxed font-medium bg-white p-10 rounded-[2.5rem] border border-[#EBE4DC]/50 shadow-inner whitespace-pre-wrap">
-                                  {doc.extractedContext}
-                              </div>
-                            );
-                          }
-                        })()}
+                            )}
+                          </div>
+                        ) : (
+                          // ---------------- READ MODE ----------------
+                          <div>
+                            <div className="flex justify-end mb-6">
+                               <button onClick={() => startEditing(doc)} className="px-5 py-2.5 bg-white border border-[#EBE4DC] text-[#1A1B1E] rounded-xl font-black text-[9px] uppercase tracking-widest hover:border-[#1A1B1E] transition-colors flex items-center gap-2 shadow-sm">
+                                 <Edit3 size={12}/> Editar Matriz
+                               </button>
+                            </div>
+                            {(() => {
+                              try {
+                                const data = JSON.parse(doc.extractedContext);
+                                if (data.error) throw new Error("Fallback to raw");
+                                return (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-white p-6 rounded-3xl border border-[#EBE4DC] shadow-sm">
+                                      <h4 className="text-xs font-black uppercase tracking-widest text-[#FFBD1B] mb-4">Empresa & Marca</h4>
+                                      <div className="space-y-4">
+                                        {data.empresa?.propuesta_valor && <div><span className="text-[10px] uppercase font-bold text-[#8E8B88]">Propuesta:</span> <p className="text-sm font-medium">{data.empresa.propuesta_valor}</p></div>}
+                                        {data.diferencial_competitivo && <div><span className="text-[10px] uppercase font-bold text-indigo-500">Diferencial Único:</span> <p className="text-sm font-bold text-[#1A1B1E] bg-indigo-50 p-3 rounded-xl border border-indigo-100">{data.diferencial_competitivo}</p></div>}
+                                        {data.tono_marca && <div><span className="text-[10px] uppercase font-bold text-rose-500">Tono de Voz:</span> <p className="text-sm font-bold text-[#1A1B1E] bg-rose-50 p-3 rounded-xl border border-rose-100">{data.tono_marca}</p></div>}
+                                      </div>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-3xl border border-[#EBE4DC] shadow-sm">
+                                      <h4 className="text-xs font-black uppercase tracking-widest text-emerald-500 mb-4">Audiencia</h4>
+                                      <div className="space-y-3">
+                                        {data.audiencia?.perfil_cliente && <div><span className="text-[10px] uppercase font-bold text-[#8E8B88]">Perfil:</span> <p className="text-sm font-medium">{data.audiencia.perfil_cliente}</p></div>}
+                                        {data.audiencia?.problemas_principales?.length > 0 && <div><span className="text-[10px] uppercase font-bold text-[#8E8B88]">Problemas Reales:</span> <ul className="list-disc list-inside text-sm font-medium text-rose-600">{data.audiencia.problemas_principales.map((p:string,i:number)=><li key={i}>{p}</li>)}</ul></div>}
+                                      </div>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-3xl border border-[#EBE4DC] shadow-sm">
+                                      <h4 className="text-xs font-black uppercase tracking-widest text-blue-500 mb-4">Producto</h4>
+                                      <div className="space-y-3">
+                                        {data.producto?.beneficios?.length > 0 && <div><span className="text-[10px] uppercase font-bold text-[#8E8B88]">Beneficios:</span> <ul className="list-disc list-inside text-sm font-medium text-blue-600">{data.producto.beneficios.map((b:string,i:number)=><li key={i}>{b}</li>)}</ul></div>}
+                                        {data.producto?.funcionalidades?.length > 0 && <div><span className="text-[10px] uppercase font-bold text-[#8E8B88]">Funcionalidades:</span> <ul className="list-disc list-inside text-sm font-medium">{data.producto.funcionalidades.map((f:string,i:number)=><li key={i}>{f}</li>)}</ul></div>}
+                                      </div>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-3xl border border-[#EBE4DC] shadow-sm">
+                                      <h4 className="text-xs font-black uppercase tracking-widest text-purple-500 mb-4">Casos de Uso</h4>
+                                      <div className="space-y-3">
+                                        {data.casos_uso?.length > 0 ? (
+                                          <ul className="space-y-2">
+                                            {data.casos_uso.map((c:any,i:number)=>(
+                                              <li key={i} className="text-sm font-medium bg-[#F9F6F2] p-3 rounded-xl border border-[#EBE4DC]">
+                                                <span className="font-bold text-[#1A1B1E]">{c.sector || 'General'}:</span> {c.aplicacion}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        ) : <p className="text-sm font-medium text-[#8E8B88]">No detectados</p>}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              } catch (e) {
+                                return (
+                                  <div className="text-sm text-[#1A1B1E] leading-relaxed font-medium bg-white p-10 rounded-[2.5rem] border border-[#EBE4DC]/50 shadow-inner whitespace-pre-wrap">
+                                      {doc.extractedContext}
+                                  </div>
+                                );
+                              }
+                            })()}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
