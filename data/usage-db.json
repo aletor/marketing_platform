@@ -1252,6 +1252,20 @@
       "inputTokens": 4210,
       "outputTokens": 258,
       "cost": 0.0007863
+    },
+    {
+      "timestamp": "2026-03-10T23:07:57.245Z",
+      "model": "gpt-5.2",
+      "inputTokens": 4210,
+      "outputTokens": 277,
+      "cost": 0.0007977
+    },
+    {
+      "timestamp": "2026-03-10T23:07:57.892Z",
+      "model": "gpt-5.2",
+      "inputTokens": 4210,
+      "outputTokens": 267,
+      "cost": 0.0007917
     }
   ]
 }
