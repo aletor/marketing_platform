@@ -30,6 +30,7 @@ export async function duplicateLibraryItemAction(id: string) {
     if (!itemToDuplicate) throw new Error("Item not found");
 
     const duplicatedItem = addToGeneratedDb({
+      campaignId: itemToDuplicate.campaignId,
       type: itemToDuplicate.type,
       title: `${itemToDuplicate.title} (Copia)`,
       preview: itemToDuplicate.preview,
@@ -56,5 +57,20 @@ export async function updateLibraryItemAction(id: string, newContent: any, newTi
     return { success: true, item: db.items[itemIndex] };
   } catch (error) {
     return { success: false, error: "Failed to update item" };
+  }
+}
+
+export async function updateLibraryItemCampaignAction(id: string, newCampaignId: string) {
+  try {
+    const db = getGeneratedDb();
+    const itemIndex = db.items.findIndex(item => item.id === id);
+    if (itemIndex === -1) throw new Error("Item not found");
+
+    db.items[itemIndex].campaignId = newCampaignId;
+    
+    saveGeneratedDb(db);
+    return { success: true, item: db.items[itemIndex] };
+  } catch (error) {
+    return { success: false, error: "Failed to update item campaign" };
   }
 }

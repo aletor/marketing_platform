@@ -105,19 +105,19 @@ export default function CampaignDetailsPage() {
           onClick={() => setActiveTab('overview')}
           className={`px-8 py-4 font-black text-[10px] uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeTab === 'overview' ? 'border-[#1A1B1E] text-[#1A1B1E]' : 'border-transparent text-[#8E8B88] hover:text-[#1A1B1E]'}`}
         >
-          Resumen Estratégico
+          1️⃣ Estrategia
         </button>
         <button 
           onClick={() => setActiveTab('assets')}
           className={`px-8 py-4 font-black text-[10px] uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeTab === 'assets' ? 'border-[#FFBD1B] text-[#1A1B1E]' : 'border-transparent text-[#8E8B88] hover:text-[#1A1B1E]'}`}
         >
-          Biblioteca de Campaña
+          2️⃣ Contenido
         </button>
         <button 
           onClick={() => setActiveTab('calendar')}
           className={`px-8 py-4 font-black text-[10px] uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeTab === 'calendar' ? 'border-blue-500 text-[#1A1B1E]' : 'border-transparent text-[#8E8B88] hover:text-[#1A1B1E]'}`}
         >
-          Calendario Privado
+          3️⃣ Calendario
         </button>
       </div>
 
@@ -157,7 +157,25 @@ export default function CampaignDetailsPage() {
 
       {/* TAB: ASSETS */}
       {activeTab === 'assets' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in slide-in-from-bottom-4 duration-500">
+        <div className="animate-in slide-in-from-bottom-4 duration-500 space-y-8">
+          
+          {/* Quick Generators for this Campaign */}
+          <div className="flex flex-wrap gap-4 p-6 bg-[#F9F6F2] border border-[#EBE4DC] rounded-[2rem]">
+            <div className="w-full mb-2">
+               <h4 className="text-[10px] font-black uppercase tracking-widest text-[#8E8B88]">Añadir Nuevo Contenido a la Campaña</h4>
+            </div>
+            <Link href={`/article?campaignId=${id}`} className="px-6 py-3 bg-white border border-[#EBE4DC] text-[#1A1B1E] rounded-xl font-black text-[9px] uppercase tracking-widest hover:border-[#1A1B1E] transition-all flex items-center gap-2 shadow-sm">
+              <FileText size={14} className="text-[#FFBD1B]" /> Crear Artículo
+            </Link>
+            <Link href={`/social?campaignId=${id}`} className="px-6 py-3 bg-white border border-[#EBE4DC] text-[#1A1B1E] rounded-xl font-black text-[9px] uppercase tracking-widest hover:border-[#1A1B1E] transition-all flex items-center gap-2 shadow-sm">
+              <MessageSquare size={14} className="text-blue-500" /> Crear Post
+            </Link>
+            <Link href={`/image?campaignId=${id}`} className="px-6 py-3 bg-white border border-[#EBE4DC] text-[#1A1B1E] rounded-xl font-black text-[9px] uppercase tracking-widest hover:border-[#1A1B1E] transition-all flex items-center gap-2 shadow-sm">
+              <ImageIcon size={14} className="text-emerald-500" /> Crear Imagen
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
            {assets.length === 0 ? (
              <div className="col-span-full py-20 text-center text-[#8E8B88] font-bold">No hay activos generados para esta campaña.</div>
            ) : (
@@ -188,6 +206,7 @@ export default function CampaignDetailsPage() {
               </div>
              ))
            )}
+          </div>
         </div>
       )}
 

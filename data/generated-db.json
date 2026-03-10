@@ -1,6 +1,96 @@
 {
   "items": [
     {
+      "campaignId": "b45b1afe-c7ad-4f6d-bd38-8db9d30d8176",
+      "type": "article",
+      "title": "Caso de Uso: Mejorando la Experiencia del Aficionado en el Estadio Santiago Bernabéu",
+      "preview": "Campaña: tutoriales de uso",
+      "content": "### Escenario\nDurante un partido en el Santiago Bernabéu, el sistema tradicional de ticketing presentaba retos significativos con largas filas y la incapacidad de verificar con precisión las identidades de los asistentes. Esto generaba frustración tanto para los aficionados como para el personal del estadio.\n\n### Desafío\nEl principal reto era cómo autenticar rápidamente a decenas de miles de aficionados de manera eficiente sin comprometer la seguridad, además de incrementar el engagement de los aficionados dentro del estadio.\n\n### Solución\nImplementamos el **SMART Fan Management System**. Cada aficionado completó un proceso de verificación previa usando el **OARO Identity®**, transformando sus tickets en identidades digitales seguras verificadas mediante reconocimiento facial al entrar en el estadio. Esto no solo aseguró acceso libre de fraudes, sino que también permitió ofertas en tiempo real durante el juego, enriqueciendo la experiencia general del aficionado y aumentando las ventas dentro del estadio.",
+      "id": "52b8336f-c3db-4076-8c46-fbe8bb0b9902",
+      "date": "2026-03-10T20:49:22.122Z"
+    },
+    {
+      "campaignId": "b45b1afe-c7ad-4f6d-bd38-8db9d30d8176",
+      "type": "social",
+      "title": "Post 3: tutoriales de uso",
+      "preview": "Trust/Case Study",
+      "content": "Vea cómo Real Madrid F.C. transformó su fan engagement con la implementación del **SMART Fan Management System**. Desde controles de acceso biométricos hasta notificaciones en tiempo real y análisis sofisticados, este sistema demuestra cómo la innovación y la tecnología se entrelazan para maximizar las experiencias y los ingresos. Más detalles en nuestro estudio de caso completo. #casestudy #innovation #realMadrid",
+      "id": "ebfafe76-566b-4809-b174-36163bc08121",
+      "date": "2026-03-10T20:49:22.121Z"
+    },
+    {
+      "campaignId": "b45b1afe-c7ad-4f6d-bd38-8db9d30d8176",
+      "type": "social",
+      "title": "Post 2: tutoriales de uso",
+      "preview": "Solution/Educational",
+      "content": "El **Smart Fan Management System** no solo segura entradas y controla acceso, sino que también personaliza ofertas para incrementar el engagement del aficionado más allá del estadio. Con Real Madrid F.C., implementamos tecnología que optimiza la experiencia del usuario, maximizando la eficiencia y reduciendo el fraude. #smartstadium #fanengagement #technology",
+      "id": "3bd564a0-2edf-46ab-a32f-a9a0907ba715",
+      "date": "2026-03-10T20:49:22.120Z"
+    },
+    {
+      "campaignId": "b45b1afe-c7ad-4f6d-bd38-8db9d30d8176",
+      "type": "social",
+      "title": "Post 1: tutoriales de uso",
+      "preview": "Problem Awareness",
+      "content": "🚫¿Sabías que la mayoría de los eventos deportivos aún sufren por accesos no autorizados y fraude de boletos? 🤔 Con un sistema como el **SMART Fan Management**, los clubes pueden transformar estas desafiante situaciones en oportunidades para crear una experiencia segura y personalizada. 💼#sportssecurity #fanexperience #digitaltransformation",
+      "id": "a57068f1-e9e6-4123-8833-63048e42d9ec",
+      "date": "2026-03-10T20:49:22.119Z"
+    },
+    {
+      "campaignId": "b45b1afe-c7ad-4f6d-bd38-8db9d30d8176",
+      "type": "article",
+      "title": "Cómo el Sistema SMART Management Transforma la Experiencia de los Aficionados en los Estadios",
+      "preview": "Campaña: tutoriales de uso",
+      "content": "# Introducción\nEn la era digital, la interacción de los aficionados con sus equipos de fútbol favoritos se ha transformado radicalmente. Con sistemas avanzados como el **SMART Fan Management System**, clubes como el **Real Madrid F.C.** están mejorando la experiencia de los aficionados no solo dentro del estadio, sino también en su interacción diaria con el club. Este artículo explorará las características avanzadas de este sistema y cómo asegura tanto la seguridad como la satisfacción del aficionado.\n\n## Características del Sistema SMART\n### 1. Control de Acceso\nEl sistema SMART utiliza tecnologías avanzadas de reconocimiento biométrico para autenticar la identidad de los asistentes, asegurando un **100% de éxito en denegar acceso a individuos no autorizados**. Esta medida no solo aumenta la seguridad, sino que hace el proceso de entrada más fluido.\n\n### 2. Compromiso del Aficionado\nMediante el seguimiento de actividades y compras de los aficionados, el sistema puede ejecutar **campañas personalizadas** usando integración con CRM. Ofertas A/B testing son posibles, maximizando los ingresos por merchandising y alimentos/bebidas.\n\n### 3. Notificaciones en Tiempo Real\nLa capacidad de enviar **notificaciones geo-dirigidas** permite a los patrocinadores interactuar con los aficionados de manera más personalizada. Esto proporciona una rica fuente de datos más allá de la exposición de marca tradicional.\n\n## Innovaciones en Ticketing Digital\nEl **ticketing inteligente** convierte las entradas estándar en tiket SMART, aumentando la seguridad a través de identificaciones digitales y reconocimiento facial, lo que garantiza la autenticación al momento del ingreso.\n\n## Oportunidades de Ingresos\nLa integración completa del sistema no solo mejora las experiencias de los aficionados, sino que también representa un **aumento proyectado de ingresos anuales de entre €10M a €30M** debido a una mejor gestión de entradas no utilizadas y reventa segura.\n\n## Conclusión\nEl Sistema SMART no solo mejora la experiencia del aficionado al ofrecer una entrada al estadio más fluida y segura, sino que también ofrece oportunidades únicas de personalización y monetización para los clubes. Con la integración de análisis de datos e interacciones personalizadas, el camino hacia el futuro del fútbol se vuelve más brillante y dirigido hacia el aficionado.\n",
+      "id": "23a1274c-7c24-41b4-ac7c-58f4c3cdb493",
+      "date": "2026-03-10T20:49:22.118Z"
+    },
+    {
+      "campaignId": "27f292f2-7982-424b-aa3c-f429471db598",
+      "type": "article",
+      "title": "Caso de Uso: Real Madrid F.C. Enhances Security and Revenue with SMART Ticketing",
+      "preview": "Campaña: lead directivos deportivos",
+      "content": "### Challenge\nReal Madrid F.C. sought to increase stadium security while enhancing fans' matchday experience. They faced issues with unauthorized entries and fraudulent tickets, leading to potential revenue losses.\n\n### Solution\nBy partnering with OARO Corporate and implementing the SMART Fan Management System, Real Madrid F.C. transformed their security protocol. The system's biometric facial recognition and digital identity reduced unauthorized entries and fraud substantially. Moreover, integrating with CRM platforms allowed the club to personalize offers and communications to fans based on real-time data.\n\n### Result\nThe implementation led to a seamless matchday experience, with faster entry and real-time geo-targeted promotions boosting in-stadium sales. Revenue from sponsorships and personalized campaigns surged due to invaluable insights gathered from fan interaction data.\n\nThe SMART Fan Management System proved to be a comprehensive solution, elevating both operational security and fan satisfaction, ensuring a lucrative outcome for Real Madrid F.C.",
+      "id": "4f71c684-9880-4b3a-80fe-6079fa99c745",
+      "date": "2026-03-10T20:48:02.832Z"
+    },
+    {
+      "campaignId": "27f292f2-7982-424b-aa3c-f429471db598",
+      "type": "social",
+      "title": "Post 3: lead directivos deportivos",
+      "preview": "Trust/Case Study",
+      "content": "Case Study: Real Madrid F.C. has implemented OARO's SMART Fan Management System with remarkable results—secure access, increased revenues, and engaged fans. Dive into how smart technology reshapes the world of sports management and propels clubs into the future. Discover the journey of transformation. #CaseStudy #SportsInnovation",
+      "id": "cbd771a0-56b9-4ac0-9c5a-c53857bba367",
+      "date": "2026-03-10T20:48:02.832Z"
+    },
+    {
+      "campaignId": "27f292f2-7982-424b-aa3c-f429471db598",
+      "type": "social",
+      "title": "Post 2: lead directivos deportivos",
+      "preview": "Solution/Educational",
+      "content": "Explore how Real Madrid F.C. maximizes revenue and engagement through OARO's SMART Fan Management System. Discover seamless access control, enhanced fan experiences, and digital ticketing that ensure every fan's journey is unique and secure. Learn more about our innovative approach to sports management. #SmartTicketing #FanEngagement",
+      "id": "67320752-28fb-4eca-8360-9df3adb95de7",
+      "date": "2026-03-10T20:48:02.831Z"
+    },
+    {
+      "campaignId": "27f292f2-7982-424b-aa3c-f429471db598",
+      "type": "social",
+      "title": "Post 1: lead directivos deportivos",
+      "preview": "Problem Awareness",
+      "content": "🏟️ Is your stadium security keeping up with the times? Unauthorized entry and fraud are a thing of the past with OARO's SMART Fan Management System. ⛔️ Let's leverage cutting-edge digital identities to transform your venue's security. #SportsManagement #DigitalIdentity 🌐",
+      "id": "33cae7ad-c9a0-4ea9-accb-e656858ef5f5",
+      "date": "2026-03-10T20:48:02.830Z"
+    },
+    {
+      "campaignId": "27f292f2-7982-424b-aa3c-f429471db598",
+      "type": "article",
+      "title": "Revolutionizing Sports Management: The Role of Innovative Digital Identity and Smart Ticketing in Stadiums",
+      "preview": "Campaña: lead directivos deportivos",
+      "content": "# Revolutionizing Sports Management: The Role of Innovative Digital Identity and Smart Ticketing in Stadiums\n\nIn the fast-evolving world of sports management, staying ahead by adopting cutting-edge technology is crucial. As sports venues become more sophisticated, adopting smart solutions like digital identity management and smart ticketing can transform the way sports events are organized, attended, and enjoyed. \n\nOne of the notable advancements in this field is the collaboration between OARO Corporate and leading sports clubs like Real Madrid F.C. Through implementing the SMART Fan Management System, they are setting benchmarks in access control, fan engagement, and revenue optimization.\n\n## Streamlined Access Control\n\nIn stadiums, ensuring that only authorized individuals have access is paramount. The SMART Fan Management System offers a robust access control mechanism that leverages biometric and digital identities. With facial recognition merging with digital identity, clubs can assure 100% success in denying unauthorized access.\n\nThis high-level security not only prevents fraudulent entries but also enhances user experience by reducing wait times. By speeding up entry processes, clubs can avoid bottlenecks, making event starts smoother and more enjoyable for fans attending the venue.\n\n## Elevated Fan Engagement\n\nBeyond access control, engaging fans effectively is paramount for clubs aiming to enhance their fan base and revenue streams. The integration of CRM systems with the SMART Fan Management System allows clubs to track fan activities and purchases comprehensively. This data-driven approach enables the personalization of offers through A/B testing, ensuring higher engagement rates.\n\nGeo-targeted push notifications further enhance this engagement by offering real-time updates and personalized promotions, thus boosting merchandise and food & beverage sales during events. This level of tailored interaction turns a matchday experience into a holistic engagement opportunity.\n\n## Introducing Digital Ticketing\n\nGone are the days of flimsy paper tickets. The digital transition to SMART TICKETS ensures that tickets are more than just an admission pass. They become a secure, trackable digital asset. Initial validation through digital identity linked with biometric facial recognition ensures seamless entry, further reducing fraud risks.\n\nFans now receive unique digital memorabilia for each event, enhancing satisfaction and loyalty. With integration into mobile apps, fans can manage their tickets with ease, opting for upgrades or resale through secure and controlled mechanisms, offering further flexibility in fan experiences.\n\n## Real-Time Data and Performance Metrics\n\nSponsors and clubs gain access to invaluable insights with real-time data analytics, a core component of the SMART Fan Management System. By providing sponsors with in-depth fan engagement data, clubs can create valuable sponsorship packages that extend beyond traditional logo placements. This data contributes not only to sponsor satisfaction but also provides avenues for incremental revenue.\n\n## Conclusion\n\nThe adoption of the SMART Fan Management System backed by digital identities not only ensures security and operational excellence but also opens new revenue streams and elevates fan experiences. As clubs like Real Madrid F.C. demonstrate, embracing technology in sports management is not just a trend but a crucial step towards the future of sports entertainment. \n\nBy doing so, they not only safeguard their venues but also ensure that the experience offered to the fans is safe, dynamic, and engaging, a true win-win for all stakeholders involved.",
+      "id": "ed994fa6-1bc8-4d09-bf7f-fac69ca40bdf",
+      "date": "2026-03-10T20:48:02.829Z"
+    },
+    {
       "type": "article",
       "title": "Revolucionando la Experiencia del Aficionado: SMART Fan Management y Ticketing con OARO (Copia)",
       "preview": "Campaña: lead de clubes deportivos para venta de ticketing de OARO",

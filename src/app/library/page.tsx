@@ -23,7 +23,7 @@ import {
   ShieldCheck,
   FolderOpen
 } from "lucide-react";
-import { getLibraryItemsAction, deleteLibraryItemAction, duplicateLibraryItemAction, updateLibraryItemAction } from "@/app/actions/library";
+import { getLibraryItemsAction, deleteLibraryItemAction, duplicateLibraryItemAction, updateLibraryItemAction, updateLibraryItemCampaignAction } from "@/app/actions/library";
 import { getCampaignsAction } from "@/app/actions/campaigns-db";
 import { CampaignRecord } from "@/lib/campaigns-db";
 import { GeneratedItem } from "@/lib/generated-db";
@@ -103,6 +103,15 @@ export default function Library() {
     setIsEditing(false);
   };
 
+  const handleMoveToCampaign = async (campaignId: string) => {
+    if (!selectedItem) return;
+    const res = await updateLibraryItemCampaignAction(selectedItem.id, campaignId === "none" ? "" : campaignId);
+    if (res.success && res.item) {
+      setItems(items.map(i => i.id === selectedItem.id ? res.item! : i));
+      setSelectedItem(res.item);
+    }
+  };
+
 
   useEffect(() => {
     async function fetchData() {
@@ -151,12 +160,22 @@ export default function Library() {
     <div className="library-container max-w-[1600px] mx-auto py-12 px-6 lg:px-12 space-y-16 animate-in fade-in duration-1000">
       
       <header className="library-header">
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1A1B1E]/5 text-[#8E8B88] text-[9px] font-black uppercase tracking-widest border border-[#EBE4DC]">
-            <Zap size={10} fill="currentColor" className="text-[#FFBD1B]" /> Activos Generados
+        <div className="flex justify-between items-end">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1A1B1E]/5 text-[#8E8B88] text-[9px] font-black uppercase tracking-widest border border-[#EBE4DC]">
+              <Zap size={10} fill="currentColor" className="text-[#FFBD1B]" /> Activos Generados
+            </div>
+            <h1 className="library-title text-4xl lg:text-6xl">Tu <span className="text-[#FFBD1B]">Contenido</span></h1>
+            <p className="library-subtitle">Gestiona y reutiliza el contenido generado por tu ADN corporativo.</p>
           </div>
-          <h1 className="library-title text-4xl lg:text-6xl">Tu <span className="text-[#FFBD1B]">Biblioteca</span></h1>
-          <p className="library-subtitle">Gestiona y reutiliza el contenido generado por tu ADN corporativo.</p>
+          <div className="flex gap-4">
+             <Link href="/article" className="px-6 py-4 bg-white border border-[#EBE4DC] text-[#1A1B1E] rounded-3xl font-black text-[10px] uppercase tracking-widest hover:border-[#1A1B1E] transition-all shadow-sm">
+               Generar Artículo
+             </Link>
+             <Link href="/social" className="px-6 py-4 bg-[#1A1B1E] text-white rounded-3xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl">
+               Crear Nuevo Post
+             </Link>
+          </div>
         </div>
         
         <div className="library-filters">
@@ -227,7 +246,7 @@ export default function Library() {
           <div className="mx-auto w-24 h-24 bg-white rounded-[2rem] border border-[#EBE4DC] flex items-center justify-center text-[#EBE4DC] mb-8 shadow-sm">
              <Zap size={48} strokeWidth={1} />
           </div>
-          <h3 className="text-2xl font-black text-[#1A1B1E] uppercase tracking-tighter mb-4">Biblioteca Vacía</h3>
+          <h3 className="text-2xl font-black text-[#1A1B1E] uppercase tracking-tighter mb-4">Aún no hay Contenido</h3>
           <p className="text-[#8E8B88] max-w-sm mx-auto mb-10 text-sm font-medium leading-relaxed">
             Aún no has generado activos. Empieza creando un artículo o un plan de marketing para verlos aquí.
           </p>
@@ -368,9 +387,25 @@ export default function Library() {
                       <span className="font-black text-[10px] uppercase tracking-widest px-1">Editar</span>
                     </button>
                   )}
+                  
+                  {/* Campaign dropdown selector */}
+                  <div className="relative group">
+                    <select 
+                      className="appearance-none outline-none font-black text-[10px] uppercase tracking-widest bg-white text-[#1A1B1E] border border-[#EBE4DC] rounded-3xl h-full px-6 py-4 pr-12 cursor-pointer hover:bg-[#F9F6F2] transition-colors"
+                      value={selectedItem.campaignId || "none"}
+                      onChange={(e) => handleMoveToCampaign(e.target.value)}
+                    >
+                      <option value="none">Mover a campaña...</option>
+                      {campaigns.map(c => (
+                        <option key={c.id} value={c.id}>{c.theme.substring(0,30)}...</option>
+                      ))}
+                    </select>
+                    <FolderOpen size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#8E8B88]" />
+                  </div>
+
                   <button 
                     onClick={() => setSelectedItem(null)}
-                    className="p-4 bg-[#F9F6F2] hover:bg-[#1A1B1E] hover:text-white rounded-3xl transition-all border border-[#EBE4DC] group flex items-center gap-3"
+                    className="p-4 bg-[#F9F6F2] hover:bg-[#1A1B1E] hover:text-white rounded-3xl transition-all border border-[#EBE4DC] group flex items-center gap-3 ml-2"
                   >
                     <X size={20} />
                   </button>

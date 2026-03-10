@@ -40,7 +40,6 @@ export function Sidebar() {
       
       <nav className="sidebar-nav pb-6">
         <div className="nav-group">
-          <span className="nav-group-title">Core</span>
           <ul>
             <li>
               <Link href="/" className={`nav-link ${pathname === "/" ? "active" : ""}`}>
@@ -48,67 +47,26 @@ export function Sidebar() {
                 <span>Dashboard</span>
               </Link>
             </li>
-          </ul>
-        </div>
-
-        <div className="nav-group">
-          <span className="nav-group-title">Estrategia</span>
-          <ul>
             <li>
-              <Link href="/knowledge" className={`nav-link ${pathname === "/knowledge" ? "active" : ""}`}>
-                <div className="nav-icon-wrapper"><Database className="nav-icon" size={20} /></div>
-                <span>Cerebro Corporativo</span>
-              </Link>
-            </li>
-            <li>
-              <Link href="/campaigns" className={`nav-link ${pathname === "/campaigns" ? "active" : ""}`}>
+              <Link href="/campaigns" className={`nav-link ${pathname.startsWith("/campaigns") ? "active" : ""}`}>
                 <div className="nav-icon-wrapper"><Zap className="nav-icon" size={20} /></div>
                 <span>Campañas</span>
               </Link>
             </li>
             <li>
-             <Link href="/calendar" className={`nav-item ${pathname === '/calendar' ? 'active shadow-lg' : ''}`}>
-             <Calendar size={16} /> <span className="text-[10px] font-black uppercase tracking-widest">Calendario Editorial</span>
-          </Link>
-            </li>
-          </ul>
-        </div>
-
-        <div className="nav-group">
-          <span className="nav-group-title">Herramientas</span>
-          <ul>
-            <li>
-              <Link href="/article" className={`nav-link ${pathname === "/article" ? "active" : ""}`}>
-                <div className="nav-icon-wrapper"><FileText className="nav-icon" size={20} /></div>
-                <span>Redactor de Artículos</span>
-              </Link>
-            </li>
-            <li>
-              <Link href="/social" className={`nav-link ${pathname === "/social" ? "active" : ""}`}>
-                <div className="nav-icon-wrapper"><MessageSquare className="nav-icon" size={20} /></div>
-                <span>Creador de Posts</span>
-              </Link>
-            </li>
-            <li>
-              <Link href="/image" className={`nav-link ${pathname === "/image" ? "active" : ""}`}>
-                <div className="nav-icon-wrapper"><ImageIcon className="nav-icon" size={20} /></div>
-                <span>Estudio Visual</span>
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        <div className="nav-group">
-          <span className="nav-group-title">Inventario</span>
-          <ul>
-            <li>
-              <Link href="/library" className={`nav-link ${pathname === "/library" ? "active" : ""}`}>
+              <Link href="/library" className={`nav-link ${pathname.startsWith("/library") ? "active" : ""}`}>
                 <div className="nav-icon-wrapper"><Library className="nav-icon" size={20} /></div>
-                <span>Biblioteca</span>
+                <span>Contenido</span>
               </Link>
             </li>
             <li>
-              <Link href="/settings" className={`nav-link ${pathname === "/settings" ? "active" : ""}`}>
+              <Link href="/knowledge" className={`nav-link ${pathname.startsWith("/knowledge") ? "active" : ""}`}>
+                <div className="nav-icon-wrapper"><Database className="nav-icon" size={20} /></div>
+                <span>Conocimiento</span>
+              </Link>
+            </li>
+            <li>
+              <Link href="/settings" className={`nav-link ${pathname.startsWith("/settings") ? "active" : ""}`}>
                 <div className="nav-icon-wrapper"><SettingsIcon className="nav-icon" size={20} /></div>
                 <span>Configuración</span>
               </Link>
