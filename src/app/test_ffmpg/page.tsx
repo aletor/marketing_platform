@@ -462,7 +462,6 @@ export default function TestFfmpgPage() {
     if (cs.subtitleVisible && cs.subtitleText) {
       ctx.save();
       const aspectScale = CANVAS_W / WORLD_W; 
-      const baseFontSize = 100 * aspectScale; // Slightly bigger for single words
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       const words = cs.subtitleText.split(" ");
       const sx = CANVAS_W / 2;
@@ -470,17 +469,31 @@ export default function TestFfmpgPage() {
       ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 15;
       ctx.lineWidth = 14 * aspectScale; ctx.strokeStyle = "rgba(0,0,0,0.9)";
 
-      // Calculate word properties
+      // Dynamic Font Size Calculation to fit 60% of width
+      const allowedW = CANVAS_W * 0.6; // 20% margin on each side
+      let fontSize = 120 * aspectScale; // Starting guess
+      ctx.font = `italic 900 ${fontSize}px "Inter", sans-serif`;
+      let currentW = ctx.measureText(cs.subtitleText).width;
+      
+      if (currentW > allowedW) {
+        fontSize = (allowedW / currentW) * fontSize;
+      }
+      // Cap max size for short lines
+      const maxFontSize = 180 * aspectScale;
+      if (fontSize > maxFontSize) fontSize = maxFontSize;
+
+      // Calculate word properties with the resolved fontSize
       const wordStats = words.map((word, i) => {
         const isCurrent = i === cs.subtitleActiveIdx;
         const scale = isCurrent ? cs.subtitleScale : 1;
         const cleanWord = word.replace(/[.,]/g, "").toUpperCase();
         const isRelevant = cleanWord.length >= 6 || ["FACTURA", "COMPRA", "PAGO", "GESTIÓN", "CLIENTE", "AQUÍ", "AHORA"].includes(cleanWord);
-        const relScale = isRelevant ? 1.2 : 1.0;
+        // We use a smaller relative scale since we are already fitting the whole line
+        const relScale = isRelevant ? 1.1 : 1.0;
         
-        ctx.font = `italic 900 ${baseFontSize * scale * relScale}px "Inter", sans-serif`;
+        ctx.font = `italic 900 ${fontSize * scale * relScale}px "Inter", sans-serif`;
         const width = ctx.measureText(word + " ").width;
-        return { word, isCurrent, scale, relScale, isRelevant, width };
+        return { word, isCurrent, scale, relScale, isRelevant, width, fontSize: fontSize * scale * relScale };
       });
 
       const totalW = wordStats.reduce((acc, s) => acc + s.width, 0);
@@ -488,7 +501,7 @@ export default function TestFfmpgPage() {
 
       // Pass 1: Strokes
       wordStats.forEach(s => {
-        ctx.font = `italic 900 ${baseFontSize * s.scale * s.relScale}px "Inter", sans-serif`;
+        ctx.font = `italic 900 ${s.fontSize}px "Inter", sans-serif`;
         ctx.strokeText(s.word, curX + s.width / 2 - 5, sy);
         curX += s.width;
       });
@@ -496,7 +509,7 @@ export default function TestFfmpgPage() {
       // Pass 2: Fills
       curX = sx - totalW / 2;
       wordStats.forEach(s => {
-        ctx.font = `italic 900 ${baseFontSize * s.scale * s.relScale}px "Inter", sans-serif`;
+        ctx.font = `italic 900 ${s.fontSize}px "Inter", sans-serif`;
         ctx.fillStyle = s.isRelevant ? "#facc15" : "white";
         ctx.fillText(s.word, curX + s.width / 2 - 5, sy);
         curX += s.width;
@@ -704,46 +717,47 @@ export default function TestFfmpgPage() {
 
         if (m.label) {
           const allWords = m.label.split(/\s+/).filter(Boolean);
-          const wordsPerChunk = 1; // Fixed 1 word per line for impact
+          const wordsPerChunk = 2; // Fixed max 2 words per line
           const wordDur = 1 / wordsPerSecond;
           let accTime = 0;
           
-          allWords.forEach((word: string, wIdx: number) => {
-            const isEndOfChunk = (wIdx + 1) % wordsPerChunk === 0 || wIdx === allWords.length - 1;
-            
-            const chunkIndex = Math.floor(wIdx / wordsPerChunk);
-            const chunkWords = allWords.slice(chunkIndex * wordsPerChunk, wIdx + 1);
-            const activeIdxInChunk = wIdx % wordsPerChunk;
+          // Grouping into chunks
+          const chunks: string[][] = [];
+          for (let i = 0; i < allWords.length; i += wordsPerChunk) {
+            chunks.push(allWords.slice(i, i + wordsPerChunk));
+          }
+
+          chunks.forEach((chunkWords, cIdx) => {
+            const lastWordOfChunk = chunkWords[chunkWords.length - 1];
+            const isLastChunk = cIdx === chunks.length - 1;
             
             tl.to(cs, { 
               subtitleVisible: true, 
               subtitleText: chunkWords.join(" ").toUpperCase(), 
-              subtitleActiveIdx: activeIdxInChunk,
+              subtitleActiveIdx: -1, // No individual word scale needed usually
               subtitleScale: 1.1, 
               duration: 0.05 
             }, `${momentLabel}+=${accTime}`)
               .to(cs, { subtitleScale: 1, duration: 0.1 }, ">");
 
-            if (isEndOfChunk) {
-              const hideTime = accTime + 1.0; 
-              // Only hide if the next word starts AFTER the hide time (i.e. if there's a period/comma gap)
-              // OR if it's the absolute end of the moment narration.
-              let nextPause = 0;
-              if (word.endsWith('.')) nextPause = 1.5;
-              else if (word.endsWith(',')) nextPause = 1.0;
+            const chunkDuration = chunkWords.length * wordDur;
+            const hideTime = accTime + chunkDuration;
 
-              const nextWordStartTime = accTime + wordDur + nextPause;
-              
-              if (wIdx === allWords.length - 1 || hideTime < nextWordStartTime) {
-                const finalHide = Math.min(d - 0.05, hideTime);
-                tl.set(cs, { subtitleVisible: false }, `${momentLabel}+=${finalHide}`);
-              }
+            // Punctuation logic based on internal words or last word
+            let chunkPause = 0;
+            chunkWords.forEach(w => {
+              if (w.endsWith('.')) chunkPause += 1.5;
+              else if (w.endsWith(',')) chunkPause += 1.0;
+            });
+
+            const nextLineStartTime = accTime + chunkDuration + chunkPause;
+            
+            if (isLastChunk || hideTime < nextLineStartTime) {
+              const finalHide = Math.min(d - 0.05, hideTime);
+              tl.set(cs, { subtitleVisible: false }, `${momentLabel}+=${finalHide}`);
             }
 
-            accTime += wordDur;
-            // Add extra delays for punctuation
-            if (word.endsWith('.')) accTime += 1.5;
-            else if (word.endsWith(',')) accTime += 1.0;
+            accTime += chunkDuration + chunkPause;
           });
         }
         
