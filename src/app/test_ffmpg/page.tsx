@@ -322,26 +322,6 @@ export default function TestFfmpgPage() {
         ctx.fillText(cs.typedText, drawX + (tr.x/100)*baseW + 10, drawY + (tr.y/100)*baseH + (tr.h/100)*baseH*0.7);
       }
 
-      // ── DEBUG POINT (AI Focus) ─────────────────────────────────────────────
-      const selectedMoment = screen.moments.find(m => m.id === selectedMomentId);
-      if (selectedMoment?.aiFocusPoint && !isPlaying) {
-        const fp = selectedMoment.aiFocusPoint;
-        const absX = drawX + (fp.x / 100) * baseW;
-        const absY = drawY + (fp.y / 100) * baseH;
-        
-        ctx.save();
-        // Inner black circle
-        ctx.fillStyle = "black";
-        ctx.beginPath();
-        ctx.arc(absX, absY, 10, 0, Math.PI * 2);
-        ctx.fill();
-        // White border
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
-      }
-
       ctx.restore(); // camera
       ctx.restore(); // alpha/offset
     };
