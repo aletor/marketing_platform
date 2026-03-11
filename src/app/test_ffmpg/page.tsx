@@ -392,13 +392,21 @@ export default function TestFfmpgPage() {
       
       ctx.globalAlpha = cs.iconAlpha;
       ctx.translate(centerX, centerY);
-      // No background gradient / glow
+      
+      // Glow/Background subtle (Restored)
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 80);
+      grad.addColorStop(0, "rgba(249, 115, 22, 0.4)");
+      grad.addColorStop(1, "rgba(249, 115, 22, 0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(0, 0, 80, 0, Math.PI * 2); ctx.fill();
 
       // Icon paths (simplified Lucide-like)
       ctx.strokeStyle = "white";
       ctx.lineWidth = 6;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
+      ctx.shadowColor = "rgba(249, 115, 22, 0.8)";
+      ctx.shadowBlur = 15;
       ctx.beginPath();
       
       if (cs.iconType === "receipt") {
