@@ -127,13 +127,8 @@ export default function TestFfmpgPage() {
   const activeScreen = screens.find(s => s.id === activeScreenId) ?? null;
   const selectedMoment = activeScreen?.moments.find(m => m.id === selectedMomentId) ?? null;
 
-  // ── Lottie handling ────────────────────────────────────────────────────────
-  useEffect(() => {
-    fetch("/stars points.lottie")
-      .then(res => res.json())
-      .then(data => { lottieDataRef.current = data; })
-      .catch(err => console.error("Error loading lottie:", err));
-  }, []);
+  // ── Lottie manual rendering fallback is used in renderFrame ───────────────
+  // (We don't fetch .lottie files directly as JSON because they are binary ZIPs)
 
   // ── File handling ──────────────────────────────────────────────────────────
 
