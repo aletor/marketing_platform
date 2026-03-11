@@ -783,13 +783,13 @@ export default function TestFfmpgPage() {
             chunkWords.forEach((_, wInChunkIdx) => {
               const wordStartTime = accTime + wordInChunkOffset;
               tl.fromTo(cs, 
-                { subtitleScale: 0.6, subtitleAlpha: 0 },
+                { subtitleScale: 0.4, subtitleAlpha: 0 },
                 { 
                   subtitleActiveIdx: wInChunkIdx,
                   subtitleAlpha: 1,
                   subtitleScale: 1.0,
-                  duration: 0.4,
-                  ease: "power1.out",
+                  duration: 0.6,
+                  ease: "power2.out",
                   immediateRender: false
                 }, 
                 `${momentLabel}+=${wordStartTime}`
@@ -799,8 +799,7 @@ export default function TestFfmpgPage() {
             });
 
             const chunkDuration = chunkWords.length * wordDur;
-            const hideTime = accTime + chunkDuration;
-
+            
             // Punctuation logic based on internal words or last word
             let chunkPause = 0;
             chunkWords.forEach(w => {
@@ -808,7 +807,9 @@ export default function TestFfmpgPage() {
               else if (w.endsWith(',')) chunkPause += 1.0;
             });
 
-            const nextLineStartTime = accTime + chunkDuration + chunkPause;
+            // Hide the subtitle after reading duration + most of the 1s pause
+            const hideTime = accTime + chunkDuration + 0.8; 
+            const nextLineStartTime = accTime + chunkDuration + chunkPause + 1.0;
             
             if (isLastChunk || hideTime < nextLineStartTime) {
               const finalHide = Math.min(d - 0.05, hideTime);
