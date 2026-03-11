@@ -129,7 +129,7 @@ export default function TestFfmpgPage() {
 
   // ── Lottie handling ────────────────────────────────────────────────────────
   useEffect(() => {
-    fetch("/whitearrowmotion.json")
+    fetch("/stars points.lottie")
       .then(res => res.json())
       .then(data => { lottieDataRef.current = data; })
       .catch(err => console.error("Error loading lottie:", err));
@@ -392,13 +392,7 @@ export default function TestFfmpgPage() {
       
       ctx.globalAlpha = cs.iconAlpha;
       ctx.translate(centerX, centerY);
-      
-      // Glow/Background subtle
-      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 80);
-      grad.addColorStop(0, "rgba(249, 115, 22, 0.4)");
-      grad.addColorStop(1, "rgba(249, 115, 22, 0)");
-      ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.arc(0, 0, 80, 0, Math.PI * 2); ctx.fill();
+      // No background gradient / glow
 
       // Icon paths (simplified Lucide-like)
       ctx.strokeStyle = "white";
@@ -423,46 +417,35 @@ export default function TestFfmpgPage() {
         ctx.moveTo(-25, 0); ctx.lineTo(25, 0);
         ctx.stroke();
       } else {
-        // Lottie Animation for Sparkles (Arrow)
-        if (lottieDataRef.current) {
-          const data = lottieDataRef.current;
-          // Loop frames based on Date.now() if isPlaying
-          const totalFrames = data.op - data.ip;
-          if (isPlaying) {
-             lottieFrameRef.current = (lottieFrameRef.current + 0.5) % totalFrames;
-          }
-          
-          // Simplified Lottie renderer would be too complex, we use an offscreen canvas or just render paths if simple
-          // Since we can't easily render full Lottie to Canvas without lottie-canvas, 
-          // we'll stick to a high-quality fallback or a simplified path if it's the specific white arrow.
-          // BUT, user wants the Lottie, so let's try to draw a nice animated arrow as reference
-          // if we can't use a full library here.
-          
-          // Re-drawing a high quality arrow that mimics the lottie motion:
-          const t = (Math.sin(Date.now() / 200) + 1) / 2;
-          ctx.translate(0, t * 20 - 10);
+        // Star points animation (mimicking stars points.lottie)
+        ctx.save();
+        const time = Date.now() / 1000;
+        const drawStar = (x: number, y: number, size: number, rot: number) => {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(rot);
           ctx.beginPath();
-          ctx.moveTo(0, -40); ctx.lineTo(0, 30);
-          ctx.moveTo(-20, 10); ctx.lineTo(0, 30); ctx.lineTo(20, 10);
-          ctx.stroke();
-        } else {
-          // Sparkles fallback
           for (let i = 0; i < 4; i++) {
-            ctx.save(); ctx.rotate(i * Math.PI / 2);
-            ctx.moveTo(0, -40); ctx.lineTo(0, 40);
-            ctx.restore();
+            ctx.rotate(Math.PI / 2);
+            ctx.moveTo(0, -size);
+            ctx.quadraticCurveTo(0, 0, size, 0);
+            ctx.quadraticCurveTo(0, 0, 0, size);
+            ctx.quadraticCurveTo(0, 0, -size, 0);
+            ctx.quadraticCurveTo(0, 0, 0, -size);
           }
-          ctx.moveTo(-25, -25); ctx.lineTo(25, 25);
-          ctx.moveTo(-25, 25); ctx.lineTo(25, -25);
-          ctx.stroke();
-        }
+          ctx.fillStyle = "white";
+          ctx.fill();
+          ctx.restore();
+        };
+
+        // Draw multiple stars with different motions
+        drawStar(0, 0, 25 * (0.8 + Math.sin(time * 4) * 0.2), time);
+        drawStar(-35, -30, 12 * (0.8 + Math.cos(time * 3) * 0.2), -time * 0.5);
+        drawStar(40, -15, 15 * (0.8 + Math.sin(time * 5) * 0.2), time * 0.8);
+        drawStar(10, 45, 10 * (0.8 + Math.cos(time * 2) * 0.2), -time * 1.2);
+        ctx.restore();
       }
 
-      // Outer glow to the icon lines themselves
-      ctx.shadowColor = "#f97316";
-      ctx.shadowBlur = 20;
-      if (cs.iconType !== "sparkles") ctx.stroke(); // Sparkles/Lottie already handled in custom way
-      
       ctx.restore();
     }
 
