@@ -169,7 +169,30 @@ export default function TestFfmpgPage() {
       const found = results?.find((r: any) => r.id === activeScreen.id);
       if (found?.moments?.length) {
         setScreens(prev => prev.map(s => s.id === activeScreen.id
-          ? { ...s, moments: found.moments.map((m: any) => ({ ...m, id: uid(), camScale: 1.6, camPanX: 0, camPanY: 0 })) }
+          ? {
+              ...s,
+              moments: found.moments.map((m: any) => {
+                // Clamp camScale to allowed range
+                const camScale = Math.min(1.4, Math.max(0.9, m.camScale ?? 1));
+                
+                // Convert focusPoint (0–100%) → camPanX/Y
+                // focusPoint (50,50) = center = pan(0,0)
+                // focusPoint (100,100) = bottom-right = pan(-0.5,-0.5)
+                const fp = m.focusPoint ?? { x: 50, y: 50 };
+                const camPanX = -((fp.x / 100) - 0.5);
+                const camPanY = -((fp.y / 100) - 0.5);
+
+                return {
+                  id: uid(),
+                  target: { x: 20, y: 20, w: 60, h: 20 },
+                  camScale,
+                  camPanX,
+                  camPanY,
+                  label: m.label ?? "",
+                  duration: m.duration ?? 2.5,
+                };
+              })
+            }
           : s
         ));
       }

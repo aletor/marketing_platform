@@ -14,30 +14,28 @@ export async function POST(req: Request) {
 
   for (const img of images) {
     const base64 = img.base64.replace(/^data:image\/\w+;base64,/, "");
-    const prompt = `You are an expert UI/UX analyst. Analyze this app screenshot and identify interactive elements for a TikTok-style tutorial video.
+    const prompt = `You are an expert tutorial video creator and UI/UX analyst. Analyze this app screenshot and generate a sequence of tutorial "moments" for a short-form vertical video (TikTok/Reels style).
 
-Return a JSON array of "moments" — animation steps the video will play in sequence.
+Each moment focuses the camera on ONE relevant UI element or concept, moving the camera to center it on screen, zooming in or out to highlight context.
 
-For each moment specify:
-- type: one of "zoom_in" | "zoom_out" | "cursor_click" | "cursor_hover" | "text_type" | "highlight" | "fullscreen"  
-- target: { x, y, w, h } as percentages (0-100) of image dimensions (x,y = top-left corner of element)
-- label: narration text in ${langName} explaining what this element does (natural, tutorial-style)
-- duration: seconds (1.5–4.0)
-- value: (only for text_type) example text to type into the field
+For each moment return:
+- label: Natural, engaging tutorial narration in ${langName}. Be specific about what the element does. Example: "Desde este botón podrás descargar todas tus facturas en PDF con un solo clic."
+- duration: seconds this moment lasts (1.5–5.0)
+- camScale: float between 0.9 and 1.4. Use 1.2–1.4 for specific small elements (buttons, inputs, icons). Use 0.9–1.1 for broader context or full-screen views.
+- focusPoint: { x, y } as percentage (0–100) of the image. This is the point the camera will pan to center. For a specific element, use its visual center. For full-screen overviews, use { "x": 50, "y": 50 }.
 
 Rules:
-- Start with a "fullscreen" moment to introduce the screen (duration: 2)
-- For EACH input field: use "text_type" with a realistic example value
-- For EACH button/CTA: use "cursor_click"
-- For important labels/sections: use "highlight"
-- End with "zoom_out" to fullscreen (duration: 1.5)
-- Maximum 8 moments total
-- Labels must be engaging and instructional, like a real tutorial narrator
+- First moment MUST be a full-screen overview (camScale: 0.95, focusPoint: {x:50,y:50}) introducing the screen.
+- Then identify 3–6 key UI elements worth explaining: main CTAs, important buttons, form fields, navigation sections, data displays.
+- Last moment can be another overview if appropriate.
+- Maximum 8 moments total.
+- Labels must be natural, instructional and engaging, explaining the VALUE of each element, not just what it is.
+- NEVER use bracket placeholders in labels. Always write complete sentences.
 
 Return ONLY valid JSON array, no markdown, no explanation:
 [
-  { "type": "fullscreen", "target": { "x": 0, "y": 0, "w": 100, "h": 100 }, "label": "...", "duration": 2 },
-  ...
+  { "label": "...", "duration": 2.5, "camScale": 0.95, "focusPoint": { "x": 50, "y": 50 } },
+  { "label": "...", "duration": 2.0, "camScale": 1.3, "focusPoint": { "x": 72, "y": 45 } }
 ]`;
 
     const response = await openai.chat.completions.create({
@@ -51,11 +49,11 @@ Return ONLY valid JSON array, no markdown, no explanation:
           ],
         },
       ],
-      max_tokens: 1500,
-      temperature: 0.3,
+      max_tokens: 1800,
+      temperature: 0.4,
     });
 
-    let moments = [];
+    let moments: any[] = [];
     try {
       const raw = response.choices[0].message.content ?? "[]";
       const cleaned = raw.replace(/```json|```/g, "").trim();
