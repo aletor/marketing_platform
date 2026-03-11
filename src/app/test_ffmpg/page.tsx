@@ -79,6 +79,9 @@ interface CanvasState {
   iconVisible: boolean;
   iconType: string;
   iconAlpha: number;
+
+  // Vignette effect
+  vignetteAlpha: number;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -121,7 +124,8 @@ export default function TestFfmpgPage() {
     typedText: "", typedRect: null, typedAlpha: 0,
     subtitleText: "", subtitleVisible: false, subtitleScale: 1, subtitleActiveIdx: -1,
     currentScreenIdx: 0, nextScreenIdx: 0, transitionProgress: 0, transitionType: "none",
-    iconVisible: false, iconType: "sparkles", iconAlpha: 0
+    iconVisible: false, iconType: "sparkles", iconAlpha: 0,
+    vignetteAlpha: 0
   });
 
   const activeScreen = screens.find(s => s.id === activeScreenId) ?? null;
@@ -458,6 +462,20 @@ export default function TestFfmpgPage() {
       ctx.restore();
     }
 
+    // ── VIGNETTE OVERLAY (Focus on center) ───────────────────────────────────
+    if (cs.vignetteAlpha > 0) {
+      ctx.save();
+      const grad = ctx.createRadialGradient(
+        CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.2,
+        CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.8
+      );
+      grad.addColorStop(0, "rgba(0,0,0,0)");
+      grad.addColorStop(1, `rgba(0,0,0,${cs.vignetteAlpha * 0.7})`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.restore();
+    }
+
     // Subtitles — anchored at 65% of CANVAS height (35% from bottom)
     if (cs.subtitleVisible && cs.subtitleText) {
       ctx.save();
@@ -649,7 +667,8 @@ export default function TestFfmpgPage() {
       cursorVisible: false, highlightRect: null, 
       typedText: "", subtitleText: "", 
       currentScreenIdx: 0, nextScreenIdx: 0, transitionProgress: 0, transitionType: "none",
-      iconVisible: false, iconAlpha: 0, iconType: "sparkles"
+      iconVisible: false, iconAlpha: 0, iconType: "sparkles",
+      vignetteAlpha: 0
     });
 
     for (let sIdx = 0; sIdx < screens.length; sIdx++) {
@@ -695,9 +714,12 @@ export default function TestFfmpgPage() {
           tl.to(cs, { scale, panX, panY, duration: d * 0.4, ease }, momentLabel);
         }
 
-        // Show icon after camera settles
+        // Show icon and vignette after camera settles
         tl.to(cs, { iconVisible: true, iconAlpha: 1, duration: 0.5 }, `${momentLabel}+=${d * 0.3}`)
           .to(cs, { iconAlpha: 0, duration: 0.5, iconVisible: false }, `${momentLabel}+=${d - 0.5}`);
+
+        tl.to(cs, { vignetteAlpha: 1, duration: 0.6, ease: "sine.inOut" }, `${momentLabel}+=${d * 0.3}`)
+          .to(cs, { vignetteAlpha: 0, duration: 0.8, ease: "sine.inOut" }, `${momentLabel}+=${d - 1.0}`);
 
         // Hold for duration with no element animation
         tl.to({}, { duration: d }, momentLabel);
@@ -767,7 +789,8 @@ export default function TestFfmpgPage() {
           nextScreenIdx: sIdx + 1, 
           transitionType: screen.transitionAfter,
           subtitleVisible: false, cursorVisible: false, highlightAlpha: 0,
-          iconVisible: false, iconAlpha: 0
+          iconVisible: false, iconAlpha: 0,
+          vignetteAlpha: 0
         }, transLabel);
 
         // Smoothly bridge camera from current last moment to next screen's first moment
@@ -835,7 +858,8 @@ export default function TestFfmpgPage() {
       highlightRect: null, highlightAlpha: 0, 
       typedText: "", typedRect: null, typedAlpha: 0,
       subtitleText: "", subtitleVisible: false, subtitleScale: 1,
-      iconVisible: false, iconAlpha: 0, iconType: "sparkles"
+      iconVisible: false, iconAlpha: 0, iconType: "sparkles",
+      vignetteAlpha: 0
     });
     renderFrame();
   };
