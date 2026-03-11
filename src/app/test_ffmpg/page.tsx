@@ -73,6 +73,11 @@ interface CanvasState {
   nextScreenIdx: number;
   transitionProgress: number;
   transitionType: TransitionType;
+
+  // Contextual icon
+  iconVisible: boolean;
+  iconType: string;
+  iconAlpha: number;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -113,6 +118,7 @@ export default function TestFfmpgPage() {
     typedText: "", typedRect: null, typedAlpha: 0,
     subtitleText: "", subtitleVisible: false, subtitleScale: 1, subtitleActiveIdx: -1,
     currentScreenIdx: 0, nextScreenIdx: 0, transitionProgress: 0, transitionType: "none",
+    iconVisible: false, iconType: "sparkles", iconAlpha: 0
   });
 
   const activeScreen = screens.find(s => s.id === activeScreenId) ?? null;
@@ -366,6 +372,64 @@ export default function TestFfmpgPage() {
     // End WORLD transform
     ctx.restore();
 
+    // ── CONTEXTUAL ICON (100x100 animado) ───────────────────────────────────
+    if (cs.iconVisible && cs.iconAlpha > 0) {
+      ctx.save();
+      const floatY = Math.sin(Date.now() / 300) * 10;
+      const centerX = CANVAS_W / 2;
+      const centerY = CANVAS_H / 2 - 100 + floatY; // Un poco por encima del centro real
+      
+      ctx.globalAlpha = cs.iconAlpha;
+      ctx.translate(centerX, centerY);
+      
+      // Glow/Background subtle
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 80);
+      grad.addColorStop(0, "rgba(249, 115, 22, 0.4)");
+      grad.addColorStop(1, "rgba(249, 115, 22, 0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(0, 0, 80, 0, Math.PI * 2); ctx.fill();
+
+      // Icon paths (simplified Lucide-like)
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 6;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      
+      if (cs.iconType === "receipt") {
+        ctx.strokeRect(-30, -40, 60, 80);
+        ctx.moveTo(-15, -15); ctx.lineTo(15, -15);
+        ctx.moveTo(-15, 5); ctx.lineTo(15, 5);
+        ctx.moveTo(-15, 20); ctx.lineTo(5, 20);
+      } else if (cs.iconType === "download") {
+        ctx.moveTo(0, -35); ctx.lineTo(0, 25);
+        ctx.moveTo(-20, 5); ctx.lineTo(0, 25); ctx.lineTo(20, 5);
+        ctx.moveTo(-30, 35); ctx.lineTo(30, 35);
+      } else if (cs.iconType === "mouse") {
+        ctx.moveTo(0, -40); ctx.arcTo(25, -40, 25, 40, 25); ctx.arcTo(25, 40, -25, 40, 25);
+        ctx.arcTo(-25, 40, -25, -40, 25); ctx.arcTo(-25, -40, 0, -40, 25);
+        ctx.moveTo(0, -40); ctx.lineTo(0, 0);
+        ctx.moveTo(-25, 0); ctx.lineTo(25, 0);
+      } else {
+        // Sparkles
+        for (let i = 0; i < 4; i++) {
+          ctx.save(); ctx.rotate(i * Math.PI / 2);
+          ctx.moveTo(0, -40); ctx.lineTo(0, 40);
+          ctx.restore();
+        }
+        ctx.moveTo(-25, -25); ctx.lineTo(25, 25);
+        ctx.moveTo(-25, 25); ctx.lineTo(25, -25);
+      }
+      ctx.stroke();
+
+      // Outer glow to the icon lines themselves
+      ctx.shadowColor = "#f97316";
+      ctx.shadowBlur = 20;
+      ctx.stroke();
+      
+      ctx.restore();
+    }
+
     // Subtitles — anchored at 65% of CANVAS height (35% from bottom)
     if (cs.subtitleVisible && cs.subtitleText) {
       ctx.save();
@@ -557,7 +621,8 @@ export default function TestFfmpgPage() {
       panY: firstM ? firstM.camPanY : 0,
       cursorVisible: false, highlightRect: null, 
       typedText: "", subtitleText: "", 
-      currentScreenIdx: 0, nextScreenIdx: 0, transitionProgress: 0, transitionType: "none"
+      currentScreenIdx: 0, nextScreenIdx: 0, transitionProgress: 0, transitionType: "none",
+      iconVisible: false, iconAlpha: 0, iconType: "sparkles"
     });
 
     for (let sIdx = 0; sIdx < screens.length; sIdx++) {
@@ -582,8 +647,15 @@ export default function TestFfmpgPage() {
         const panY = m.camPanY;
         const scale = m.camScale;
 
+        // Determine icon based on label keywords
+        let iconType = "sparkles";
+        const labelLower = (m.label || "").toLowerCase();
+        if (labelLower.includes("factura") || labelLower.includes("recibo")) iconType = "receipt";
+        else if (labelLower.includes("descarga") || labelLower.includes("pdf") || labelLower.includes("bajar")) iconType = "download";
+        else if (labelLower.includes("clic") || labelLower.includes("botón") || labelLower.includes("presiona")) iconType = "mouse";
+
         // Sync current index
-        tl.set(cs, { currentScreenIdx: sIdx }, momentLabel);
+        tl.set(cs, { currentScreenIdx: sIdx, iconType }, momentLabel);
 
         // Camera movement
         if (sIdx === 0 && mIdx === 0) {
@@ -592,6 +664,10 @@ export default function TestFfmpgPage() {
         } else {
           tl.to(cs, { scale, panX, panY, duration: d * 0.4, ease }, momentLabel);
         }
+
+        // Show icon after camera settles
+        tl.to(cs, { iconVisible: true, iconAlpha: 1, duration: 0.5 }, `${momentLabel}+=${d * 0.3}`)
+          .to(cs, { iconAlpha: 0, duration: 0.5, iconVisible: false }, `${momentLabel}+=${d - 0.5}`);
 
         // Hold for duration with no element animation
         tl.to({}, { duration: d }, momentLabel);
@@ -647,7 +723,8 @@ export default function TestFfmpgPage() {
           currentScreenIdx: sIdx, 
           nextScreenIdx: sIdx + 1, 
           transitionType: screen.transitionAfter,
-          subtitleVisible: false, cursorVisible: false, highlightAlpha: 0
+          subtitleVisible: false, cursorVisible: false, highlightAlpha: 0,
+          iconVisible: false, iconAlpha: 0
         }, transLabel);
 
         // Smoothly bridge camera from current last moment to next screen's first moment
@@ -714,7 +791,8 @@ export default function TestFfmpgPage() {
       cursorVisible: false, clickRipple: 0,
       highlightRect: null, highlightAlpha: 0, 
       typedText: "", typedRect: null, typedAlpha: 0,
-      subtitleText: "", subtitleVisible: false, subtitleScale: 1
+      subtitleText: "", subtitleVisible: false, subtitleScale: 1,
+      iconVisible: false, iconAlpha: 0, iconType: "sparkles"
     });
     renderFrame();
   };
