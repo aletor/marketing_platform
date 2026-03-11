@@ -482,18 +482,18 @@ export default function TestFfmpgPage() {
       const maxFontSize = 180 * aspectScale;
       if (fontSize > maxFontSize) fontSize = maxFontSize;
 
+      // Apply Global Pop/Bounce scale to the whole line
+      const lineScale = cs.subtitleScale;
+
       // Calculate word properties with the resolved fontSize
       const wordStats = words.map((word, i) => {
-        const isCurrent = i === cs.subtitleActiveIdx;
-        const scale = isCurrent ? cs.subtitleScale : 1;
         const cleanWord = word.replace(/[.,]/g, "").toUpperCase();
         const isRelevant = cleanWord.length >= 6 || ["FACTURA", "COMPRA", "PAGO", "GESTIÓN", "CLIENTE", "AQUÍ", "AHORA"].includes(cleanWord);
-        // We use a smaller relative scale since we are already fitting the whole line
         const relScale = isRelevant ? 1.1 : 1.0;
         
-        ctx.font = `italic 900 ${fontSize * scale * relScale}px "Inter", sans-serif`;
+        ctx.font = `italic 900 ${fontSize * lineScale * relScale}px "Inter", sans-serif`;
         const width = ctx.measureText(word + " ").width;
-        return { word, isCurrent, scale, relScale, isRelevant, width, fontSize: fontSize * scale * relScale };
+        return { word, relScale, isRelevant, width, fontSize: fontSize * lineScale * relScale };
       });
 
       const totalW = wordStats.reduce((acc, s) => acc + s.width, 0);
@@ -717,28 +717,34 @@ export default function TestFfmpgPage() {
 
         if (m.label) {
           const allWords = m.label.split(/\s+/).filter(Boolean);
-          const wordsPerChunk = 2; // Fixed max 2 words per line
           const wordDur = 1 / wordsPerSecond;
           let accTime = 0;
           
-          // Grouping into chunks
+          // Improved grouping: Max 2 words OR break at punctuation
           const chunks: string[][] = [];
-          for (let i = 0; i < allWords.length; i += wordsPerChunk) {
-            chunks.push(allWords.slice(i, i + wordsPerChunk));
-          }
+          let currentChunk: string[] = [];
+          
+          allWords.forEach((word) => {
+            currentChunk.push(word);
+            const hasPunctuation = word.endsWith(',') || word.endsWith('.');
+            if (currentChunk.length >= 2 || hasPunctuation) {
+              chunks.push(currentChunk);
+              currentChunk = [];
+            }
+          });
+          if (currentChunk.length > 0) chunks.push(currentChunk);
 
           chunks.forEach((chunkWords, cIdx) => {
-            const lastWordOfChunk = chunkWords[chunkWords.length - 1];
             const isLastChunk = cIdx === chunks.length - 1;
             
             tl.to(cs, { 
               subtitleVisible: true, 
               subtitleText: chunkWords.join(" ").toUpperCase(), 
-              subtitleActiveIdx: -1, // No individual word scale needed usually
-              subtitleScale: 1.1, 
+              subtitleActiveIdx: -1, 
+              subtitleScale: 1.25, // Pop effect
               duration: 0.05 
             }, `${momentLabel}+=${accTime}`)
-              .to(cs, { subtitleScale: 1, duration: 0.1 }, ">");
+              .to(cs, { subtitleScale: 1, duration: 0.15, ease: "back.out(2)" }, ">");
 
             const chunkDuration = chunkWords.length * wordDur;
             const hideTime = accTime + chunkDuration;
