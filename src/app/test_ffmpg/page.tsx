@@ -477,18 +477,18 @@ export default function TestFfmpgPage() {
       const maxFontSize = 180 * aspectScale;
       if (fontSize > maxFontSize) fontSize = maxFontSize;
 
-      // Apply Global Pop/Bounce scale to the whole line
-      const lineScale = cs.subtitleScale;
-
       // Calculate word properties with the resolved fontSize
       const wordStats = words.map((word, i) => {
+        const isCurrent = i === cs.subtitleActiveIdx;
+        const wordScale = isCurrent ? cs.subtitleScale : 1.0;
+        
         const cleanWord = word.replace(/[.,]/g, "").toUpperCase();
         const isRelevant = cleanWord.length >= 6 || ["FACTURA", "COMPRA", "PAGO", "GESTIÓN", "CLIENTE", "AQUÍ", "AHORA"].includes(cleanWord);
         const relScale = isRelevant ? 1.1 : 1.0;
         
-        ctx.font = `italic 900 ${fontSize * lineScale * relScale}px "Inter", sans-serif`;
+        ctx.font = `italic 900 ${fontSize * wordScale * relScale}px "Inter", sans-serif`;
         const width = ctx.measureText(word + " ").width;
-        return { word, relScale, isRelevant, width, fontSize: fontSize * lineScale * relScale };
+        return { word, relScale, isRelevant, width, fontSize: fontSize * wordScale * relScale };
       });
 
       const totalW = wordStats.reduce((acc, s) => acc + s.width, 0);
@@ -732,14 +732,27 @@ export default function TestFfmpgPage() {
           chunks.forEach((chunkWords, cIdx) => {
             const isLastChunk = cIdx === chunks.length - 1;
             
-            tl.to(cs, { 
+            // 1. Show the whole line first
+            tl.set(cs, { 
               subtitleVisible: true, 
               subtitleText: chunkWords.join(" ").toUpperCase(), 
               subtitleActiveIdx: -1, 
-              subtitleScale: 1.25, // Pop effect
-              duration: 0.05 
-            }, `${momentLabel}+=${accTime}`)
-              .to(cs, { subtitleScale: 1, duration: 0.15, ease: "back.out(2)" }, ">");
+              subtitleScale: 1
+            }, `${momentLabel}+=${accTime}`);
+
+            // 2. Animate each word within the line one by one
+            let wordInChunkOffset = 0;
+            chunkWords.forEach((_, wInChunkIdx) => {
+              const wordStartTime = accTime + wordInChunkOffset;
+              tl.to(cs, { 
+                subtitleActiveIdx: wInChunkIdx,
+                subtitleScale: 1.3, // Bounce scale for active word
+                duration: 0.05 
+              }, `${momentLabel}+=${wordStartTime}`)
+                .to(cs, { subtitleScale: 1, duration: 0.15, ease: "back.out(2)" }, ">");
+              
+              wordInChunkOffset += wordDur;
+            });
 
             const chunkDuration = chunkWords.length * wordDur;
             const hideTime = accTime + chunkDuration;
