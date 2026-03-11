@@ -242,9 +242,13 @@ export default function TestFfmpgPage() {
       ctx.globalAlpha = alpha;
       ctx.translate(offsetX, offsetY);
 
-      // Background fills entire WORLD
+      // Background fills the WHOLE canvas (even outside WORLD area)
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // No scaling/offset for background
+      ctx.globalAlpha = alpha;
       ctx.fillStyle = screen.bgColor || "#0d0d0d";
-      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.restore();
 
       // Camera (pivot at WORLD center)
       ctx.save();
@@ -309,7 +313,7 @@ export default function TestFfmpgPage() {
         drawSingleScreen(next, 1, WORLD_W - p * WORLD_W, 0);
       }
     } else {
-      const dispScreen = (isPlaying || tlRef.current) ? curr : activeScreen;
+      const dispScreen = isPlaying ? curr : activeScreen;
       if (dispScreen) drawSingleScreen(dispScreen);
     }
 
@@ -452,7 +456,7 @@ export default function TestFfmpgPage() {
     }
   }, [currentUrl]);
 
-  // Redraw when aspect ratio changes and rebuild timeline
+  // Redraw when aspect ratio or speed changes and rebuild timeline
   useEffect(() => {
     if (tlRef.current) {
       tlRef.current.kill();
@@ -464,7 +468,7 @@ export default function TestFfmpgPage() {
     }
     renderFrame();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aspectRatio]);
+  }, [aspectRatio, wordsPerSecond]);
 
   // ── Keyboard Controls ─────────────────────────────────────────────────────
 
@@ -472,7 +476,13 @@ export default function TestFfmpgPage() {
     const handleKD = (e: KeyboardEvent) => {
       if (e.code === "Space") {
         const t = e.target as HTMLElement;
-        if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable) return;
+        const isTextInput =
+          (t.tagName === "INPUT" && !["range", "checkbox", "radio", "color", "button", "submit"].includes((t as HTMLInputElement).type)) ||
+          t.tagName === "TEXTAREA" ||
+          t.isContentEditable;
+
+        if (isTextInput) return;
+        
         e.preventDefault();
         togglePlayPause();
       }
@@ -500,6 +510,7 @@ export default function TestFfmpgPage() {
         if (tlRef.current) setAnimationProgress(tlRef.current.progress());
       }, 
       onComplete: () => {
+        tlRef.current = null;
         renderFrame();
         setIsPlaying(false);
       }
@@ -556,7 +567,7 @@ export default function TestFfmpgPage() {
         if (m.label) {
           const allWords = m.label.split(/\s+/).filter(Boolean);
           const wordsPerChunk = aspectRatio === "9:16" ? 3 : (aspectRatio === "1:1" ? 4 : 5);
-          const wordDur = (d * 0.9) / Math.max(1, allWords.length);
+          const wordDur = 1 / wordsPerSecond;
           
           allWords.forEach((word: string, wIdx: number) => {
             const chunkIndex = Math.floor(wIdx / wordsPerChunk);
@@ -844,6 +855,7 @@ export default function TestFfmpgPage() {
               value={wordsPerSecond} 
               onInput={e => setWordsPerSecond(parseFloat((e.target as HTMLInputElement).value))}
               onChange={e => setWordsPerSecond(parseFloat(e.target.value))}
+              onPointerUp={e => (e.target as HTMLElement).blur()}
               className="w-32 h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
             />
             <span className="text-xs font-mono text-orange-400 w-10 text-right">{wordsPerSecond}w/s</span>
@@ -1020,7 +1032,7 @@ export default function TestFfmpgPage() {
                       value={activeScreen.bgColor || "#000000"} 
                       onInput={e => {
                         const val = (e.target as HTMLInputElement).value;
-                        setScreens(prev => prev.map(s => s.id === activeScreen.id ? { ...s, bgColor: val } : s));
+                        setScreens(prev => prev.map(s => s.id === activeScreenId ? { ...s, bgColor: val } : s));
                       }}
                       className="w-10 h-10 rounded cursor-pointer bg-transparent border-none"
                     />
@@ -1029,7 +1041,7 @@ export default function TestFfmpgPage() {
                       value={activeScreen.bgColor || "#000000"} 
                       onChange={e => {
                         const val = e.target.value;
-                        setScreens(prev => prev.map(s => s.id === activeScreen.id ? { ...s, bgColor: val } : s));
+                        setScreens(prev => prev.map(s => s.id === activeScreenId ? { ...s, bgColor: val } : s));
                       }}
                       className="w-20 bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs text-neutral-300 focus:outline-none"
                     />
@@ -1190,6 +1202,7 @@ export default function TestFfmpgPage() {
                                     e.stopPropagation();
                                     setDragStart(null); // clear canvas pan if active
                                   }}
+                                  onPointerUp={e => (e.target as HTMLElement).blur()}
                                   className="zoom-slider-custom w-full"
                                 />
                               </div>

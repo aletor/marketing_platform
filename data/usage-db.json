@@ -1518,6 +1518,34 @@
       "inputTokens": 4210,
       "outputTokens": 264,
       "cost": 0.0007899000000000001
+    },
+    {
+      "timestamp": "2026-03-11T18:40:43.517Z",
+      "model": "gpt-5.2",
+      "inputTokens": 4210,
+      "outputTokens": 259,
+      "cost": 0.0007869
+    },
+    {
+      "timestamp": "2026-03-11T18:40:49.243Z",
+      "model": "gpt-5.2",
+      "inputTokens": 4210,
+      "outputTokens": 278,
+      "cost": 0.0007983
+    },
+    {
+      "timestamp": "2026-03-11T18:41:39.162Z",
+      "model": "gpt-5.2",
+      "inputTokens": 4210,
+      "outputTokens": 272,
+      "cost": 0.0007947
+    },
+    {
+      "timestamp": "2026-03-11T18:41:44.439Z",
+      "model": "gpt-5.2",
+      "inputTokens": 4210,
+      "outputTokens": 266,
+      "cost": 0.0007911
     }
   ]
 }
