@@ -624,6 +624,8 @@ export default function TestFfmpgPage() {
             const chunkIndex = Math.floor(wIdx / wordsPerChunk);
             const chunkWords = allWords.slice(chunkIndex * wordsPerChunk, wIdx + 1);
             const activeIdxInChunk = wIdx % wordsPerChunk;
+            const startTime = wIdx * wordDur;
+            const isLastOfChunk = (wIdx + 1) % wordsPerChunk === 0 || wIdx === allWords.length - 1;
             
             tl.to(cs, { 
               subtitleVisible: true, 
@@ -631,10 +633,19 @@ export default function TestFfmpgPage() {
               subtitleActiveIdx: activeIdxInChunk,
               subtitleScale: 1.1, 
               duration: 0.05 
-            }, `${momentLabel}+=${wIdx * wordDur}`)
+            }, `${momentLabel}+=${startTime}`)
               .to(cs, { subtitleScale: 1, duration: 0.1 }, ">");
+
+            if (isLastOfChunk) {
+              const hideTime = startTime + 2;
+              const nextWordTime = (wIdx + 1) * wordDur;
+              // Only schedule a hide if it's the end of everything OR if there's enough gap before next words
+              if (wIdx === allWords.length - 1 || hideTime < nextWordTime) {
+                const finalHide = Math.min(d - 0.05, hideTime);
+                tl.set(cs, { subtitleVisible: false }, `${momentLabel}+=${finalHide}`);
+              }
+            }
           });
-          tl.set(cs, { subtitleVisible: false }, `${momentLabel}+=${d - 0.1}`);
         }
         
         tl.set({}, {}, `${momentLabel}+=${d}`);
