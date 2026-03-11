@@ -656,9 +656,11 @@ export default function TestFfmpgPage() {
         tl.addLabel(momentLabel);
 
         // Word count for duration - including 1.5s gap ONLY at the end of the paragraph
+        // PLUS 1.5s additional for each period found in the text
         const words = m.label ? m.label.split(/\s+/).filter(Boolean) : [];
+        const dotsCount = words.filter(w => w.endsWith('.')).length;
         const wordDur = 1 / wordsPerSecond;
-        const textDuration = words.length > 0 ? (words.length * wordDur + 1.5) : 0;
+        const textDuration = words.length > 0 ? (words.length * wordDur + 1.5 + (dotsCount * 1.5)) : 0;
         const d = Math.max(m.duration, textDuration);
         
         const ease = m.easing ?? "power2.inOut";
@@ -720,6 +722,8 @@ export default function TestFfmpgPage() {
             }
 
             accTime += wordDur;
+            // Add extra 1.5s delay if word ends with a period
+            if (word.endsWith('.')) accTime += 1.5;
           });
         }
         
