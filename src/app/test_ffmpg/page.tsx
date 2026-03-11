@@ -21,6 +21,7 @@ interface Moment {
   label: string;    // Texto de narración / subtítulo
   duration: number; // Duración mínima en segundos
   easing?: string;
+  aiFocusPoint?: { x: number; y: number }; // Debug point from AI (%)
 }
 
 interface Screen {
@@ -177,11 +178,16 @@ export default function TestFfmpgPage() {
                 const camScale = Math.min(maxAiZoom, Math.max(0.9, m.camScale ?? 1));
                 
                 // Convert focusPoint (0–100%) → camPanX/Y
-                // focusPoint (50,50) = center = pan(0,0)
-                // focusPoint (100,100) = bottom-right = pan(-0.5,-0.5)
+                // fp.x = 0..100
                 const fp = m.focusPoint ?? { x: 50, y: 50 };
-                const camPanX = -((fp.x / 100) - 0.5);
-                const camPanY = -((fp.y / 100) - 0.5);
+
+                // Corrected Math:
+                // camPanX: (fp.x / 100) - 0.5 --> 0% becomes -0.5, 100% becomes 0.5
+                // camPanY: must account for image aspect ratio because WORLD_W is the unit
+                const img = imgCache.current[activeScreen.url];
+                const imgAspect = img ? img.width / img.height : 9/16;
+                const camPanX = (fp.x / 100) - 0.5;
+                const camPanY = ((fp.y / 100) - 0.5) / imgAspect;
 
                 return {
                   id: uid(),
@@ -191,6 +197,7 @@ export default function TestFfmpgPage() {
                   camPanY,
                   label: m.label ?? "",
                   duration: m.duration ?? 2.5,
+                  aiFocusPoint: fp,
                 };
               })
             }
@@ -313,6 +320,26 @@ export default function TestFfmpgPage() {
         ctx.font = `${Math.max(28, (tr.h/100)*baseH*0.5) / cs.scale}px Inter, sans-serif`;
         ctx.fillStyle = "#1e293b";
         ctx.fillText(cs.typedText, drawX + (tr.x/100)*baseW + 10, drawY + (tr.y/100)*baseH + (tr.h/100)*baseH*0.7);
+      }
+
+      // ── DEBUG POINT (AI Focus) ─────────────────────────────────────────────
+      const selectedMoment = screen.moments.find(m => m.id === selectedMomentId);
+      if (selectedMoment?.aiFocusPoint && !isPlaying) {
+        const fp = selectedMoment.aiFocusPoint;
+        const absX = drawX + (fp.x / 100) * baseW;
+        const absY = drawY + (fp.y / 100) * baseH;
+        
+        ctx.save();
+        // Inner black circle
+        ctx.fillStyle = "black";
+        ctx.beginPath();
+        ctx.arc(absX, absY, 10, 0, Math.PI * 2);
+        ctx.fill();
+        // White border
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
       }
 
       ctx.restore(); // camera
