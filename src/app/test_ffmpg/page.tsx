@@ -386,7 +386,7 @@ export default function TestFfmpgPage() {
     // End WORLD transform
     ctx.restore();
 
-    // Subtitles — anchored at 40% of CANVAS height (so it doesn't get cut by aspect ratio!)
+    // Subtitles — anchored at 65% of CANVAS height (35% from bottom)
     if (cs.subtitleVisible && cs.subtitleText) {
       ctx.save();
       const aspectScale = CANVAS_W / WORLD_W; 
@@ -394,7 +394,7 @@ export default function TestFfmpgPage() {
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       const words = cs.subtitleText.split(" ");
       const sx = CANVAS_W / 2;
-      const sy = CANVAS_H * 0.6; 
+      const sy = CANVAS_H * 0.65; 
       ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 15;
       ctx.lineWidth = 12 * aspectScale; ctx.strokeStyle = "rgba(0,0,0,0.9)";
 
