@@ -665,11 +665,12 @@ export default function TestFfmpgPage() {
         tl.addLabel(momentLabel);
 
         // Word count for duration - including 1.5s gap ONLY at the end of the paragraph
-        // PLUS 1.5s additional for each period found in the text
+        // PLUS 1.5s additional for each period (.) and 1.0s for each comma (,)
         const words = m.label ? m.label.split(/\s+/).filter(Boolean) : [];
         const dotsCount = words.filter(w => w.endsWith('.')).length;
+        const commaCount = words.filter(w => w.endsWith(',')).length;
         const wordDur = 1 / wordsPerSecond;
-        const textDuration = words.length > 0 ? (words.length * wordDur + 1.5 + (dotsCount * 1.5)) : 0;
+        const textDuration = words.length > 0 ? (words.length * wordDur + 1.5 + (dotsCount * 1.5) + (commaCount * 1.0)) : 0;
         const d = Math.max(m.duration, textDuration);
         
         const ease = m.easing ?? "power2.inOut";
@@ -704,7 +705,7 @@ export default function TestFfmpgPage() {
 
         if (m.label) {
           const allWords = m.label.split(/\s+/).filter(Boolean);
-          const wordsPerChunk = aspectRatio === "9:16" ? 3 : (aspectRatio === "1:1" ? 4 : 5);
+          const wordsPerChunk = 2; // Fixed max 2 words per line
           const wordDur = 1 / wordsPerSecond;
           let accTime = 0;
           
@@ -726,10 +727,13 @@ export default function TestFfmpgPage() {
 
             if (isEndOfChunk) {
               const hideTime = accTime + 1.0; 
-              // Only hide if the next word starts AFTER the hide time (i.e. if there's a period gap)
+              // Only hide if the next word starts AFTER the hide time (i.e. if there's a period/comma gap)
               // OR if it's the absolute end of the moment narration.
-              // This prevents the "glitch" where subtitles blink between normal words.
-              const nextWordStartTime = accTime + wordDur + (word.endsWith('.') ? 1.5 : 0);
+              let nextPause = 0;
+              if (word.endsWith('.')) nextPause = 1.5;
+              else if (word.endsWith(',')) nextPause = 1.0;
+
+              const nextWordStartTime = accTime + wordDur + nextPause;
               
               if (wIdx === allWords.length - 1 || hideTime < nextWordStartTime) {
                 const finalHide = Math.min(d - 0.05, hideTime);
@@ -738,8 +742,9 @@ export default function TestFfmpgPage() {
             }
 
             accTime += wordDur;
-            // Add extra 1.5s delay if word ends with a period
+            // Add extra delays for punctuation
             if (word.endsWith('.')) accTime += 1.5;
+            else if (word.endsWith(',')) accTime += 1.0;
           });
         }
         
