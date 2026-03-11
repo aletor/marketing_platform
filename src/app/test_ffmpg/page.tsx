@@ -417,7 +417,7 @@ export default function TestFfmpgPage() {
         ctx.moveTo(-25, 0); ctx.lineTo(25, 0);
         ctx.stroke();
       } else {
-        // Star points animation (mimicking stars points.lottie)
+        // Star points animation (high quality fallback representing stars points.lottie)
         ctx.save();
         const time = Date.now() / 1000;
         const drawStar = (x: number, y: number, size: number, rot: number) => {
@@ -425,6 +425,7 @@ export default function TestFfmpgPage() {
           ctx.translate(x, y);
           ctx.rotate(rot);
           ctx.beginPath();
+          // Draw a 4-pointed star (sparkle)
           for (let i = 0; i < 4; i++) {
             ctx.rotate(Math.PI / 2);
             ctx.moveTo(0, -size);
@@ -438,11 +439,11 @@ export default function TestFfmpgPage() {
           ctx.restore();
         };
 
-        // Draw multiple stars with different motions
-        drawStar(0, 0, 25 * (0.8 + Math.sin(time * 4) * 0.2), time);
-        drawStar(-35, -30, 12 * (0.8 + Math.cos(time * 3) * 0.2), -time * 0.5);
-        drawStar(40, -15, 15 * (0.8 + Math.sin(time * 5) * 0.2), time * 0.8);
-        drawStar(10, 45, 10 * (0.8 + Math.cos(time * 2) * 0.2), -time * 1.2);
+        // Draw multiple stars with independent twinkling
+        drawStar(0, 0, 30 * (0.8 + Math.sin(time * 5) * 0.2), time * 0.5);
+        drawStar(-40, -35, 14 * (0.7 + Math.cos(time * 4) * 0.3), -time * 0.3);
+        drawStar(45, -20, 18 * (0.7 + Math.sin(time * 6) * 0.3), time * 0.7);
+        drawStar(15, 50, 12 * (0.7 + Math.cos(time * 3) * 0.3), -time * 1.1);
         ctx.restore();
       }
 
