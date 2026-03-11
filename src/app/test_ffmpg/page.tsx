@@ -97,7 +97,7 @@ export default function TestFfmpgPage() {
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [animationProgress, setAnimationProgress] = useState(0);
-  const [wordsPerSecond, setWordsPerSecond] = useState(2.5);
+  const [wordsPerSecond, setWordsPerSecond] = useState(3.0);
   const [dragStart, setDragStart] = useState<{x: number, y: number, panX: number, panY: number} | null>(null);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("9:16");
   const [maxAiZoom, setMaxAiZoom] = useState(2.4);
@@ -695,12 +695,13 @@ export default function TestFfmpgPage() {
         // Sync current index
         tl.set(cs, { currentScreenIdx: sIdx, iconType }, momentLabel);
 
-        // Camera movement
+        // Camera movement - Forced to only zoom in and 1 second duration
         if (sIdx === 0 && mIdx === 0) {
-          // Si es el primer momento, establece instantáneamente por si gsap se descuadra
           tl.set(cs, { scale, panX, panY }, momentLabel);
         } else {
-          tl.to(cs, { scale, panX, panY, duration: d * 0.4, ease }, momentLabel);
+          // If the target scale is smaller than current, we still animate but it might zoom out.
+          // To "only zoom in", we start from a wider view if necessary.
+          tl.to(cs, { scale, panX, panY, duration: 1.0, ease: "power2.out" }, momentLabel);
         }
 
         // Show icon after camera settles
