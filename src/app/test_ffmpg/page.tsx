@@ -97,7 +97,7 @@ export default function TestFfmpgPage() {
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [animationProgress, setAnimationProgress] = useState(0);
-  const [wordsPerSecond, setWordsPerSecond] = useState(2.2);
+  const [wordsPerSecond, setWordsPerSecond] = useState(2.5);
   const [dragStart, setDragStart] = useState<{x: number, y: number, panX: number, panY: number} | null>(null);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("9:16");
   const [maxAiZoom, setMaxAiZoom] = useState(2.4);
@@ -462,47 +462,46 @@ export default function TestFfmpgPage() {
     if (cs.subtitleVisible && cs.subtitleText) {
       ctx.save();
       const aspectScale = CANVAS_W / WORLD_W; 
-      const baseFontSize = 84 * aspectScale;
+      const baseFontSize = 100 * aspectScale; // Slightly bigger for single words
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       const words = cs.subtitleText.split(" ");
       const sx = CANVAS_W / 2;
       const sy = CANVAS_H * 0.65; 
       ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 15;
-      ctx.lineWidth = 12 * aspectScale; ctx.strokeStyle = "rgba(0,0,0,0.9)";
+      ctx.lineWidth = 14 * aspectScale; ctx.strokeStyle = "rgba(0,0,0,0.9)";
 
-      // Calculate total width with individual scales
-      let totalW = 0;
-      const wordWidths = words.map((word, i) => {
+      // Calculate word properties
+      const wordStats = words.map((word, i) => {
         const isCurrent = i === cs.subtitleActiveIdx;
         const scale = isCurrent ? cs.subtitleScale : 1;
-        ctx.font = `italic 900 ${baseFontSize * scale}px "Inter", sans-serif`;
-        return ctx.measureText(word + " ").width;
+        const cleanWord = word.replace(/[.,]/g, "").toUpperCase();
+        const isRelevant = cleanWord.length >= 6 || ["FACTURA", "COMPRA", "PAGO", "GESTIÓN", "CLIENTE", "AQUÍ", "AHORA"].includes(cleanWord);
+        const relScale = isRelevant ? 1.2 : 1.0;
+        
+        ctx.font = `italic 900 ${baseFontSize * scale * relScale}px "Inter", sans-serif`;
+        const width = ctx.measureText(word + " ").width;
+        return { word, isCurrent, scale, relScale, isRelevant, width };
       });
-      totalW = wordWidths.reduce((a, b) => a + b, 0);
 
-      let cx2 = sx - totalW / 2;
-      
+      const totalW = wordStats.reduce((acc, s) => acc + s.width, 0);
+      let curX = sx - totalW / 2;
+
       // Pass 1: Strokes
-      words.forEach((word, i) => {
-        const isCurrent = i === cs.subtitleActiveIdx;
-        const scale = isCurrent ? cs.subtitleScale : 1;
-        const w = wordWidths[i];
-        ctx.font = `italic 900 ${baseFontSize * scale}px "Inter", sans-serif`;
-        ctx.strokeText(word, cx2 + w / 2 - 5, sy);
-        cx2 += w;
+      wordStats.forEach(s => {
+        ctx.font = `italic 900 ${baseFontSize * s.scale * s.relScale}px "Inter", sans-serif`;
+        ctx.strokeText(s.word, curX + s.width / 2 - 5, sy);
+        curX += s.width;
       });
 
       // Pass 2: Fills
-      cx2 = sx - totalW / 2;
-      words.forEach((word, i) => {
-        const isCurrent = i === cs.subtitleActiveIdx;
-        const scale = isCurrent ? cs.subtitleScale : 1;
-        const w = wordWidths[i];
-        ctx.font = `italic 900 ${baseFontSize * scale}px "Inter", sans-serif`;
-        ctx.fillStyle = (word.length > 6 || i % 3 === 1) ? "#facc15" : "white";
-        ctx.fillText(word, cx2 + w / 2 - 5, sy);
-        cx2 += w;
+      curX = sx - totalW / 2;
+      wordStats.forEach(s => {
+        ctx.font = `italic 900 ${baseFontSize * s.scale * s.relScale}px "Inter", sans-serif`;
+        ctx.fillStyle = s.isRelevant ? "#facc15" : "white";
+        ctx.fillText(s.word, curX + s.width / 2 - 5, sy);
+        curX += s.width;
       });
+      
       ctx.restore();
     }
 
@@ -705,7 +704,7 @@ export default function TestFfmpgPage() {
 
         if (m.label) {
           const allWords = m.label.split(/\s+/).filter(Boolean);
-          const wordsPerChunk = 2; // Fixed max 2 words per line
+          const wordsPerChunk = 1; // Fixed 1 word per line for impact
           const wordDur = 1 / wordsPerSecond;
           let accTime = 0;
           
