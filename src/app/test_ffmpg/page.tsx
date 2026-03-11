@@ -425,7 +425,7 @@ export default function TestFfmpgPage() {
         ctx.moveTo(-25, 0); ctx.lineTo(25, 0);
         ctx.stroke();
       } else {
-        // Star points animation (high quality fallback representing stars points.lottie)
+        // High quality animated stars representing stars points.lottie
         ctx.save();
         const time = Date.now() / 1000;
         const drawStar = (x: number, y: number, size: number, rot: number) => {
@@ -433,7 +433,6 @@ export default function TestFfmpgPage() {
           ctx.translate(x, y);
           ctx.rotate(rot);
           ctx.beginPath();
-          // Draw a 4-pointed star (sparkle)
           for (let i = 0; i < 4; i++) {
             ctx.rotate(Math.PI / 2);
             ctx.moveTo(0, -size);
@@ -443,18 +442,19 @@ export default function TestFfmpgPage() {
             ctx.quadraticCurveTo(0, 0, 0, -size);
           }
           ctx.fillStyle = "white";
+          // Shadow from parent scope will be used
           ctx.fill();
           ctx.restore();
         };
 
-        // Draw multiple stars with independent twinkling
+        // Twinkling stars
         drawStar(0, 0, 30 * (0.8 + Math.sin(time * 5) * 0.2), time * 0.5);
         drawStar(-40, -35, 14 * (0.7 + Math.cos(time * 4) * 0.3), -time * 0.3);
         drawStar(45, -20, 18 * (0.7 + Math.sin(time * 6) * 0.3), time * 0.7);
         drawStar(15, 50, 12 * (0.7 + Math.cos(time * 3) * 0.3), -time * 1.1);
         ctx.restore();
       }
-
+      
       ctx.restore();
     }
 
@@ -726,8 +726,15 @@ export default function TestFfmpgPage() {
 
             if (isEndOfChunk) {
               const hideTime = accTime + 1.0; 
-              const finalHide = Math.min(d - 0.05, hideTime);
-              tl.set(cs, { subtitleVisible: false }, `${momentLabel}+=${finalHide}`);
+              // Only hide if the next word starts AFTER the hide time (i.e. if there's a period gap)
+              // OR if it's the absolute end of the moment narration.
+              // This prevents the "glitch" where subtitles blink between normal words.
+              const nextWordStartTime = accTime + wordDur + (word.endsWith('.') ? 1.5 : 0);
+              
+              if (wIdx === allWords.length - 1 || hideTime < nextWordStartTime) {
+                const finalHide = Math.min(d - 0.05, hideTime);
+                tl.set(cs, { subtitleVisible: false }, `${momentLabel}+=${finalHide}`);
+              }
             }
 
             accTime += wordDur;
