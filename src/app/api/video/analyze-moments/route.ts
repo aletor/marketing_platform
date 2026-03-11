@@ -21,7 +21,7 @@ Each moment focuses the camera on ONE relevant UI element or concept, moving the
 For each moment return:
 - label: Natural, engaging tutorial narration in ${langName}. Be specific about what the element does. Example: "Desde este botón podrás descargar todas tus facturas en PDF con un solo clic."
 - duration: seconds this moment lasts (1.5–5.0)
-- camScale: float between 0.9 and 1.4. Use 1.2–1.4 for specific small elements (buttons, inputs, icons). Use 0.9–1.1 for broader context or full-screen views.
+- camScale: float between 0.9 and 2.4. Use 1.8–2.4 to zoom deeply into specific small elements (buttons, inputs, icons) to highlight details. Use 0.9–1.2 for broader context or full-screen views.
 - focusPoint: { x, y } as percentage (0–100) of the image. This is the point the camera will pan to center. For a specific element, use its visual center. For full-screen overviews, use { "x": 50, "y": 50 }.
 
 Rules:

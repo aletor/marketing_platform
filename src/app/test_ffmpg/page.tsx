@@ -94,7 +94,7 @@ export default function TestFfmpgPage() {
   const [wordsPerSecond, setWordsPerSecond] = useState(2.2);
   const [dragStart, setDragStart] = useState<{x: number, y: number, panX: number, panY: number} | null>(null);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("9:16");
-  const [maxAiZoom, setMaxAiZoom] = useState(1.4);
+  const [maxAiZoom, setMaxAiZoom] = useState(2.4);
 
   const { w: CANVAS_W, h: CANVAS_H } = ASPECT_CONFIG[aspectRatio];
 
