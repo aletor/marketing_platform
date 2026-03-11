@@ -571,9 +571,12 @@ export default function TestFfmpgPage() {
         const momentLabel = `s${sIdx}_m${mIdx}`;
         tl.addLabel(momentLabel);
 
-        // Word count for duration
-        const wordCount = m.label ? m.label.split(/\s+/).filter(Boolean).length : 0;
-        const textDuration = wordCount > 0 ? (wordCount / wordsPerSecond) : 0;
+        // Word count for duration - including 1.5s gap after each chunk
+        const words = m.label ? m.label.split(/\s+/).filter(Boolean) : [];
+        const wordsPerChunk = aspectRatio === "9:16" ? 3 : (aspectRatio === "1:1" ? 4 : 5);
+        const numChunks = Math.ceil(words.length / wordsPerChunk);
+        const wordDur = 1 / wordsPerSecond;
+        const textDuration = words.length > 0 ? (words.length * wordDur + numChunks * 1.5) : 0;
         const d = Math.max(m.duration, textDuration);
         
         const ease = m.easing ?? "power2.inOut";
@@ -599,13 +602,17 @@ export default function TestFfmpgPage() {
           const allWords = m.label.split(/\s+/).filter(Boolean);
           const wordsPerChunk = aspectRatio === "9:16" ? 3 : (aspectRatio === "1:1" ? 4 : 5);
           const wordDur = 1 / wordsPerSecond;
+          let accTime = 0;
           
           allWords.forEach((word: string, wIdx: number) => {
+            const isStartOfChunk = wIdx % wordsPerChunk === 0;
+            const isEndOfChunk = (wIdx + 1) % wordsPerChunk === 0 || wIdx === allWords.length - 1;
+            
+            if (isStartOfChunk && wIdx > 0) accTime += 1.5; // 1.5s gap before starting new row/chunk
+
             const chunkIndex = Math.floor(wIdx / wordsPerChunk);
             const chunkWords = allWords.slice(chunkIndex * wordsPerChunk, wIdx + 1);
             const activeIdxInChunk = wIdx % wordsPerChunk;
-            const startTime = wIdx * wordDur;
-            const isLastOfChunk = (wIdx + 1) % wordsPerChunk === 0 || wIdx === allWords.length - 1;
             
             tl.to(cs, { 
               subtitleVisible: true, 
@@ -613,18 +620,16 @@ export default function TestFfmpgPage() {
               subtitleActiveIdx: activeIdxInChunk,
               subtitleScale: 1.1, 
               duration: 0.05 
-            }, `${momentLabel}+=${startTime}`)
+            }, `${momentLabel}+=${accTime}`)
               .to(cs, { subtitleScale: 1, duration: 0.1 }, ">");
 
-            if (isLastOfChunk) {
-              const hideTime = startTime + 2;
-              const nextWordTime = (wIdx + 1) * wordDur;
-              // Only schedule a hide if it's the end of everything OR if there's enough gap before next words
-              if (wIdx === allWords.length - 1 || hideTime < nextWordTime) {
-                const finalHide = Math.min(d - 0.05, hideTime);
-                tl.set(cs, { subtitleVisible: false }, `${momentLabel}+=${finalHide}`);
-              }
+            if (isEndOfChunk) {
+              const hideTime = accTime + 1.0; // Hide 1s after finishing chunk
+              const finalHide = Math.min(d - 0.05, hideTime);
+              tl.set(cs, { subtitleVisible: false }, `${momentLabel}+=${finalHide}`);
             }
+
+            accTime += wordDur;
           });
         }
         
