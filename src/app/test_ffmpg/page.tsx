@@ -689,10 +689,31 @@ export default function TestFfmpgPage() {
         // Word count for duration - including 1.5s gap ONLY at the end of the paragraph
         // PLUS 1.5s additional for each period (.) and 1.0s for each comma (,)
         const words = m.label ? m.label.split(/\s+/).filter(Boolean) : [];
-        const dotsCount = words.filter(w => w.endsWith('.')).length;
-        const commaCount = words.filter(w => w.endsWith(',')).length;
         const wordDur = 1 / wordsPerSecond;
-        const textDuration = words.length > 0 ? (words.length * wordDur + 1.5 + (dotsCount * 1.5) + (commaCount * 1.0)) : 0;
+        
+        // Calculate chunks in advance to get precise duration
+        const lineChunks: string[][] = [];
+        let tempChunk: string[] = [];
+        words.forEach((w) => {
+          tempChunk.push(w);
+          if (tempChunk.length >= 2 || w.endsWith(',') || w.endsWith('.')) {
+            lineChunks.push(tempChunk);
+            tempChunk = [];
+          }
+        });
+        if (tempChunk.length > 0) lineChunks.push(tempChunk);
+
+        let totalTextTime = 0;
+        lineChunks.forEach(chunk => {
+          totalTextTime += chunk.length * wordDur; // Reading time
+          totalTextTime += 1.0; // 1s pause after each line as requested
+          chunk.forEach(w => {
+            if (w.endsWith('.')) totalTextTime += 1.5;
+            else if (w.endsWith(',')) totalTextTime += 1.0;
+          });
+        });
+
+        const textDuration = words.length > 0 ? (totalTextTime + 0.5) : 0; // +0.5 safety margin
         const d = Math.max(m.duration, textDuration);
         
         const ease = m.easing ?? "power2.inOut";
@@ -762,13 +783,13 @@ export default function TestFfmpgPage() {
             chunkWords.forEach((_, wInChunkIdx) => {
               const wordStartTime = accTime + wordInChunkOffset;
               tl.fromTo(cs, 
-                { subtitleScale: 0.8, subtitleAlpha: 0 },
+                { subtitleScale: 0.6, subtitleAlpha: 0 },
                 { 
                   subtitleActiveIdx: wInChunkIdx,
                   subtitleAlpha: 1,
                   subtitleScale: 1.0,
-                  duration: 0.25,
-                  ease: "power2.out",
+                  duration: 0.4,
+                  ease: "power1.out",
                   immediateRender: false
                 }, 
                 `${momentLabel}+=${wordStartTime}`
@@ -794,7 +815,7 @@ export default function TestFfmpgPage() {
               tl.set(cs, { subtitleVisible: false }, `${momentLabel}+=${finalHide}`);
             }
 
-            accTime += chunkDuration + chunkPause;
+            accTime += chunkDuration + chunkPause + 1.0;
           });
         }
         
