@@ -1,0 +1,31 @@
+service: content-engine-ai-backend
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: eu-west-1
+  stage: \${opt:stage, 'dev'}
+  environment:
+    OPENAI_API_KEY: \${env:OPENAI_API_KEY, ''}
+  httpApi:
+    cors: true
+
+plugins:
+  - serverless-plugin-typescript
+
+functions:
+  generateCampaign:
+    handler: src/functions/generateCampaign.handler
+    timeout: 900 # 15 minutes max
+    events:
+      - httpApi:
+          path: /api/generate/campaign
+          method: post
+
+  generateArticle:
+    handler: src/functions/generateArticle.handler
+    timeout: 900 # 15 minutes max
+    events:
+      - httpApi:
+          path: /api/generate/article
+          method: post

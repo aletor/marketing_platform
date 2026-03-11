@@ -110,10 +110,8 @@ export default function Library() {
   };
 
   const openItem = (item: GeneratedItem) => {
-    setSelectedItem(item);
-    setEditTitle(item.title);
-    setEditContent(typeof item.content === 'string' ? item.content : (item.content.article || ""));
-    setIsEditing(false);
+    // Navigate to the newly created immersive Editorial Editor
+    window.location.href = `/editor/${item.id}`;
   };
 
   const handleMoveToCampaign = async (campaignId: string) => {

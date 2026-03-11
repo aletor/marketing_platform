@@ -71,11 +71,26 @@ Do not hallucinate. If some information is not present, leave it empty or as an 
           extractedData = { error: "Failed to parse JSON", raw: extractedJsonString };
         }
 
-        // 4. Update Database Record
+        // 4. Compute Embedding for the raw JSON context to be used in RAG
+        let embedding: number[] | undefined;
+        try {
+          const embResponse = await openai.embeddings.create({
+            model: "text-embedding-3-small",
+            input: extractedJsonString,
+          });
+          embedding = embResponse.data[0].embedding;
+        } catch (err) {
+          console.error(`Failed to generate embedding for doc ${doc.id}:`, err);
+        }
+
+        // 5. Update Database Record
         doc.status = "Analizado";
         doc.extractedContext = JSON.stringify(extractedData, null, 2);
+        if (embedding) {
+          doc.embedding = embedding;
+        }
         
-        // Ensure corporate context merges nicely
+        // Ensure corporate context merges nicely (legacy format for fail-safe)
         const readableContext = `### Document: ${doc.filename}\n
 **Empresa:** ${extractedData.empresa?.propuesta_valor || ''}
 **Sector:** ${extractedData.empresa?.sector || ''}

@@ -224,8 +224,8 @@ export default function CampaignDetailsPage() {
                      <h2 className="text-3xl lg:text-4xl font-black text-[#1A1B1E] leading-tight mb-6 max-w-2xl">{article.title}</h2>
                      <p className="text-base text-[#8E8B88] font-medium leading-relaxed max-w-2xl line-clamp-4">{article.preview}</p>
                      <div className="mt-auto pt-8">
-                       <Link href={`/library?open=${article.id}`} className="inline-flex items-center justify-center px-8 py-4 bg-[#1A1B1E] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-colors">
-                         Leer Post Principal
+                       <Link href={`/editor/${article.id}`} className="inline-flex items-center justify-center px-8 py-4 bg-[#1A1B1E] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-colors">
+                         Abrir en el Editor de IA
                        </Link>
                      </div>
                   </div>
@@ -249,8 +249,8 @@ export default function CampaignDetailsPage() {
                          <div className="absolute top-4 right-4 text-blue-100 group-hover:text-blue-200 transition-colors"><MessageSquare size={24}/></div>
                          <h3 className="text-sm font-black text-[#1A1B1E] mb-2 pr-8">{post.title || `Post Educativo ${i+1}`}</h3>
                          <p className="text-xs text-[#8E8B88] font-medium line-clamp-2 leading-relaxed flex-1">{post.preview}</p>
-                         <Link href={`/library?open=${post.id}`} className="mt-4 text-[9px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-800">Ver Post →</Link>
-                         <Link href={`/library?open=${post.id}`} className="absolute inset-0" aria-label="Ver post" />
+                         <Link href={`/editor/${post.id}`} className="mt-4 text-[9px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-800">Refinar con IA →</Link>
+                         <Link href={`/editor/${post.id}`} className="absolute inset-0" aria-label="Ver post" />
                       </div>
                    ))}
 
@@ -261,8 +261,8 @@ export default function CampaignDetailsPage() {
                          <span className="text-[9px] bg-white/10 text-[#FFBD1B] border border-white/20 px-2 py-1 rounded inline-block font-black uppercase tracking-widest self-start mb-3">Caso de Éxito</span>
                          <h3 className="text-sm font-black leading-tight mb-2 pr-8">{uc.title.replace('Caso de Uso: ', '')}</h3>
                          <p className="text-xs text-neutral-400 font-medium line-clamp-2 leading-relaxed flex-1">{uc.preview}</p>
-                         <Link href={`/library?open=${uc.id}`} className="mt-4 text-[9px] font-black uppercase tracking-widest text-[#FFBD1B] hover:text-white">Ver Caso →</Link>
-                         <Link href={`/library?open=${uc.id}`} className="absolute inset-0" aria-label="Ver caso de uso" />
+                         <Link href={`/editor/${uc.id}`} className="mt-4 text-[9px] font-black uppercase tracking-widest text-[#FFBD1B] hover:text-white">Refinar con IA →</Link>
+                         <Link href={`/editor/${uc.id}`} className="absolute inset-0" aria-label="Ver caso de uso" />
                       </div>
                    ))}
                 </div>

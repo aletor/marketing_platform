@@ -54,8 +54,15 @@ export default function KnowledgeBasePage() {
     try {
       const updatedContextStr = JSON.stringify(editForm);
       setDocuments(docs => docs.map(d => d.id === docId ? { ...d, extractedContext: updatedContextStr } : d));
-      // MVP Mock: En un entorno real, hacer un fetch PUT/PATCH.
-      // await fetch(`/api/knowledge/update`, { method: 'POST', body: JSON.stringify({id: docId, context: editForm}) })
+      
+      const response = await fetch(`/api/knowledge/update`, { 
+        method: 'POST', 
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: docId, context: editForm }) 
+      });
+
+      if (!response.ok) throw new Error("API Update Failed");
+
       setMessage({ text: "Cerebro Corporativo actualizado con éxito", type: "success" });
       setEditingDocId(null);
     } catch (e) {

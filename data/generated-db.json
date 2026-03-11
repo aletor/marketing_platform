@@ -1,6 +1,57 @@
 {
   "items": [
     {
+      "campaignId": "461dce40-b208-4910-8c2b-15ebf1f4ee78",
+      "type": "article",
+      "title": "Caso de Uso: Transformación del Acceso en Eventos",
+      "preview": "Campaña: Tema: diseño minimalista. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "content": {
+        "article": "### Problema:\nLos eventos están plagados de fraudes y colas interminables, afectando la experiencia del usuario y la reputación de las marcas.\n\n### Solución:\nCon el sistema de OARO, la verificación se realiza de forma instantánea y segura. El usuario solo necesita escanear su documento y usar su biometría para acceder, eliminando la fricción y mejorando la experiencia general.",
+        "summary": "Caso de éxito relacionado con Tema: diseño minimalista. Objetivo: Awareness (Alcance). Canales: Newsletter"
+      },
+      "id": "6715880f-26de-4f23-b9b3-c10a9ea4eca9",
+      "date": "2026-03-11T06:50:20.628Z"
+    },
+    {
+      "campaignId": "461dce40-b208-4910-8c2b-15ebf1f4ee78",
+      "type": "social",
+      "title": "Post 3: Tema: diseño minimalista. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "preview": "Trust/Case Study",
+      "content": "Con el sistema de Smart Ticketing de OARO, los eventos se sienten más fluidos y seguros. La verificación biométrica y la identificación digital eliminan el caos, haciendo que el acceso sea instantáneo y confiable.",
+      "id": "ff00681a-b0fc-4a70-8f0b-c19b33b23aab",
+      "date": "2026-03-11T06:50:20.625Z"
+    },
+    {
+      "campaignId": "461dce40-b208-4910-8c2b-15ebf1f4ee78",
+      "type": "social",
+      "title": "Post 2: Tema: diseño minimalista. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "preview": "Solution/Educational",
+      "content": "El verdadero minimalismo en diseño es eliminar la fricción. Con OARO, el proceso de verificación se convierte en un 'clic y listo', optimizando la experiencia del usuario y maximizando la rentabilidad.",
+      "id": "56a28c3b-b255-459a-8cb3-a30f7abc4548",
+      "date": "2026-03-11T06:50:20.624Z"
+    },
+    {
+      "campaignId": "461dce40-b208-4910-8c2b-15ebf1f4ee78",
+      "type": "social",
+      "title": "Post 1: Tema: diseño minimalista. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "preview": "Problem Awareness",
+      "content": "El diseño tradicional es un maquillaje que oculta la fricción. Estadio lleno de colas y fraudes, y la experiencia del usuario se deteriora. ¿Te suena familiar?",
+      "id": "141632e4-a616-4f28-b804-9d1fcdc697f7",
+      "date": "2026-03-11T06:50:20.623Z"
+    },
+    {
+      "campaignId": "461dce40-b208-4910-8c2b-15ebf1f4ee78",
+      "type": "article",
+      "title": "Diseño minimalista: la interfaz que no se ve… y por eso vende (y protege) más",
+      "preview": "Campaña: Tema: diseño minimalista. Objetivo: Awareness (Alcance). Canales: Newsletter",
+      "content": {
+        "article": "El \"diseño\" ha sido malinterpretado como estética superficial.\n\nColas en estadios, formularios en aeropuertos, QR reenviados. Y el fraude sigue creciendo.\n\nUna verdad: el mejor diseño es invisible.\n\nCuando el diseño es auténtico, desaparece, permitiendo que:\n\n1) La gente acceda.\n2) Los negocios prosperen.\n\n---\n\n## Minimalismo: menos fricción, no menos atractivo.\n\nConfundir minimalismo con estética es un error. El verdadero minimalismo elimina obstáculos:\n\n**“Verifícame y déjame pasar.”**\n\nSin tutoriales innecesarios. Instrucciones largas indican complicaciones, y lo complicado genera colas y mala reputación.\n\n---\n\n## Minimalismo como estrategia empresarial\n\nEn B2B, hablamos de tecnología: OCR, NFC, blockchain, IA. Pero la clave es:\n\n¿El usuario siente la tecnología o solo un “clic y listo”?\n\nEl usuario no compra tecnología, compra experiencia.\n\nY la métrica del minimalismo es el **tiempo hasta el “sí”**.\n\n- Sí, estás verificado.\n- Sí, tu entrada es válida.\n- Sí, puedes acceder.\n\nMenos tiempo, más escalabilidad y rentabilidad.\n\n---\n\n## Diseño mínimo, fraude limitado\n\nEl fraude se alimenta de:\n\n1) Ambigüedad.\n2) Procesos manuales.\n3) Puntos ciegos.\n\nUn \"ticket PDF\" es un buffet para el fraude. \n\nMinimalismo implica un flujo sin complicaciones:\n\n- Identidad verificada.\n- Credencial digital en tu dispositivo.\n- Activación de ticket cerca del acceso.\n- Validación biométrica.\n\nNo hay negociación, solo autenticidad criptográfica.\n\n---\n\n## Minimalismo real: confianza en el diseño\n\nLa confianza se construye con señales:\n\n- No pides datos innecesarios.\n- No haces repetir información.\n- No exiges contraseñas complejas.\n\nEl minimalismo en identidad digital asegura: **“Tu información permanece contigo.”**\n\n---\n\n## Error típico: simplificar eliminando seguridad\n\nAlgunos eliminan pasos críticos en un intento de ser minimalistas. Eso es un error.\n\nMinimalismo no significa omitir verificación. Es **disimularla**.\n\n- Validación de documentos sin trámites visibles.\n- Prueba de vida sin interrogatorios.\n- Face matching sin complicaciones.\n\nLa seguridad debe ser un resultado, no una experiencia.\n\n---\n\n## Ticketing minimalista: acceso, no archivos.\n\nSi sigues tratando tickets como PDFs, estás obsoleto.\n\nHoy, el acceso es un permiso dinámico:\n\n- Activación cerca del acceso.\n- Transferencias limitadas.\n- Validación contra una identidad verificada.\n\nEsto es minimalismo operativo que elimina el caos.\n\n---\n\n## Minimalismo para el equipo\n\nImpacta el back-office: operaciones, soporte, seguridad. Cada paso extra genera tickets de soporte y costos.\n\nDiseñar minimalista es preparar el sistema para el mundo real.\n\n---\n\n## Minimalismo: una elección clara\n\nEl minimalismo obliga a elegir. Define la acción y elimina lo superfluo.\n\nEsa claridad genera awareness.\n\n---\n\n## ¿Conexión con identidad digital y smart ticketing?\n\nLa identidad digital bien construida es minimalismo puro:\n\n- Escaneo de documentos.\n- Verificación facial.\n- Credencial verificada.\n\nEn ticketing:\n\n- Compras, recibes acceso digital, lo activas, entras con biometría.\n\nNo hay confusión, solo un usuario, un dispositivo, una credencial, un permiso.\n\n---\n\n## El futuro: menos excusas.\n\nLa próxima vez que se hable de \"diseño minimalista\", pregúntate:\n\n**¿Qué fricción eliminamos?**\n\nEl poder está en eliminar pasos, no en el color del botón.\n\nEse es el nuevo estándar en eventos, viajes y en cualquier negocio donde la identidad y el acceso son esenciales.\n\nEl minimalismo, entendido correctamente, significa más control, seguridad y velocidad. Con menos ruido.\n\n---\n\n### Si deseas descubrir cómo transformar tu enfoque hacia el minimalismo y la identidad verificada, mantente atento. Te invitamos a explorar experiencias que parecen simples… porque son efectivas.",
+        "summary": "Resumen generado automáticamente para Tema: diseño minimalista. Objetivo: Awareness (Alcance). Canales: Newsletter"
+      },
+      "id": "6432923b-7fa9-49e0-8e84-9620d2f4e3b2",
+      "date": "2026-03-11T06:50:20.621Z"
+    },
+    {
       "campaignId": "f4398dec-99b7-473f-823c-92e6d5bcb1b6",
       "type": "article",
       "title": "Caso de Uso: Use Case: del “nano banana” al acceso sin discusión (Smart Ticket + Identidad)",

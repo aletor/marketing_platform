@@ -13,6 +13,7 @@ export interface DocumentRecord {
   uploadedAt: string;
   extractedContext?: string;
   originalSourceUrl?: string;
+  embedding?: number[];
 }
 
 interface Database {
