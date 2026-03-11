@@ -68,7 +68,6 @@ interface CanvasState {
   subtitleVisible: boolean;
   subtitleScale: number;
   subtitleActiveIdx: number;
-  subtitleAlpha: number;
   
   // Transition state
   currentScreenIdx: number;
@@ -98,11 +97,13 @@ export default function TestFfmpgPage() {
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [animationProgress, setAnimationProgress] = useState(0);
-  const [wordsPerSecond, setWordsPerSecond] = useState(3.0);
+  const [wordsPerSecond, setWordsPerSecond] = useState(3.2);
   const [dragStart, setDragStart] = useState<{x: number, y: number, panX: number, panY: number} | null>(null);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("9:16");
   const [maxAiZoom, setMaxAiZoom] = useState(2.4);
-  
+  const lottieDataRef = useRef<any>(null);
+  const lottieFrameRef = useRef(0);
+
   const { w: CANVAS_W, h: CANVAS_H } = ASPECT_CONFIG[aspectRatio];
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -118,13 +119,21 @@ export default function TestFfmpgPage() {
     cursorVisible: false, clickRipple: 0,
     highlightRect: null, highlightAlpha: 0,
     typedText: "", typedRect: null, typedAlpha: 0,
-    subtitleText: "", subtitleVisible: false, subtitleScale: 1, subtitleActiveIdx: -1, subtitleAlpha: 0,
+    subtitleText: "", subtitleVisible: false, subtitleScale: 1, subtitleActiveIdx: -1,
     currentScreenIdx: 0, nextScreenIdx: 0, transitionProgress: 0, transitionType: "none",
     iconVisible: false, iconType: "sparkles", iconAlpha: 0
   });
 
   const activeScreen = screens.find(s => s.id === activeScreenId) ?? null;
   const selectedMoment = activeScreen?.moments.find(m => m.id === selectedMomentId) ?? null;
+
+  // ── Lottie handling ────────────────────────────────────────────────────────
+  useEffect(() => {
+    fetch("/stars points.lottie")
+      .then(res => res.json())
+      .then(data => { lottieDataRef.current = data; })
+      .catch(err => console.error("Error loading lottie:", err));
+  }, []);
 
   // ── File handling ──────────────────────────────────────────────────────────
 
@@ -182,8 +191,16 @@ export default function TestFfmpgPage() {
           ? {
               ...s,
               moments: found.moments.map((m: any) => {
+                // Clamp camScale to allowed range using the custom maxAiZoom
                 const camScale = Math.min(maxAiZoom, Math.max(0.9, m.camScale ?? 1));
+                
+                // Convert focusPoint (0–100%) → camPanX/Y
+                // fp.x = 0..100
                 const fp = m.focusPoint ?? { x: 50, y: 50 };
+
+                // Corrected Math:
+                // camPanX: (fp.x / 100) - 0.5 --> 0% becomes -0.5, 100% becomes 0.5
+                // camPanY: must account for image aspect ratio because WORLD_W is the unit
                 const img = imgCache.current[activeScreen.url];
                 const imgAspect = img ? img.width / img.height : 9/16;
                 const camPanX = (fp.x / 100) - 0.5;
@@ -243,6 +260,8 @@ export default function TestFfmpgPage() {
 
   // ── Canvas rendering ───────────────────────────────────────────────────────
 
+  const getImg = (url: string): HTMLImageElement | null => imgCache.current[url] ?? null;
+
   const renderFrame = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -252,6 +271,10 @@ export default function TestFfmpgPage() {
 
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
+    // ── WORLD TRANSFORM ─────────────────────────────────────────────────────
+    // Content is always authored in WORLD_W × WORLD_H (1080×1920).
+    // We shift so world-center maps to canvas-center — aspect ratio change
+    // just crops more/less around that fixed center point.
     ctx.save();
     ctx.translate(CANVAS_W / 2 - WORLD_W / 2, CANVAS_H / 2 - WORLD_H / 2);
 
@@ -267,13 +290,15 @@ export default function TestFfmpgPage() {
       ctx.globalAlpha = alpha;
       ctx.translate(offsetX, offsetY);
 
+      // Background fills the WHOLE canvas (even outside WORLD area)
       ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0); 
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // No scaling/offset for background
       ctx.globalAlpha = alpha;
       ctx.fillStyle = screen.bgColor || "#0d0d0d";
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
       ctx.restore();
 
+      // Camera (pivot at WORLD center)
       ctx.save();
       const fx = WORLD_W / 2 + cs.panX * WORLD_W;
       const fy = WORLD_H / 2 + cs.panY * WORLD_W;
@@ -281,13 +306,44 @@ export default function TestFfmpgPage() {
       ctx.scale(cs.scale, cs.scale);
       ctx.translate(-fx, -fy);
 
+      // Draw image centered in world
       const drawX = WORLD_W / 2 - baseW / 2;
       const drawY = WORLD_H / 2 - baseH / 2;
       ctx.drawImage(img, drawX, drawY, baseW, baseH);
-      ctx.restore(); 
-      ctx.restore(); 
+
+      // Grid
+      ctx.strokeStyle = "rgba(255,255,255,0.03)";
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 10; i++) {
+        ctx.beginPath(); ctx.moveTo(drawX + i * baseW/10, drawY); ctx.lineTo(drawX + i * baseW/10, drawY + baseH); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(drawX, drawY + i * baseH/10); ctx.lineTo(drawX + baseW, drawY + i * baseH/10); ctx.stroke();
+      }
+
+      // Highlight (pinned to image)
+      if (cs.highlightRect && cs.highlightAlpha > 0) {
+        const hr = cs.highlightRect;
+        ctx.globalAlpha = cs.highlightAlpha * alpha;
+        ctx.strokeStyle = "#facc15"; ctx.lineWidth = 6 / cs.scale;
+        const rx = drawX + (hr.x/100)*baseW, ry = drawY + (hr.y/100)*baseH;
+        const rw = (hr.w/100)*baseW, rh = (hr.h/100)*baseH;
+        ctx.strokeRect(rx, ry, rw, rh);
+        ctx.fillStyle = "rgba(250,204,21,0.12)"; ctx.fillRect(rx, ry, rw, rh);
+      }
+
+      // Typed text (pinned to image)
+      if (cs.typedRect && cs.typedText && cs.typedAlpha > 0) {
+        const tr = cs.typedRect;
+        ctx.globalAlpha = cs.typedAlpha * alpha;
+        ctx.font = `${Math.max(28, (tr.h/100)*baseH*0.5) / cs.scale}px Inter, sans-serif`;
+        ctx.fillStyle = "#1e293b";
+        ctx.fillText(cs.typedText, drawX + (tr.x/100)*baseW + 10, drawY + (tr.y/100)*baseH + (tr.h/100)*baseH*0.7);
+      }
+
+      ctx.restore(); // camera
+      ctx.restore(); // alpha/offset
     };
 
+    // Transitions
     const curr = screens[cs.currentScreenIdx];
     const next = screens[cs.nextScreenIdx];
 
@@ -309,8 +365,13 @@ export default function TestFfmpgPage() {
       if (dispScreen) drawSingleScreen(dispScreen);
     }
 
+    // Cursor — in WORLD coords
     if (cs.cursorVisible) {
       const cx = cs.cursorX, cy = cs.cursorY;
+      if (cs.clickRipple > 0) {
+        ctx.beginPath(); ctx.arc(cx, cy, cs.clickRipple * 40, 0, Math.PI*2);
+        ctx.strokeStyle = `rgba(59,130,246,${1-cs.clickRipple})`; ctx.lineWidth = 3; ctx.stroke();
+      }
       ctx.save();
       ctx.fillStyle = "white"; ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(cx, cy);
@@ -318,54 +379,90 @@ export default function TestFfmpgPage() {
       ctx.lineTo(cx+16,cy+10); ctx.lineTo(cx+22,cy+8);
       ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
     }
+
+    // End WORLD transform
     ctx.restore();
 
+    // ── CONTEXTUAL ICON (100x100 animado) ───────────────────────────────────
     if (cs.iconVisible && cs.iconAlpha > 0) {
       ctx.save();
       const floatY = Math.sin(Date.now() / 300) * 10;
       const centerX = CANVAS_W / 2;
-      const centerY = CANVAS_H / 2 - 100 + floatY;
+      const centerY = CANVAS_H / 2 - 100 + floatY; // Un poco por encima del centro real
+      
       ctx.globalAlpha = cs.iconAlpha;
       ctx.translate(centerX, centerY);
       
+      // Glow/Background subtle (Restored)
       const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 80);
       grad.addColorStop(0, "rgba(249, 115, 22, 0.4)");
       grad.addColorStop(1, "rgba(249, 115, 22, 0)");
       ctx.fillStyle = grad;
       ctx.beginPath(); ctx.arc(0, 0, 80, 0, Math.PI * 2); ctx.fill();
 
+      // Icon paths (simplified Lucide-like)
       ctx.strokeStyle = "white";
-      ctx.lineWidth = 6; ctx.lineCap = "round"; ctx.lineJoin = "round";
-      ctx.shadowColor = "rgba(249, 115, 22, 0.8)"; ctx.shadowBlur = 15;
+      ctx.lineWidth = 6;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.shadowColor = "rgba(249, 115, 22, 0.8)";
+      ctx.shadowBlur = 15;
       ctx.beginPath();
       
       if (cs.iconType === "receipt") {
         ctx.strokeRect(-30, -40, 60, 80);
         ctx.moveTo(-15, -15); ctx.lineTo(15, -15);
         ctx.moveTo(-15, 5); ctx.lineTo(15, 5);
+        ctx.moveTo(-15, 20); ctx.lineTo(5, 20);
       } else if (cs.iconType === "download") {
         ctx.moveTo(0, -35); ctx.lineTo(0, 25);
         ctx.moveTo(-20, 5); ctx.lineTo(0, 25); ctx.lineTo(20, 5);
         ctx.moveTo(-30, 35); ctx.lineTo(30, 35);
       } else if (cs.iconType === "mouse") {
-        ctx.strokeRect(-25, -40, 50, 80);
+        ctx.moveTo(0, -40); ctx.arcTo(25, -40, 25, 40, 25); ctx.arcTo(25, 40, -25, 40, 25);
+        ctx.arcTo(-25, 40, -25, -40, 25); ctx.arcTo(-25, -40, 0, -40, 25);
         ctx.moveTo(0, -40); ctx.lineTo(0, 0);
+        ctx.moveTo(-25, 0); ctx.lineTo(25, 0);
+        ctx.stroke();
       } else {
+        // High quality animated stars representing stars points.lottie
+        ctx.save();
         const time = Date.now() / 1000;
-        const drawStar = (x: number, y: number, size: number) => {
-          ctx.save(); ctx.translate(x, y); ctx.beginPath();
-          for(let i=0; i<4; i++){ ctx.rotate(Math.PI/2); ctx.moveTo(0,-size); ctx.quadraticCurveTo(0,0,size,0); ctx.quadraticCurveTo(0,0,0,size); ctx.quadraticCurveTo(0,0,-size,0); ctx.quadraticCurveTo(0,0,0,-size); }
-          ctx.fillStyle = "white"; ctx.fill(); ctx.restore();
+        const drawStar = (x: number, y: number, size: number, rot: number) => {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(rot);
+          ctx.beginPath();
+          for (let i = 0; i < 4; i++) {
+            ctx.rotate(Math.PI / 2);
+            ctx.moveTo(0, -size);
+            ctx.quadraticCurveTo(0, 0, size, 0);
+            ctx.quadraticCurveTo(0, 0, 0, size);
+            ctx.quadraticCurveTo(0, 0, -size, 0);
+            ctx.quadraticCurveTo(0, 0, 0, -size);
+          }
+          ctx.fillStyle = "white";
+          // Shadow from parent scope will be used
+          ctx.fill();
+          ctx.restore();
         };
-        drawStar(0, 0, 30 * (0.8 + Math.sin(time * 5) * 0.2));
+
+        // Twinkling stars
+        drawStar(0, 0, 30 * (0.8 + Math.sin(time * 5) * 0.2), time * 0.5);
+        drawStar(-40, -35, 14 * (0.7 + Math.cos(time * 4) * 0.3), -time * 0.3);
+        drawStar(45, -20, 18 * (0.7 + Math.sin(time * 6) * 0.3), time * 0.7);
+        drawStar(15, 50, 12 * (0.7 + Math.cos(time * 3) * 0.3), -time * 1.1);
+        ctx.restore();
       }
-      ctx.stroke();
+      
       ctx.restore();
     }
 
+    // Subtitles — anchored at 65% of CANVAS height (35% from bottom)
     if (cs.subtitleVisible && cs.subtitleText) {
       ctx.save();
       const aspectScale = CANVAS_W / WORLD_W; 
+      const baseFontSize = 100 * aspectScale; // Slightly bigger for single words
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       const words = cs.subtitleText.split(" ");
       const sx = CANVAS_W / 2;
@@ -373,49 +470,38 @@ export default function TestFfmpgPage() {
       ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 15;
       ctx.lineWidth = 14 * aspectScale; ctx.strokeStyle = "rgba(0,0,0,0.9)";
 
-      const allowedW = CANVAS_W * 0.6;
-      let fontSize = 120 * aspectScale;
-      ctx.font = `italic 900 ${fontSize}px "Inter", sans-serif`;
-      let currentW = ctx.measureText(cs.subtitleText).width;
-      if (currentW > allowedW) fontSize = (allowedW / currentW) * fontSize;
-      const maxFontSize = 180 * aspectScale;
-      if (fontSize > maxFontSize) fontSize = maxFontSize;
-
+      // Calculate word properties
       const wordStats = words.map((word, i) => {
+        const isCurrent = i === cs.subtitleActiveIdx;
+        const scale = isCurrent ? cs.subtitleScale : 1;
         const cleanWord = word.replace(/[.,]/g, "").toUpperCase();
-        const isRelevant = cleanWord.length >= 6 || ["FACTURA", "COMPRA", "PAGO", "GESTIÓN", "CLIENTE"].includes(cleanWord);
-        const relScale = isRelevant ? 1.1 : 1.0;
-        ctx.font = `italic 900 ${fontSize * relScale}px "Inter", sans-serif`;
+        const isRelevant = cleanWord.length >= 6 || ["FACTURA", "COMPRA", "PAGO", "GESTIÓN", "CLIENTE", "AQUÍ", "AHORA"].includes(cleanWord);
+        const relScale = isRelevant ? 1.2 : 1.0;
+        
+        ctx.font = `italic 900 ${baseFontSize * scale * relScale}px "Inter", sans-serif`;
         const width = ctx.measureText(word + " ").width;
-        return { word, relScale, isRelevant, width, baseFontSize: fontSize * relScale };
+        return { word, isCurrent, scale, relScale, isRelevant, width };
       });
 
       const totalW = wordStats.reduce((acc, s) => acc + s.width, 0);
       let curX = sx - totalW / 2;
 
-      wordStats.forEach((s, i) => {
-        const wordDur = 1 / 3.0; 
-        const animIndexDuration = 0.6 / wordDur; 
-        let progress = (cs.subtitleActiveIdx - i) / animIndexDuration;
-        progress = Math.max(0, Math.min(1, progress));
-        const easedProgress = 1 - Math.pow(1 - progress, 2);
-        const wordAlpha = easedProgress;
-        const wordAnimScale = 0.4 + 0.6 * easedProgress;
-
-        if (wordAlpha > 0) {
-          const wordCX = curX + s.width / 2;
-          ctx.save();
-          ctx.globalAlpha = wordAlpha;
-          ctx.translate(wordCX, sy);
-          ctx.scale(wordAnimScale, wordAnimScale);
-          ctx.font = `italic 900 ${s.baseFontSize}px "Inter", sans-serif`;
-          ctx.strokeText(s.word, 0, 0);
-          ctx.fillStyle = s.isRelevant ? "#facc15" : "white";
-          ctx.fillText(s.word, 0, 0);
-          ctx.restore();
-        }
+      // Pass 1: Strokes
+      wordStats.forEach(s => {
+        ctx.font = `italic 900 ${baseFontSize * s.scale * s.relScale}px "Inter", sans-serif`;
+        ctx.strokeText(s.word, curX + s.width / 2 - 5, sy);
         curX += s.width;
       });
+
+      // Pass 2: Fills
+      curX = sx - totalW / 2;
+      wordStats.forEach(s => {
+        ctx.font = `italic 900 ${baseFontSize * s.scale * s.relScale}px "Inter", sans-serif`;
+        ctx.fillStyle = s.isRelevant ? "#facc15" : "white";
+        ctx.fillText(s.word, curX + s.width / 2 - 5, sy);
+        curX += s.width;
+      });
+      
       ctx.restore();
     }
 
@@ -426,256 +512,904 @@ export default function TestFfmpgPage() {
     }
   }, [screens, isPlaying, activeScreen, CANVAS_W, CANVAS_H]);
 
-  const screensRef = useRef<Screen[]>([]);
-  useEffect(() => { screensRef.current = screens; }, [screens]);
+  // Keep refs for renderFrame to avoid closures
+  const activeScreenRef = useRef<Screen | null>(null);
+  const selectedMomentIdRef = useRef<string | null>(null);
+  const isPlayingRef = useRef(false);
+  const currentUrl = activeScreen?.url;
+  const currentBgColor = activeScreen?.bgColor;
+  
+  useEffect(() => { 
+    activeScreenRef.current = activeScreen; 
+    renderFrame();
+  }, [activeScreen]);
 
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+
+  // Aplica la cámara del momento seleccionado al canvas
   const applyMomentCamera = useCallback((momentId: string | null) => {
     if (!momentId) return;
-    const m = screensRef.current.flatMap(s => s.moments).find(x => x.id === momentId);
+    // Busca en el estado más fresco de screens (a través de ref)
+    const allScreens = screensRef.current;
+    const m = allScreens.flatMap(s => s.moments).find(x => x.id === momentId);
     if (m) {
-      csRef.current.scale = m.camScale; csRef.current.panX = m.camPanX; csRef.current.panY = m.camPanY;
-      csRef.current.highlightAlpha = 0; renderFrame();
+      csRef.current.scale = m.camScale;
+      csRef.current.panX  = m.camPanX;
+      csRef.current.panY  = m.camPanY;
+      csRef.current.highlightRect  = null;
+      csRef.current.highlightAlpha = 0;
+      renderFrame();
     }
   }, [renderFrame]);
 
-  useEffect(() => { applyMomentCamera(selectedMomentId); }, [selectedMomentId, applyMomentCamera]);
-  useEffect(() => { renderFrame(); }, [aspectRatio, wordsPerSecond, renderFrame]);
+  const screensRef = useRef<Screen[]>([]);
+  useEffect(() => { screensRef.current = screens; }, [screens]);
 
-  const togglePlayPause = () => {
-    if (screens.length === 0) return;
-    if (isPlaying) { tlRef.current?.pause(); setIsPlaying(false); }
-    else {
-      if (tlRef.current && tlRef.current.progress() < 1) { tlRef.current.resume(); setIsPlaying(true); }
-      else handlePlayFromStart();
+  useEffect(() => { 
+    selectedMomentIdRef.current = selectedMomentId;
+    applyMomentCamera(selectedMomentId);
+  }, [selectedMomentId, applyMomentCamera]);
+
+  // Cuando se edita un momento (slider/drag), re-aplica la cámara si sigue seleccionado
+  useEffect(() => {
+    if (selectedMomentId && !isPlaying) {
+      applyMomentCamera(selectedMomentId);
     }
-  };
+  }, [screens, selectedMomentId, isPlaying, applyMomentCamera]);
 
-  const handlePlayFromStart = () => {
-    handleStop(); setIsPlaying(true);
-    const tl = buildTimeline(); tlRef.current = tl; tl.play();
-  };
+  // Redraw & Reset camera ONLY on screen change
+  useEffect(() => {
+    const cs = csRef.current;
+    cs.scale = 1; cs.panX = 0; cs.panY = 0;
+    cs.cursorVisible = false; cs.highlightRect = null;
+    cs.typedText = ""; cs.typedRect = null;
+    
+    // Ensure image is loaded when selected
+    if (currentUrl) {
+      const img = new Image();
+      img.src = currentUrl;
+      img.onload = () => {
+        imgCache.current[currentUrl] = img;
+        renderFrame();
+      };
+      if (imgCache.current[currentUrl]) renderFrame();
+    } else {
+      renderFrame();
+    }
+  }, [currentUrl]);
 
-  const handleStop = () => {
-    if (tlRef.current) { tlRef.current.kill(); tlRef.current = null; }
-    setIsPlaying(false); setAnimationProgress(0);
-    Object.assign(csRef.current, { scale: 1, panX: 0, panY: 0, cursorVisible: false, iconVisible: false, subtitleVisible: false });
+  // Redraw when aspect ratio or speed changes and rebuild timeline
+  useEffect(() => {
+    if (tlRef.current) {
+      tlRef.current.kill();
+      tlRef.current = buildTimeline();
+      tlRef.current.pause();
+      tlRef.current.progress(0);
+      setIsPlaying(false);
+      setAnimationProgress(0);
+    }
     renderFrame();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aspectRatio, wordsPerSecond]);
+
+  // ── Keyboard Controls ─────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const handleKD = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        const t = e.target as HTMLElement;
+        const isTextInput =
+          (t.tagName === "INPUT" && !["range", "checkbox", "radio", "color", "button", "submit"].includes((t as HTMLInputElement).type)) ||
+          t.tagName === "TEXTAREA" ||
+          t.isContentEditable;
+
+        if (isTextInput) return;
+        
+        e.preventDefault();
+        togglePlayPause();
+      }
+    };
+    window.addEventListener("keydown", handleKD);
+    return () => window.removeEventListener("keydown", handleKD);
+  }, [isPlaying, screens]);
+
+  // ── GSAP Timeline ──────────────────────────────────────────────────────────
+
+  const targetToCanvas = (t: Target) => {
+    // Focal point is the center of the target box (0-100 of CANVAS)
+    const fx = (t.x / 100) * CANVAS_W + (t.w / 100) * CANVAS_W / 2;
+    const fy = (t.y / 100) * CANVAS_H + (t.h / 100) * CANVAS_H / 2;
+    // Panning offset is relative to canvas center
+    const panX = (CANVAS_W / 2 - fx) / CANVAS_W;
+    const panY = (CANVAS_H / 2 - fy) / CANVAS_H;
+    return { panX, panY };
   };
 
   const buildTimeline = () => {
     const tl = gsap.timeline({ 
-      onUpdate: () => { renderFrame(); if (tlRef.current) setAnimationProgress(tlRef.current.progress()); }, 
-      onComplete: () => { setIsPlaying(false); }
+      onUpdate: () => {
+        renderFrame();
+        if (tlRef.current) setAnimationProgress(tlRef.current.progress());
+      }, 
+      onComplete: () => {
+        tlRef.current = null;
+        renderFrame();
+        setIsPlaying(false);
+      }
     });
     const cs = csRef.current;
 
+
+    // Reset initial state
+    const firstM = screens[0]?.moments[0];
+    Object.assign(cs, {
+      scale: firstM ? firstM.camScale : 1, 
+      panX: firstM ? firstM.camPanX : 0, 
+      panY: firstM ? firstM.camPanY : 0,
+      cursorVisible: false, highlightRect: null, 
+      typedText: "", subtitleText: "", 
+      currentScreenIdx: 0, nextScreenIdx: 0, transitionProgress: 0, transitionType: "none",
+      iconVisible: false, iconAlpha: 0, iconType: "sparkles"
+    });
+
     for (let sIdx = 0; sIdx < screens.length; sIdx++) {
       const screen = screens[sIdx];
+      const screenLabel = `screen_${sIdx}`;
+      tl.addLabel(screenLabel);
+
+      // Moments for this screen
       for (let mIdx = 0; mIdx < screen.moments.length; mIdx++) {
         const m = screen.moments[mIdx];
         const momentLabel = `s${sIdx}_m${mIdx}`;
         tl.addLabel(momentLabel);
 
+        // Word count for duration - including 1.5s gap ONLY at the end of the paragraph
+        // PLUS 1.5s additional for each period (.) and 1.0s for each comma (,)
         const words = m.label ? m.label.split(/\s+/).filter(Boolean) : [];
+        const dotsCount = words.filter(w => w.endsWith('.')).length;
+        const commaCount = words.filter(w => w.endsWith(',')).length;
         const wordDur = 1 / wordsPerSecond;
-        const lineChunks: string[][] = [];
-        let temp: string[] = [];
-        words.forEach(w => { temp.push(w); if (temp.length >= 2 || w.endsWith(',') || w.endsWith('.')) { lineChunks.push(temp); temp = []; } });
-        if (temp.length > 0) lineChunks.push(temp);
+        const textDuration = words.length > 0 ? (words.length * wordDur + 1.5 + (dotsCount * 1.5) + (commaCount * 1.0)) : 0;
+        const d = Math.max(m.duration, textDuration);
+        
+        const ease = m.easing ?? "power2.inOut";
+        const panX = m.camPanX;
+        const panY = m.camPanY;
+        const scale = m.camScale;
 
-        let textDuration = 0;
-        lineChunks.forEach(chunk => {
-          textDuration += (chunk.length * wordDur) + 1.0;
-          chunk.forEach(w => { if (w.endsWith('.')) textDuration += 1.5; else if (w.endsWith(',')) textDuration += 1.0; });
-        });
-        const d = Math.max(m.duration, textDuration + 0.5);
-
+        // Determine icon based on label keywords
         let iconType = "sparkles";
-        const labelL = (m.label || "").toLowerCase();
-        if (labelL.includes("factura")) iconType = "receipt";
-        else if (labelL.includes("descarga")) iconType = "download";
-        else if (labelL.includes("clic")) iconType = "mouse";
+        const labelLower = (m.label || "").toLowerCase();
+        if (labelLower.includes("factura") || labelLower.includes("recibo")) iconType = "receipt";
+        else if (labelLower.includes("descarga") || labelLower.includes("pdf") || labelLower.includes("bajar")) iconType = "download";
+        else if (labelLower.includes("clic") || labelLower.includes("botón") || labelLower.includes("presiona")) iconType = "mouse";
 
+        // Sync current index
         tl.set(cs, { currentScreenIdx: sIdx, iconType }, momentLabel);
-        if (sIdx === 0 && mIdx === 0) tl.set(cs, { scale: m.camScale, panX: m.camPanX, panY: m.camPanY }, momentLabel);
-        else tl.to(cs, { scale: m.camScale, panX: m.camPanX, panY: m.camPanY, duration: 1.0, ease: "power2.out" }, momentLabel);
 
+        // Camera movement
+        if (sIdx === 0 && mIdx === 0) {
+          // Si es el primer momento, establece instantáneamente por si gsap se descuadra
+          tl.set(cs, { scale, panX, panY }, momentLabel);
+        } else {
+          tl.to(cs, { scale, panX, panY, duration: d * 0.4, ease }, momentLabel);
+        }
+
+        // Show icon after camera settles
         tl.to(cs, { iconVisible: true, iconAlpha: 1, duration: 0.5 }, `${momentLabel}+=${d * 0.3}`)
           .to(cs, { iconAlpha: 0, duration: 0.5, iconVisible: false }, `${momentLabel}+=${d - 0.5}`);
 
+        // Hold for duration with no element animation
+        tl.to({}, { duration: d }, momentLabel);
+
         if (m.label) {
-          let acc = 0;
-          lineChunks.forEach((chunk, i) => {
-            tl.set(cs, { subtitleVisible: true, subtitleText: chunk.join(" ").toUpperCase(), subtitleActiveIdx: -1 }, `${momentLabel}+=${acc}`);
-            const dur = chunk.length * wordDur;
-            tl.to(cs, { subtitleActiveIdx: chunk.length, duration: dur + 0.5, ease: "none" }, ">");
+          const allWords = m.label.split(/\s+/).filter(Boolean);
+          const wordsPerChunk = 1; // Fixed 1 word per line for impact
+          const wordDur = 1 / wordsPerSecond;
+          let accTime = 0;
+          
+          allWords.forEach((word: string, wIdx: number) => {
+            const isEndOfChunk = (wIdx + 1) % wordsPerChunk === 0 || wIdx === allWords.length - 1;
             
-            let pause = 1.0;
-            chunk.forEach(w => { if (w.endsWith('.')) pause += 1.5; else if (w.endsWith(',')) pause += 1.0; });
+            const chunkIndex = Math.floor(wIdx / wordsPerChunk);
+            const chunkWords = allWords.slice(chunkIndex * wordsPerChunk, wIdx + 1);
+            const activeIdxInChunk = wIdx % wordsPerChunk;
             
-            tl.set(cs, { subtitleVisible: false }, `${momentLabel}+=${acc + dur + 0.8}`);
-            acc += dur + pause;
+            tl.to(cs, { 
+              subtitleVisible: true, 
+              subtitleText: chunkWords.join(" ").toUpperCase(), 
+              subtitleActiveIdx: activeIdxInChunk,
+              subtitleScale: 1.1, 
+              duration: 0.05 
+            }, `${momentLabel}+=${accTime}`)
+              .to(cs, { subtitleScale: 1, duration: 0.1 }, ">");
+
+            if (isEndOfChunk) {
+              const hideTime = accTime + 1.0; 
+              // Only hide if the next word starts AFTER the hide time (i.e. if there's a period/comma gap)
+              // OR if it's the absolute end of the moment narration.
+              let nextPause = 0;
+              if (word.endsWith('.')) nextPause = 1.5;
+              else if (word.endsWith(',')) nextPause = 1.0;
+
+              const nextWordStartTime = accTime + wordDur + nextPause;
+              
+              if (wIdx === allWords.length - 1 || hideTime < nextWordStartTime) {
+                const finalHide = Math.min(d - 0.05, hideTime);
+                tl.set(cs, { subtitleVisible: false }, `${momentLabel}+=${finalHide}`);
+              }
+            }
+
+            accTime += wordDur;
+            // Add extra delays for punctuation
+            if (word.endsWith('.')) accTime += 1.5;
+            else if (word.endsWith(',')) accTime += 1.0;
           });
         }
-        tl.to({}, { duration: d }, momentLabel);
+        
+        tl.set({}, {}, `${momentLabel}+=${d}`);
       }
 
+      // 4. Transition to next screen
       if (sIdx < screens.length - 1 && screen.transitionAfter !== "none") {
         const transLabel = `trans_${sIdx}`;
         const nextScreen = screens[sIdx + 1];
-        const nextM = nextScreen.moments[0];
+        const nextFirstM = nextScreen?.moments[0];
+        
+        // Target camera for the next screen
+        const nextScale = nextFirstM ? nextFirstM.camScale : 1;
+        const nextPanX = nextFirstM ? nextFirstM.camPanX : 0;
+        const nextPanY = nextFirstM ? nextFirstM.camPanY : 0;
+
         tl.addLabel(transLabel);
-        tl.set(cs, { currentScreenIdx: sIdx, nextScreenIdx: sIdx + 1, transitionType: screen.transitionAfter, subtitleVisible: false, iconVisible: false }, transLabel);
+        tl.set(cs, { 
+          currentScreenIdx: sIdx, 
+          nextScreenIdx: sIdx + 1, 
+          transitionType: screen.transitionAfter,
+          subtitleVisible: false, cursorVisible: false, highlightAlpha: 0,
+          iconVisible: false, iconAlpha: 0
+        }, transLabel);
+
+        // Smoothly bridge camera from current last moment to next screen's first moment
         tl.to(cs, { 
           transitionProgress: 1, 
-          scale: nextM?.camScale ?? 1, 
-          panX: nextM?.camPanX ?? 0, 
-          panY: nextM?.camPanY ?? 0, 
-          duration: 1, ease: "power2.inOut" 
+          scale: nextScale,
+          panX: nextPanX,
+          panY: nextPanY,
+          duration: 1, 
+          ease: "power2.inOut" 
         }, transLabel);
+
         tl.set(cs, { transitionProgress: 0, currentScreenIdx: sIdx + 1 }, ">");
       }
     }
+
+
     return tl;
   };
 
+  // ── Playback controls ──────────────────────────────────────────────────────
+
+  // Preload objects then play
+  const handlePlayFromStart = () => {
+    if (screens.length === 0) return;
+    handleStop(); // Reset everything
+    
+    setIsPlaying(true);
+    isPlayingRef.current = true;
+
+    const tl = buildTimeline();
+    tlRef.current = tl;
+    tl.play();
+  };
+
+  const togglePlayPause = () => {
+    if (screens.length === 0) return;
+    if (isPlaying) {
+      tlRef.current?.pause();
+      setIsPlaying(false);
+      isPlayingRef.current = false;
+    } else {
+      if (tlRef.current && tlRef.current.progress() < 1) {
+        tlRef.current.resume();
+        setIsPlaying(true);
+        isPlayingRef.current = true;
+      } else {
+        handlePlayFromStart();
+      }
+    }
+  };
+
+  const handleStop = () => {
+    if (tlRef.current) { 
+      tlRef.current.kill(); 
+      tlRef.current = null; 
+    }
+    setIsPlaying(false);
+    setAnimationProgress(0);
+    // reset global state cleanly
+    const cs = csRef.current;
+    Object.assign(cs, { 
+      scale: 1, panX: 0, panY: 0, 
+      cursorVisible: false, clickRipple: 0,
+      highlightRect: null, highlightAlpha: 0, 
+      typedText: "", typedRect: null, typedAlpha: 0,
+      subtitleText: "", subtitleVisible: false, subtitleScale: 1,
+      iconVisible: false, iconAlpha: 0, iconType: "sparkles"
+    });
+    renderFrame();
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const progress = parseFloat(e.target.value);
+    setAnimationProgress(progress);
+    
+    if (!tlRef.current) {
+      const tl = buildTimeline();
+      tlRef.current = tl;
+      tl.pause();
+    }
+    
+    if (tlRef.current) {
+      tlRef.current.pause();
+      setIsPlaying(false);
+      tlRef.current.progress(progress);
+    }
+  };
+
+  // ── Recording + FFmpeg export ──────────────────────────────────────────────
+
   const handleRecord = async () => {
     if (!activeScreen || !canvasRef.current) return;
-    setIsRecording(true); setVideoBlob(null); chunksRef.current = [];
+
+    setIsRecording(true);
+    setVideoBlob(null);
+    chunksRef.current = [];
+
     const stream = canvasRef.current.captureStream(30);
     const mr = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp9", videoBitsPerSecond: 8_000_000 });
     mediaRecorderRef.current = mr;
     mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+
     mr.onstop = async () => {
       const webm = new Blob(chunksRef.current, { type: "video/webm" });
-      setIsExporting(true); setExportProgress("Procesando MP4...");
+      setIsRecording(false);
+      setIsExporting(true);
+      setExportProgress("Cargando FFmpeg…");
+
       try {
         const { FFmpeg } = await import("@ffmpeg/ffmpeg");
         const { fetchFile } = await import("@ffmpeg/util");
-        const ff = new FFmpeg(); await ff.load();
+        const ff = new FFmpeg();
+        ff.on("log", ({ message }) => setExportProgress(`FFmpeg: ${message.slice(0, 80)}`));
+        await ff.load();
+        setExportProgress("Convirtiendo WebM → MP4…");
         await ff.writeFile("input.webm", await fetchFile(webm));
-        await ff.exec(["-i", "input.webm", "-c:v", "libx264", "-pix_fmt", "yuv420p", "output.mp4"]);
+        await ff.exec(["-i", "input.webm", "-c:v", "libx264", "-preset", "fast", "-crf", "23", "-pix_fmt", "yuv420p", "output.mp4"]);
         const data = await ff.readFile("output.mp4");
-        setVideoBlob(new Blob([data], { type: "video/mp4" }));
-        setExportProgress("Listo");
-      } catch (e: any) { setExportProgress("Error exportación"); }
-      setIsExporting(false); setIsRecording(false);
+        const mp4Blob = new Blob([data instanceof Uint8Array ? data.buffer.slice(0) as ArrayBuffer : data as unknown as ArrayBuffer], { type: "video/mp4" });
+        setVideoBlob(mp4Blob);
+        setExportProgress("¡MP4 listo!");
+      } catch (e: any) {
+        setExportProgress(`Error: ${e.message}`);
+      }
+      setIsExporting(false);
     };
+
     mr.start(100);
-    const tl = buildTimeline(); tlRef.current = tl; await tl.play();
-    setTimeout(() => { mr.stop(); }, 500);
+
+    // Play animation while recording
+    if (tlRef.current) tlRef.current.kill();
+    const tl = buildTimeline();
+    tlRef.current = tl;
+    tl.play().then(() => {
+      setTimeout(() => { mr.stop(); setIsRecording(false); }, 500);
+    });
   };
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const p = parseFloat(e.target.value); setAnimationProgress(p);
-    if (!tlRef.current) tlRef.current = buildTimeline();
-    tlRef.current.pause(); setIsPlaying(false); tlRef.current.progress(p);
+  const downloadVideo = () => {
+    if (!videoBlob) return;
+    const url = URL.createObjectURL(videoBlob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "tutorial.mp4"; a.click();
+    URL.revokeObjectURL(url);
   };
+
+  // ── BBox picker on preview ─────────────────────────────────────────────────
+
+  const handlePreviewClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!pickingMoment || !selectedMomentId || !activeScreen) return;
+    const img = imgCache.current[activeScreen.url];
+    if (!img) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const canvasX = ((e.clientX - rect.left) / rect.width) * CANVAS_W;
+    const canvasY = ((e.clientY - rect.top) / rect.height) * CANVAS_H;
+
+    const baseW = 1080;
+    const baseH = 1080 / (img.width / img.height);
+    const drawX = CANVAS_W / 2 - baseW / 2;
+    const drawY = CANVAS_H / 2 - baseH / 2;
+
+    // Convert canvas click to image-relative coords
+    const imgX = (canvasX - drawX) / baseW * 100;
+    const imgY = (canvasY - drawY) / baseH * 100;
+    
+    updateMoment(selectedMomentId, {
+      target: { x: Math.max(0, imgX - 15), y: Math.max(0, imgY - 8), w: 30, h: 16 },
+    });
+    setPickingMoment(false);
+  };
+
+  const handlePreviewMouseDown = (e: React.MouseEvent) => {
+    if (!selectedMoment || isPlaying || pickingMoment) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = ((e.clientX - rect.left) / rect.width);
+    const py = ((e.clientY - rect.top) / rect.height);
+    setDragStart({ 
+      x: px, 
+      y: py, 
+      panX: selectedMoment.camPanX ?? 0, 
+      panY: selectedMoment.camPanY ?? 0 
+    });
+  };
+
+  const handlePreviewMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Only pan if mouse button is still held (e.buttons & 1)
+    if (!dragStart || !selectedMoment || isPlaying || pickingMoment || !(e.buttons & 1)) {
+      if (dragStart && !(e.buttons & 1)) setDragStart(null); // safety clear
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width;
+    const py = (e.clientY - rect.top)  / rect.height;
+    
+    const scale = selectedMoment.camScale;
+    const panX = dragStart.panX - (px - dragStart.x) * (CANVAS_W / WORLD_W) / scale;
+    const panY = dragStart.panY - (py - dragStart.y) * (CANVAS_H / WORLD_H) / scale;
+    
+    updateMoment(selectedMoment.id, { camPanX: panX, camPanY: panY });
+    csRef.current.panX = panX;
+    csRef.current.panY = panY;
+    renderFrame();
+  };
+
+  const handlePreviewMouseUp = () => {
+    setDragStart(null);
+  };
+
+  // Global mouseup — ensures dragStart is cleared even if mouse released outside canvas
+  useEffect(() => {
+    const onGlobalUp = () => setDragStart(null);
+    window.addEventListener('mouseup', onGlobalUp);
+    return () => window.removeEventListener('mouseup', onGlobalUp);
+  }, []);
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans">
+
+      {/* Header */}
       <div className="border-b border-neutral-800 px-6 py-4 flex items-center gap-4 shrink-0">
-        <Play className="w-5 h-5 text-orange-500" />
-        <h1 className="text-xl font-bold tracking-tight">GSAP Studio</h1>
-        <div className="ml-auto flex items-center gap-4">
-          <div className="flex gap-1 bg-neutral-900 p-1 rounded-lg border border-neutral-800">
-            {["9:16", "1:1", "16:9"].map(r => (
-              <button key={r} onClick={() => setAspectRatio(r as AspectRatio)} className={`px-2 py-1 text-[10px] rounded ${aspectRatio === r ? "bg-orange-600 text-white" : "text-neutral-500"}`}>{r}</button>
+        <div className="p-2 bg-orange-500/20 text-orange-400 rounded-xl">
+          <Play className="w-5 h-5 fill-orange-400" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-white">GSAP Studio</h1>
+          <p className="text-xs text-neutral-500">Tutorial animado en HTML · Canvas → MP4</p>
+        </div>
+        <div className="ml-auto flex items-center gap-6">
+          <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 rounded-lg p-1">
+            {(Object.keys(ASPECT_CONFIG) as AspectRatio[]).map(r => (
+              <button
+                key={r}
+                onClick={() => setAspectRatio(r)}
+                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${aspectRatio === r ? "bg-orange-600 text-white" : "text-neutral-500 hover:text-neutral-300"}`}
+              >
+                {r}
+              </button>
             ))}
           </div>
-          <input type="range" min="1" max="6" step="0.5" value={wordsPerSecond} onChange={e => setWordsPerSecond(parseFloat(e.target.value))} className="w-24 accent-orange-500" />
-          <select value={language} onChange={e => setLanguage(e.target.value)} className="bg-neutral-900 border border-neutral-800 rounded px-2 py-1 text-sm">
-            <option value="es">ES</option>
-            <option value="en">EN</option>
+          <div className="flex items-center gap-3 bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5">
+            <span className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider">Velocidad Texto</span>
+            <input 
+              type="range" min="1" max="10" step="0.5" 
+              value={wordsPerSecond} 
+              onInput={e => setWordsPerSecond(parseFloat((e.target as HTMLInputElement).value))}
+              onChange={e => setWordsPerSecond(parseFloat(e.target.value))}
+              onPointerUp={e => (e.target as HTMLElement).blur()}
+              className="w-32 h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+            />
+            <span className="text-xs font-mono text-orange-400 w-10 text-right">{wordsPerSecond}w/s</span>
+          </div>
+
+          <div className="flex items-center gap-3 bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5">
+            <span className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider text-nowrap">Max Zoom IA</span>
+            <input 
+              type="range" min="1.0" max="5.0" step="0.1" 
+              value={maxAiZoom} 
+              onInput={e => setMaxAiZoom(parseFloat((e.target as HTMLInputElement).value))}
+              onChange={e => setMaxAiZoom(parseFloat(e.target.value))}
+              onPointerUp={e => (e.target as HTMLElement).blur()}
+              className="w-24 h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+            />
+            <span className="text-xs font-mono text-orange-400 w-10 text-right">{maxAiZoom.toFixed(1)}x</span>
+          </div>
+          <select value={language} onChange={e => setLanguage(e.target.value)}
+            className="bg-neutral-900 border border-neutral-800 text-sm rounded-lg px-3 py-1.5 focus:outline-none">
+            <option value="es">Español</option>
+            <option value="en">English</option>
           </select>
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-48 border-r border-neutral-800 bg-neutral-950 overflow-y-auto p-3 space-y-3">
-          <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-neutral-800 rounded-xl p-4 text-center cursor-pointer hover:border-neutral-600 transition-colors">
-            <UploadCloud className="w-6 h-6 mx-auto mb-1 text-neutral-500" />
-            <span className="text-[10px] text-neutral-500">Screen</span>
+
+        {/* ── LEFT: Screen list ─────────────────────────────────────────── */}
+        <div className="w-48 border-r border-neutral-800 flex flex-col bg-neutral-950 overflow-y-auto shrink-0">
+          <div
+            className={`m-3 border-2 border-dashed rounded-xl p-3 flex flex-col items-center cursor-pointer transition-all ${isDraggingOver ? "border-orange-500 bg-orange-500/10" : "border-neutral-800 hover:border-neutral-600"}`}
+            onClick={() => fileInputRef.current?.click()}
+            onDrop={handleDrop}
+            onDragOver={e => { e.preventDefault(); setIsDraggingOver(true); }}
+            onDragLeave={() => setIsDraggingOver(false)}
+          >
+            <UploadCloud className="w-6 h-6 text-neutral-500 mb-1" />
+            <span className="text-xs text-neutral-500 text-center">Sube screenshots</span>
+            <input ref={fileInputRef} type="file" className="hidden" multiple accept="image/*"
+              onChange={e => e.target.files && handleFiles(e.target.files)} />
           </div>
-          <input ref={fileInputRef} type="file" className="hidden" multiple onChange={e => e.target.files && handleFiles(e.target.files)} />
+
           {screens.map((s, i) => (
-            <div key={s.id} onClick={() => setActiveScreenId(s.id)} className={`relative rounded-lg overflow-hidden border-2 cursor-pointer ${s.id === activeScreenId ? "border-orange-500" : "border-transparent"}`}>
-              <img src={s.url} alt="" className="w-full h-32 object-contain bg-neutral-900" />
-              <div className="absolute top-1 left-1 bg-orange-600 text-[10px] px-1 rounded font-bold">{i+1}</div>
+            <div key={s.id} className="relative group mx-2 mb-2">
+              <button onClick={() => { setActiveScreenId(s.id); setSelectedMomentId(null); }}
+                className={`w-full relative rounded-xl overflow-hidden border-2 transition-all ${s.id === activeScreenId ? "border-orange-500" : "border-transparent hover:border-neutral-700"}`}>
+                <img src={s.url} alt="" className="w-full object-contain max-h-40 bg-neutral-900" />
+                <div className="absolute top-1.5 left-1.5 text-xs bg-orange-600 text-white rounded-md px-1.5 py-0.5 font-bold">{i + 1}</div>
+                <div className="absolute bottom-1.5 right-1.5 text-xs text-neutral-400 bg-black/70 rounded px-1">{s.moments.length}m</div>
+              </button>
+              
+              {/* Transition selector */}
+              {i < screens.length - 1 && (
+                <div className="mt-1 mb-3 px-2">
+                  <select 
+                    value={s.transitionAfter || "none"} 
+                    onChange={e => setScreens(prev => prev.map(x => x.id === s.id ? { ...x, transitionAfter: e.target.value as TransitionType } : x))}
+                    className="w-full bg-neutral-900 border border-neutral-800 text-[10px] rounded px-1 py-0.5 text-orange-400 font-bold uppercase"
+                  >
+                    <option value="none">Sin transición</option>
+                    <option value="fade">Fade In/Out</option>
+                    <option value="flash">Flash Blanco</option>
+                    <option value="swipe_left">Swipe Left</option>
+                  </select>
+                </div>
+              )}
+
+              <button onClick={e => { e.stopPropagation(); setScreens(prev => prev.filter(x => x.id !== s.id)); if (activeScreenId === s.id) setActiveScreenId(screens[0]?.id ?? null); }}
+                className="absolute top-1 right-1 w-5 h-5 bg-red-900/80 text-red-300 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center z-10">
+                <X className="w-3 h-3" />
+              </button>
             </div>
           ))}
         </div>
 
-        <div className="flex-1 bg-neutral-900 flex flex-col items-center justify-center p-8 relative">
+        {/* ── CENTER: Canvas Preview ──────────────────────────────────────── */}
+        <div className="flex-1 flex flex-col items-center justify-center bg-neutral-900 relative overflow-hidden">
+          {/* Hidden full-res render canvas */}
           <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} className="hidden" />
+
           {activeScreen ? (
-            <div className="flex flex-col items-center max-h-full max-w-full">
-              <canvas ref={previewCanvasRef} width={CANVAS_W} height={CANVAS_H} className="h-[70vh] w-auto shadow-2xl bg-black border border-neutral-800" onMouseDown={e => {
-                if (selectedMoment) {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  setDragStart({ x: (e.clientX-r.left)/r.width, y: (e.clientY-r.top)/r.height, panX: selectedMoment.camPanX, panY: selectedMoment.camPanY });
-                }
-              }} onMouseMove={e => {
-                if (dragStart && selectedMoment && (e.buttons & 1)) {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  const px = (e.clientX-r.left)/r.width; const py = (e.clientY-r.top)/r.height;
-                  const dx = (px - dragStart.x) * (CANVAS_W/WORLD_W) / selectedMoment.camScale;
-                  const dy = (py - dragStart.y) * (CANVAS_H/WORLD_H) / selectedMoment.camScale;
-                  updateMoment(selectedMoment.id, { camPanX: dragStart.panX - dx, camPanY: dragStart.panY - dy });
-                }
-              }} onMouseUp={() => setDragStart(null)} />
-              
-              <div className="w-full max-w-sm mt-6 flex flex-col items-center gap-4">
-                <input type="range" min="0" max="1" step="0.001" value={animationProgress} onChange={handleSeek} className="w-full accent-orange-500 h-1 bg-neutral-800 rounded-lg appearance-none" />
-                <div className="flex gap-2">
-                  <button onClick={togglePlayPause} className="bg-white text-black px-4 py-2 rounded-lg font-bold text-xs hover:bg-neutral-200">
-                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-black" />}
-                  </button>
-                  <button onClick={handleRecord} className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-xs">
-                    {isRecording ? "Grabando..." : "Exportar MP4"}
-                  </button>
-                  {videoBlob && <button onClick={() => { const a = document.createElement("a"); a.href=URL.createObjectURL(videoBlob); a.download="video.mp4"; a.click(); }} className="bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-xs"><Download className="w-4 h-4" /></button>}
-                </div>
-                {exportProgress && <span className="text-[10px] text-neutral-500">{exportProgress}</span>}
+            <>
+              {/* Visible preview canvas */}
+              <div 
+                className="relative bg-black transition-all duration-300" 
+                style={{ 
+                  height: aspectRatio === "16:9" ? "auto" : "calc(100vh - 180px)",
+                  width: aspectRatio === "16:9" ? "min(800px, 90%)" : "auto",
+                  aspectRatio: aspectRatio.replace(":", "/"),
+                  maxHeight: "75vh"
+                }}
+              >
+                <canvas
+                  ref={previewCanvasRef}
+                  width={CANVAS_W}
+                  height={CANVAS_H}
+                  className={`w-full h-full shadow-2xl shadow-black/80 border border-neutral-800 transition-all ${pickingMoment || selectedMomentId ? "cursor-move" : ""}`}
+                  onClick={handlePreviewClick}
+                  onMouseDown={handlePreviewMouseDown}
+                  onMouseMove={handlePreviewMouseMove}
+                  onMouseUp={handlePreviewMouseUp}
+                  onMouseLeave={handlePreviewMouseUp}
+                />
+                {pickingMoment && (
+                  <div className="absolute inset-0 border-2 border-orange-500 rounded-xl pointer-events-none flex items-center justify-center">
+                    <div className="bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg">
+                      Haz clic en el elemento
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Timeline Slider */}
+              <div className="w-full max-w-[380px] mt-4 px-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] text-neutral-500 font-mono">0%</span>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="1" 
+                    step="0.001" 
+                    value={animationProgress} 
+                    onChange={handleSeek}
+                    className="flex-1 h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                  />
+                  <span className="text-[10px] text-neutral-500 font-mono">100%</span>
+                </div>
+              </div>
+
+              {/* Playback controls */}
+              <div className="flex items-center gap-3 mt-4">
+                {!isPlaying ? (
+                  <button onClick={togglePlayPause}
+                    className="flex items-center gap-2 bg-white text-black px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-neutral-200 transition-all">
+                    <Play className="w-4 h-4 fill-black" /> {tlRef.current && tlRef.current.progress() > 0 ? "Continuar" : "Preview Global"}
+                  </button>
+                ) : (
+                  <button onClick={togglePlayPause}
+                    className="flex items-center gap-2 bg-neutral-800 text-white px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-neutral-700 transition-all">
+                    <Pause className="w-4 h-4 fill-white" /> Pausar
+                  </button>
+                )}
+                {isPlaying || (tlRef.current && tlRef.current.progress() > 0) ? (
+                  <button onClick={handleStop}
+                    className="flex items-center gap-2 bg-red-950/30 text-red-500 border border-red-950 px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-red-950/50 transition-all">
+                    <Square className="w-4 h-4 fill-red-500" /> Detener
+                  </button>
+                ) : null}
+                <button onClick={handleRecord} disabled={isRecording || isExporting || isPlaying}
+                  className="flex items-center gap-2 bg-orange-600 text-white px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-orange-500 disabled:opacity-50 transition-all">
+                  {isRecording ? <><span className="w-3 h-3 bg-white rounded-full animate-pulse" /> Grabando…</> : "⏺ Grabar MP4"}
+                </button>
+                {videoBlob && (
+                  <button onClick={downloadVideo}
+                    className="flex items-center gap-2 bg-green-700 text-white px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-green-600">
+                    <Download className="w-4 h-4" /> Descargar
+                  </button>
+                )}
+              </div>
+              {(isExporting || exportProgress) && (
+                <div className="mt-2 text-xs text-neutral-500 max-w-xs text-center">{exportProgress}</div>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-neutral-800 flex items-center justify-center">
+                <UploadCloud className="w-8 h-8 text-neutral-600" />
+              </div>
+              <p className="text-neutral-400 font-medium">Sube una captura de pantalla</p>
+              <p className="text-neutral-600 text-sm max-w-xs">Arrastra un screenshot de tu app en el panel izquierdo para comenzar</p>
             </div>
-          ) : <div className="text-neutral-600">Sube una imagen para empezar</div>}
+          )}
         </div>
 
-        <div className="w-80 border-l border-neutral-800 bg-neutral-950 flex flex-col overflow-hidden">
+        {/* ── RIGHT: Moment Editor ──────────────────────────────────────── */}
+        <div className="w-80 border-l border-neutral-800 flex flex-col bg-neutral-950 overflow-hidden shrink-0">
+
           {activeScreen && (
-            <div className="p-4 flex flex-col h-full">
-              <button onClick={analyzeWithAI} disabled={isAnalyzing} className="w-full bg-orange-600 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 mb-3">
-                {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />} Analizar Screenshot
-              </button>
-              <button onClick={addMoment} className="w-full bg-neutral-900 border border-neutral-800 py-2 rounded-lg text-xs font-bold mb-4">+ Momento</button>
-              
-              <div className="flex-1 overflow-y-auto space-y-2">
-                {activeScreen.moments.map((m, i) => (
-                  <div key={m.id} onClick={() => setSelectedMomentId(m.id)} className={`p-3 rounded-xl border transition-all ${m.id === selectedMomentId ? "border-orange-500 bg-orange-950/20" : "border-neutral-800 bg-neutral-900/40 hover:border-neutral-700"}`}>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[10px] font-bold text-orange-500">MOMENTO {i+1}</span>
-                      <button onClick={e => { e.stopPropagation(); deleteMoment(m.id); }} className="text-neutral-600 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
-                    </div>
-                    {m.id === selectedMomentId ? (
-                      <div className="space-y-3" onClick={e => e.stopPropagation()}>
-                        <textarea value={m.label} onChange={e => { updateMoment(m.id, { label: e.target.value.toUpperCase() }); csRef.current.subtitleText = e.target.value.toUpperCase(); csRef.current.subtitleVisible = true; renderFrame(); }} className="w-full bg-black border border-neutral-800 rounded p-2 text-xs text-white" rows={3} placeholder="Subtítulo..." />
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-neutral-500">Zoom</span>
-                          <input type="range" min="0.1" max="4" step="0.1" value={m.camScale} onChange={e => updateMoment(m.id, { camScale: parseFloat(e.target.value) })} className="w-24" />
-                          <span className="text-orange-500 font-mono">{m.camScale.toFixed(1)}x</span>
-                        </div>
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-neutral-500">Duración</span>
-                          <input type="number" step="0.5" value={m.duration} onChange={e => updateMoment(m.id, { duration: parseFloat(e.target.value) })} className="w-12 bg-black border border-neutral-800 rounded px-1" />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-[10px] text-neutral-400 truncate italic">{m.label || "Sin texto"}</div>
-                    )}
+            <>
+              {/* Screen Settings */}
+              <div className="p-4 border-b border-neutral-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-neutral-500 uppercase font-bold tracking-wider">Color de fondo</label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="color" 
+                      value={activeScreen.bgColor || "#000000"} 
+                      onInput={e => {
+                        const val = (e.target as HTMLInputElement).value;
+                        setScreens(prev => prev.map(s => s.id === activeScreenId ? { ...s, bgColor: val } : s));
+                      }}
+                      className="w-10 h-10 rounded cursor-pointer bg-transparent border-none"
+                    />
+                    <input 
+                      type="text" 
+                      value={activeScreen.bgColor || "#000000"} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        setScreens(prev => prev.map(s => s.id === activeScreenId ? { ...s, bgColor: val } : s));
+                      }}
+                      className="w-20 bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs text-neutral-300 focus:outline-none"
+                    />
                   </div>
-                ))}
+                </div>
               </div>
+
+              {/* AI + Add Moment toolbar */}
+              <div className="p-4 border-b border-neutral-800 space-y-3">
+                <button onClick={analyzeWithAI} disabled={isAnalyzing}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:opacity-90 text-white px-4 py-2.5 rounded-xl font-medium text-sm disabled:opacity-50 transition-all">
+                  {isAnalyzing ? <><Loader2 className="w-4 h-4 animate-spin" /> Analizando…</> : <><Wand2 className="w-4 h-4" /> Analizar con IA</>}
+                </button>
+                <button onClick={addMoment}
+                  className="w-full flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-xl font-medium text-sm transition-all border border-neutral-700 hover:border-orange-500/40">
+                  <Plus className="w-4 h-4 text-orange-400" /> Añadir Momento
+                </button>
+
+              </div>
+
+              {/* Moment list */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                {activeScreen.moments.length === 0 ? (
+                  <div className="text-center text-neutral-600 text-xs mt-8">
+                    Usa "Analizar con IA" o añade momentos manualmente con los botones de arriba
+                  </div>
+                ) : activeScreen.moments.map((m, i) => {
+                  const isSelected = m.id === selectedMomentId;
+                  return (
+                    <div key={m.id}
+                      className={`border rounded-xl p-3 cursor-pointer transition-all ${isSelected ? "border-orange-500/60 bg-orange-950/20" : "border-neutral-800 hover:border-neutral-700 bg-neutral-900/30"}`}
+                      onClick={() => setSelectedMomentId(isSelected ? null : m.id)}>
+                      <div className="flex items-start gap-2">
+                        <span className="w-7 h-7 rounded-lg bg-orange-600/20 border border-orange-600/30 text-orange-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          {i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-medium text-white truncate">
+                              {m.label ? m.label.slice(0, 30) + (m.label.length > 30 ? "…" : "") : `Momento ${i + 1}`}
+                            </span>
+                            <span className="text-xs text-neutral-600 ml-auto">{m.duration}s</span>
+                          </div>
+                          <p className="text-[10px] text-neutral-600 mt-0.5">{m.camScale.toFixed(1)}x &middot; pan ({m.camPanX.toFixed(2)}, {m.camPanY.toFixed(2)})</p>
+                        </div>
+                        <button onClick={e => { e.stopPropagation(); deleteMoment(m.id); }}
+                          className="text-neutral-700 hover:text-red-400 flex-shrink-0 mt-0.5">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Inline editor when selected */}
+                      {isSelected && (
+                        <div className="mt-3 space-y-3 border-t border-neutral-800 pt-3" onClick={e => e.stopPropagation()}>
+
+                          {/* Narration text */}
+                          <div>
+                            <label className="text-xs text-neutral-500 block mb-1">Naración / Subtítulo</label>
+                            <textarea value={m.label}
+                              onChange={e => {
+                                const val = e.target.value;
+                                updateMoment(m.id, { label: val });
+                                if (!isPlaying) {
+                                  csRef.current.subtitleVisible = true;
+                                  csRef.current.subtitleText = val.toUpperCase();
+                                  renderFrame();
+                                }
+                              }}
+                              onFocus={() => {
+                                if (!isPlaying) {
+                                  csRef.current.subtitleVisible = true;
+                                  csRef.current.subtitleText = m.label.toUpperCase();
+                                  renderFrame();
+                                }
+                              }}
+                              onBlur={() => {
+                                if (!isPlaying) {
+                                  csRef.current.subtitleVisible = false;
+                                  renderFrame();
+                                }
+                              }}
+                              placeholder="Texto que aparecerá como subtítulo..."
+                              className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-2 py-1.5 text-xs text-neutral-200 resize-none focus:outline-none focus:border-orange-500/50"
+                              rows={3} />
+                          </div>
+
+                          {/* Duration */}
+                          <div>
+                            <label className="text-xs text-neutral-500 block mb-1">Duración mínima (s)</label>
+                            <input type="number" step="0.5" min="0.5" max="30" value={m.duration}
+                              onChange={e => updateMoment(m.id, { duration: parseFloat(e.target.value) || 2 })}
+                              className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-orange-500/50" />
+                            <p className="text-[10px] text-neutral-600 mt-1">Si la narración es más larga, se ampliará automáticamente.</p>
+                          </div>
+
+                          {/* Camera zoom */}
+                          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 space-y-4">
+                            <style jsx>{`
+                              .zoom-slider-custom {
+                                -webkit-appearance: none;
+                                appearance: none;
+                                background: linear-gradient(to right, #f97316 0%, #f97316 ${((m.camScale - 0.1) / (5 - 0.1) * 100)}%, #262626 ${((m.camScale - 0.1) / (5 - 0.1) * 100)}%, #262626 100%);
+                                border-radius: 99px;
+                                height: 8px;
+                                outline: none;
+                                cursor: pointer;
+                                width: 100%;
+                              }
+                              .zoom-slider-custom::-webkit-slider-thumb {
+                                -webkit-appearance: none;
+                                appearance: none;
+                                width: 24px;
+                                height: 24px;
+                                background: #f97316;
+                                cursor: grab;
+                                border-radius: 50%;
+                                border: 3px solid #000;
+                                box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                              }
+                              .zoom-slider-custom::-webkit-slider-thumb:active {
+                                cursor: grabbing;
+                                transform: scale(0.9);
+                                background: #fb923c;
+                              }
+                              .zoom-slider-custom::-moz-range-thumb {
+                                width: 24px;
+                                height: 24px;
+                                background: #f97316;
+                                cursor: grab;
+                                border-radius: 50%;
+                                border: 3px solid #000;
+                                box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                              }
+                              .zoom-slider-custom::-moz-range-progress {
+                                background: #f97316;
+                                border-radius: 99px;
+                                height: 8px;
+                              }
+                            `}</style>
+                            <div>
+                              <div className="flex justify-between items-end mb-3">
+                                <div className="flex flex-col">
+                                  <label className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider">Zoom de Cámara</label>
+                                  <span className="text-[10px] text-neutral-700 italic">0.1x &mdash; 5x</span>
+                                </div>
+                                <span className="text-xs font-mono text-orange-400 font-bold bg-orange-500/10 px-2 py-1 rounded border border-orange-500/20">{m.camScale.toFixed(2)}x</span>
+                              </div>
+                              <div className="relative flex items-center py-2">
+                                <input 
+                                  type="range" min="0.1" max="5" step="0.01" 
+                                  value={m.camScale} 
+                                  onChange={e => {
+                                    const scale = parseFloat(e.target.value);
+                                    updateMoment(m.id, { camScale: scale });
+                                  }}
+                                  onMouseDown={e => e.stopPropagation()}
+                                  onPointerDown={e => {
+                                    e.stopPropagation();
+                                    setDragStart(null); // clear canvas pan if active
+                                  }}
+                                  onPointerUp={e => (e.target as HTMLElement).blur()}
+                                  className="zoom-slider-custom w-full"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 p-3 bg-neutral-950/50 rounded-lg border border-neutral-800 transition-all hover:bg-neutral-900">
+                              <MousePointer2 className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                              <span className="text-[11px] text-neutral-500 leading-tight">
+                                Arrastra la <span className="text-neutral-300 font-medium">imagen</span> para el paneo.
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Duration summary */}
+              {activeScreen.moments.length > 0 && (
+                <div className="p-3 border-t border-neutral-800 text-xs text-neutral-500 flex justify-between">
+                  <span>{activeScreen.moments.length} momentos</span>
+                  <span>~{activeScreen.moments.reduce((a, m) => a + m.duration, 0).toFixed(1)}s total</span>
+                </div>
+              )}
+            </>
+          )}
+
+          {!activeScreen && (
+            <div className="flex-1 flex items-center justify-center text-neutral-700 text-sm text-center p-6">
+              Selecciona una pantalla para editar los momentos
             </div>
           )}
         </div>
