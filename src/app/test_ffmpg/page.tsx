@@ -93,6 +93,7 @@ export default function TestFfmpgPage() {
   const [wordsPerSecond, setWordsPerSecond] = useState(2.2);
   const [dragStart, setDragStart] = useState<{x: number, y: number, panX: number, panY: number} | null>(null);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("9:16");
+  const [maxAiZoom, setMaxAiZoom] = useState(1.4);
 
   const { w: CANVAS_W, h: CANVAS_H } = ASPECT_CONFIG[aspectRatio];
 
@@ -172,8 +173,8 @@ export default function TestFfmpgPage() {
           ? {
               ...s,
               moments: found.moments.map((m: any) => {
-                // Clamp camScale to allowed range
-                const camScale = Math.min(1.4, Math.max(0.9, m.camScale ?? 1));
+                // Clamp camScale to allowed range using the custom maxAiZoom
+                const camScale = Math.min(maxAiZoom, Math.max(0.9, m.camScale ?? 1));
                 
                 // Convert focusPoint (0–100%) → camPanX/Y
                 // focusPoint (50,50) = center = pan(0,0)
@@ -882,6 +883,19 @@ export default function TestFfmpgPage() {
               className="w-32 h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
             />
             <span className="text-xs font-mono text-orange-400 w-10 text-right">{wordsPerSecond}w/s</span>
+          </div>
+
+          <div className="flex items-center gap-3 bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5">
+            <span className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider text-nowrap">Max Zoom IA</span>
+            <input 
+              type="range" min="1.0" max="5.0" step="0.1" 
+              value={maxAiZoom} 
+              onInput={e => setMaxAiZoom(parseFloat((e.target as HTMLInputElement).value))}
+              onChange={e => setMaxAiZoom(parseFloat(e.target.value))}
+              onPointerUp={e => (e.target as HTMLElement).blur()}
+              className="w-24 h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+            />
+            <span className="text-xs font-mono text-orange-400 w-10 text-right">{maxAiZoom.toFixed(1)}x</span>
           </div>
           <select value={language} onChange={e => setLanguage(e.target.value)}
             className="bg-neutral-900 border border-neutral-800 text-sm rounded-lg px-3 py-1.5 focus:outline-none">
