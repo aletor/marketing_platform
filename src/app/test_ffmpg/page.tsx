@@ -464,49 +464,49 @@ export default function TestFfmpgPage() {
       ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 15;
       ctx.lineWidth = 14 * aspectScale; ctx.strokeStyle = "rgba(0,0,0,0.9)";
 
-      // Dynamic Font Size Calculation to fit 60% of width
-      const allowedW = CANVAS_W * 0.6; // 20% margin on each side
-      let fontSize = 120 * aspectScale; // Starting guess
+      // 1. Calculate STATIC properties for layout (no animation scale here)
+      const allowedW = CANVAS_W * 0.6; // 20% margin
+      let fontSize = 120 * aspectScale;
       ctx.font = `italic 900 ${fontSize}px "Inter", sans-serif`;
       let currentW = ctx.measureText(cs.subtitleText).width;
-      
-      if (currentW > allowedW) {
-        fontSize = (allowedW / currentW) * fontSize;
-      }
-      // Cap max size for short lines
+      if (currentW > allowedW) fontSize = (allowedW / currentW) * fontSize;
       const maxFontSize = 180 * aspectScale;
       if (fontSize > maxFontSize) fontSize = maxFontSize;
 
-      // Calculate word properties with the resolved fontSize
       const wordStats = words.map((word, i) => {
-        const isCurrent = i === cs.subtitleActiveIdx;
-        const wordScale = isCurrent ? cs.subtitleScale : 1.0;
-        
         const cleanWord = word.replace(/[.,]/g, "").toUpperCase();
         const isRelevant = cleanWord.length >= 6 || ["FACTURA", "COMPRA", "PAGO", "GESTIÓN", "CLIENTE", "AQUÍ", "AHORA"].includes(cleanWord);
         const relScale = isRelevant ? 1.1 : 1.0;
         
-        ctx.font = `italic 900 ${fontSize * wordScale * relScale}px "Inter", sans-serif`;
+        ctx.font = `italic 900 ${fontSize * relScale}px "Inter", sans-serif`;
         const width = ctx.measureText(word + " ").width;
-        return { word, relScale, isRelevant, width, fontSize: fontSize * wordScale * relScale };
+        
+        const isCurrent = i === cs.subtitleActiveIdx;
+        const wordAnimScale = isCurrent ? cs.subtitleScale : 1.0;
+        
+        return { word, relScale, isRelevant, width, wordAnimScale, baseFontSize: fontSize * relScale };
       });
 
       const totalW = wordStats.reduce((acc, s) => acc + s.width, 0);
       let curX = sx - totalW / 2;
 
-      // Pass 1: Strokes
-      wordStats.forEach(s => {
-        ctx.font = `italic 900 ${s.fontSize}px "Inter", sans-serif`;
-        ctx.strokeText(s.word, curX + s.width / 2 - 5, sy);
-        curX += s.width;
-      });
+      // 2. Render Words at FIXED positions but with ANIMATED scale
+      wordStats.forEach((s) => {
+        const wordCX = curX + s.width / 2;
+        ctx.save();
+        ctx.translate(wordCX - 5, sy);
+        ctx.scale(s.wordAnimScale, s.wordAnimScale);
 
-      // Pass 2: Fills
-      curX = sx - totalW / 2;
-      wordStats.forEach(s => {
-        ctx.font = `italic 900 ${s.fontSize}px "Inter", sans-serif`;
+        ctx.font = `italic 900 ${s.baseFontSize}px "Inter", sans-serif`;
+        
+        // Stroke
+        ctx.strokeText(s.word, 0, 0);
+        
+        // Fill
         ctx.fillStyle = s.isRelevant ? "#facc15" : "white";
-        ctx.fillText(s.word, curX + s.width / 2 - 5, sy);
+        ctx.fillText(s.word, 0, 0);
+        
+        ctx.restore();
         curX += s.width;
       });
       
