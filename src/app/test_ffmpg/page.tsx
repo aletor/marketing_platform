@@ -68,6 +68,7 @@ interface CanvasState {
   subtitleVisible: boolean;
   subtitleScale: number;
   subtitleActiveIdx: number;
+  subtitleAlpha: number;
   
   // Transition state
   currentScreenIdx: number;
@@ -119,7 +120,7 @@ export default function TestFfmpgPage() {
     cursorVisible: false, clickRipple: 0,
     highlightRect: null, highlightAlpha: 0,
     typedText: "", typedRect: null, typedAlpha: 0,
-    subtitleText: "", subtitleVisible: false, subtitleScale: 1, subtitleActiveIdx: -1,
+    subtitleText: "", subtitleVisible: false, subtitleScale: 1, subtitleActiveIdx: -1, subtitleAlpha: 0,
     currentScreenIdx: 0, nextScreenIdx: 0, transitionProgress: 0, transitionType: "none",
     iconVisible: false, iconType: "sparkles", iconAlpha: 0
   });
@@ -490,10 +491,24 @@ export default function TestFfmpgPage() {
       const totalW = wordStats.reduce((acc, s) => acc + s.width, 0);
       let curX = sx - totalW / 2;
 
-      // 2. Render Words at FIXED positions but with ANIMATED scale
-      wordStats.forEach((s) => {
+      // 2. Render Words at FIXED positions but with ANIMATED scale/alpha
+      wordStats.forEach((s, i) => {
+        // Individual word alpha: 
+        // 1 if index is less than active (already appeared)
+        // subtitleAlpha if it's the current word
+        // 0 if it's beyond the current word
+        let wordAlpha = 0;
+        if (i < cs.subtitleActiveIdx) wordAlpha = 1;
+        else if (i === cs.subtitleActiveIdx) wordAlpha = cs.subtitleAlpha;
+
+        if (wordAlpha <= 0) {
+          curX += s.width;
+          return;
+        }
+
         const wordCX = curX + s.width / 2;
         ctx.save();
+        ctx.globalAlpha = wordAlpha;
         ctx.translate(wordCX - 5, sy);
         ctx.scale(s.wordAnimScale, s.wordAnimScale);
 
@@ -733,24 +748,31 @@ export default function TestFfmpgPage() {
           chunks.forEach((chunkWords, cIdx) => {
             const isLastChunk = cIdx === chunks.length - 1;
             
-            // 1. Show the whole line first
+            // 1. Line appears (container) but words logic starts hidden
             tl.set(cs, { 
               subtitleVisible: true, 
               subtitleText: chunkWords.join(" ").toUpperCase(), 
               subtitleActiveIdx: -1, 
+              subtitleAlpha: 0,
               subtitleScale: 1
             }, `${momentLabel}+=${accTime}`);
 
-            // 2. Animate each word within the line one by one
+            // 2. Individual words fade-in + smooth zoom-in
             let wordInChunkOffset = 0;
             chunkWords.forEach((_, wInChunkIdx) => {
               const wordStartTime = accTime + wordInChunkOffset;
-              tl.to(cs, { 
-                subtitleActiveIdx: wInChunkIdx,
-                subtitleScale: 1.3, // Bounce scale for active word
-                duration: 0.05 
-              }, `${momentLabel}+=${wordStartTime}`)
-                .to(cs, { subtitleScale: 1, duration: 0.15, ease: "back.out(2)" }, ">");
+              tl.fromTo(cs, 
+                { subtitleScale: 0.8, subtitleAlpha: 0 },
+                { 
+                  subtitleActiveIdx: wInChunkIdx,
+                  subtitleAlpha: 1,
+                  subtitleScale: 1.0,
+                  duration: 0.25,
+                  ease: "power2.out",
+                  immediateRender: false
+                }, 
+                `${momentLabel}+=${wordStartTime}`
+              );
               
               wordInChunkOffset += wordDur;
             });
