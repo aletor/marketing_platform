@@ -758,7 +758,7 @@ export default function TestFfmpgPage() {
     return { panX, panY };
   };
 
-  const buildTimeline = () => {
+  const buildTimeline = (onFinish?: () => void) => {
     const tl = gsap.timeline({ 
       onUpdate: () => {
         renderFrame();
@@ -769,6 +769,7 @@ export default function TestFfmpgPage() {
         renderFrame();
         setIsPlaying(false);
         stopAudio();
+        if (onFinish) onFinish();
       }
     });
     const cs = csRef.current;
@@ -1046,8 +1047,8 @@ export default function TestFfmpgPage() {
         await ff.load();
         setExportProgress("Convirtiendo WebM → MP4…");
         await ff.writeFile("input.webm", await fetchFile(webm));
-        // Use aac for audio and libx264 for video
-        await ff.exec(["-i", "input.webm", "-c:v", "libx264", "-c:a", "aac", "-b:a", "192k", "-preset", "fast", "-crf", "23", "-pix_fmt", "yuv420p", "output.mp4"]);
+        // Use aac for audio and libx264 for video. -vsync vfr avoids duplicated frames warning.
+        await ff.exec(["-i", "input.webm", "-vsync", "vfr", "-c:v", "libx264", "-c:a", "aac", "-b:a", "192k", "-preset", "fast", "-crf", "23", "-pix_fmt", "yuv420p", "output.mp4"]);
         const data = await ff.readFile("output.mp4");
         const mp4Blob = new Blob([data instanceof Uint8Array ? data.buffer.slice(0) as ArrayBuffer : data as unknown as ArrayBuffer], { type: "video/mp4" });
         setVideoBlob(mp4Blob);
@@ -1059,14 +1060,22 @@ export default function TestFfmpgPage() {
     };
 
     mr.start(100);
+    if (!audioContextRef.current) {
+       // ensure initialized
+    }
 
     // Play animation while recording
     if (tlRef.current) tlRef.current.kill();
-    const tl = buildTimeline();
-    tlRef.current = tl;
-    tl.play().then(() => {
-      setTimeout(() => { mr.stop(); setIsRecording(false); }, 500);
+    const tl = buildTimeline(() => {
+      // Small buffer before stopping MediaRecorder to capture the last frame's tail
+      setTimeout(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+          mediaRecorderRef.current.stop();
+        }
+      }, 200);
     });
+    tlRef.current = tl;
+    tl.play();
   };
 
   const downloadVideo = () => {
