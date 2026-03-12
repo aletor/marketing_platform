@@ -114,6 +114,9 @@ export default function TestFfmpgPage() {
   const tlRef = useRef<gsap.core.Timeline | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const destinationNodeRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const currentAudioSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const imgCache = useRef<Record<string, HTMLImageElement>>({});
   const csRef = useRef<CanvasState>({
     scale: 1, panX: 0, panY: 0,
@@ -144,8 +147,26 @@ export default function TestFfmpgPage() {
       currentAudioRef.current.pause();
       currentAudioRef.current = null;
     }
+    
     const audio = new Audio(url);
+    audio.crossOrigin = "anonymous";
     currentAudioRef.current = audio;
+
+    if (!audioContextRef.current) {
+      const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
+      audioContextRef.current = new Ctx();
+      destinationNodeRef.current = audioContextRef.current.createMediaStreamDestination();
+    }
+
+    const ctx = audioContextRef.current;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const source = ctx.createMediaElementSource(audio);
+    source.connect(ctx.destination); // Play to speakers
+    if (destinationNodeRef.current) {
+      source.connect(destinationNodeRef.current); // Connect to recorder
+    }
+    
     audio.play().catch(e => console.warn("Audio play blocked/failed:", e));
   };
   const stopAudio = () => {
@@ -986,8 +1007,28 @@ export default function TestFfmpgPage() {
     setVideoBlob(null);
     chunksRef.current = [];
 
-    const stream = canvasRef.current.captureStream(30);
-    const mr = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp9", videoBitsPerSecond: 8_000_000 });
+    const videoStream = canvasRef.current.captureStream(30);
+    
+    // Ensure AudioContext is ready for recording
+    if (!audioContextRef.current) {
+      const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
+      audioContextRef.current = new Ctx();
+      destinationNodeRef.current = audioContextRef.current.createMediaStreamDestination();
+    }
+    
+    let combinedStream = videoStream;
+
+    // Add audio track if available
+    const audioTracks = destinationNodeRef.current?.stream.getAudioTracks() || [];
+    if (audioTracks.length > 0) {
+      console.log(`[Recording] Adding ${audioTracks.length} audio tracks to video stream.`);
+      combinedStream = new MediaStream([...videoStream.getVideoTracks(), ...audioTracks]);
+    } else {
+      console.warn("[Recording] No audio tracks found in destination node.");
+    }
+
+    console.log(`[Recording] MediaRecorder starting with ${combinedStream.getTracks().length} tracks.`);
+    const mr = new MediaRecorder(combinedStream, { mimeType: "video/webm;codecs=vp9", videoBitsPerSecond: 8_000_000 });
     mediaRecorderRef.current = mr;
     mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
 
@@ -1005,7 +1046,8 @@ export default function TestFfmpgPage() {
         await ff.load();
         setExportProgress("Convirtiendo WebM → MP4…");
         await ff.writeFile("input.webm", await fetchFile(webm));
-        await ff.exec(["-i", "input.webm", "-c:v", "libx264", "-preset", "fast", "-crf", "23", "-pix_fmt", "yuv420p", "output.mp4"]);
+        // Use aac for audio and libx264 for video
+        await ff.exec(["-i", "input.webm", "-c:v", "libx264", "-c:a", "aac", "-b:a", "192k", "-preset", "fast", "-crf", "23", "-pix_fmt", "yuv420p", "output.mp4"]);
         const data = await ff.readFile("output.mp4");
         const mp4Blob = new Blob([data instanceof Uint8Array ? data.buffer.slice(0) as ArrayBuffer : data as unknown as ArrayBuffer], { type: "video/mp4" });
         setVideoBlob(mp4Blob);
