@@ -105,7 +105,7 @@
 
 .drop-zone {
   width: 100%;
-  aspect-ratio: 16/9;
+  aspect-ratio: 32/9; /* Much more compact */
   border: 2px dashed rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   display: flex;
@@ -123,7 +123,9 @@
 }
 
 .drop-zone.has-value {
-  border-style: solid;
+  aspect-ratio: 16/9;
+  width: 30%; /* Very compact as requested */
+  margin: 0 auto;
 }
 
 .drop-zone-info {

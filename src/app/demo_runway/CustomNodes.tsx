@@ -75,7 +75,7 @@ export const VideoNode = memo(({ data }: NodeProps<any>) => {
               <span>Uploading...</span>
             </div>
           ) : nodeData.value ? (
-            <video className="video-preview" src={nodeData.value} muted autoPlay loop />
+            <video className="video-preview" src={nodeData.value} muted controls />
           ) : (
             <div className="drop-zone-info">
               <Film size={24} />
@@ -87,11 +87,11 @@ export const VideoNode = memo(({ data }: NodeProps<any>) => {
         <div style={{ marginTop: 8 }}>
           <label className="node-label" style={{ fontSize: '0.65rem' }}>Or paste URL</label>
           <input 
-            className="node-input"
+            className="node-input nowheel nodrag"
             type="text" 
             placeholder="https://..." 
             onChange={(e) => nodeData.onChange?.(e.target.value)}
-            defaultValue={nodeData.value as string}
+            value={nodeData.value || ''}
           />
         </div>
       </div>
@@ -110,10 +110,10 @@ export const PromptNode = memo(({ data }: NodeProps<any>) => {
       <div className="node-content">
         <label className="node-label">Instruction</label>
         <textarea 
-          className="node-textarea"
+          className="node-textarea nowheel nodrag"
           placeholder="Describe the motion or transformation..."
           onChange={(e) => nodeData.onChange?.(e.target.value)}
-          defaultValue={nodeData.value as string}
+          value={nodeData.value || ''}
         />
       </div>
       <Handle type="source" position={Position.Right} />
@@ -209,7 +209,7 @@ export const RunwayNode = memo(({ data }: NodeProps<any>) => {
         <div style={{ marginTop: 8 }}>
           <label className="node-label">Duration</label>
           <select 
-            className="node-input" 
+            className="node-input nowheel nodrag" 
             style={{ padding: '4px 8px' }}
             value={nodeData.duration || 5}
             onChange={(e) => nodeData.onDurationChange?.(parseInt(e.target.value))}
@@ -238,7 +238,7 @@ export const RunwayNode = memo(({ data }: NodeProps<any>) => {
 
         {resultUrl && (
           <div className="video-preview" style={{ marginTop: 8 }}>
-            <video src={resultUrl} controls autoPlay loop style={{ width: '100%' }} />
+            <video src={resultUrl} controls style={{ width: '100%' }} />
           </div>
         )}
       </div>
