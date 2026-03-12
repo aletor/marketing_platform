@@ -462,17 +462,29 @@ export default function TestFfmpgPage() {
       ctx.restore();
     }
 
-    // ── VIGNETTE OVERLAY (Focus on center) ───────────────────────────────────
+    // ── VIGNETTE BLUR OVERLAY (Lens Focus) ──────────────────────────────────
     if (cs.vignetteAlpha > 0) {
       ctx.save();
-      const grad = ctx.createRadialGradient(
-        CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.2,
-        CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.8
+      // Draw blurred overlay using the same render logic but with a filter
+      const blurAmount = Math.round(12 * cs.vignetteAlpha);
+      ctx.filter = `blur(${blurAmount}px)`;
+      ctx.globalAlpha = cs.vignetteAlpha;
+      
+      const dispScreen = isPlaying ? curr : activeScreen;
+      if (dispScreen) drawSingleScreen(dispScreen);
+      
+      // Punch a hole in the blur to reveal the sharp center
+      // Use destination-out to erase the center of the blurred layer
+      ctx.globalCompositeOperation = "destination-out";
+      const holeGrad = ctx.createRadialGradient(
+        CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.1,
+        CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.6
       );
-      grad.addColorStop(0, "rgba(0,0,0,0)");
-      grad.addColorStop(1, `rgba(0,0,0,${cs.vignetteAlpha * 0.7})`);
-      ctx.fillStyle = grad;
+      holeGrad.addColorStop(0, "rgba(0,0,0,1)");     // Full erase in center
+      holeGrad.addColorStop(1, "rgba(0,0,0,0)");     // No erase at edges
+      ctx.fillStyle = holeGrad;
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      
       ctx.restore();
     }
 
