@@ -79,6 +79,7 @@ interface CanvasState {
   iconVisible: boolean;
   iconType: string;
   iconAlpha: number;
+  motionBlur: number;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -121,7 +122,8 @@ export default function TestFfmpgPage() {
     typedText: "", typedRect: null, typedAlpha: 0,
     subtitleText: "", subtitleVisible: false, subtitleScale: 1, subtitleActiveIdx: -1,
     currentScreenIdx: 0, nextScreenIdx: 0, transitionProgress: 0, transitionType: "none",
-    iconVisible: false, iconType: "sparkles", iconAlpha: 0
+    iconVisible: false, iconType: "sparkles", iconAlpha: 0,
+    motionBlur: 0
   });
 
   const activeScreen = screens.find(s => s.id === activeScreenId) ?? null;
@@ -331,6 +333,11 @@ export default function TestFfmpgPage() {
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.translate(offsetX, offsetY);
+
+      // Apply motion blur if active
+      if (cs.motionBlur > 0) {
+        ctx.filter = `blur(${cs.motionBlur}px)`;
+      }
 
       // Background fills the WHOLE canvas (even outside WORLD area)
       ctx.save();
@@ -708,7 +715,8 @@ export default function TestFfmpgPage() {
       cursorVisible: false, highlightRect: null, 
       typedText: "", subtitleText: "", 
       currentScreenIdx: 0, nextScreenIdx: 0, transitionProgress: 0, transitionType: "none",
-      iconVisible: false, iconAlpha: 0, iconType: "sparkles"
+      iconVisible: false, iconAlpha: 0, iconType: "sparkles",
+      motionBlur: 0
     });
 
     for (let sIdx = 0; sIdx < screens.length; sIdx++) {
@@ -751,7 +759,10 @@ export default function TestFfmpgPage() {
           // Si es el primer momento, establece instantáneamente por si gsap se descuadra
           tl.set(cs, { scale, panX, panY }, momentLabel);
         } else {
+          // Trigger subtle motion blur during transition
+          tl.to(cs, { motionBlur: 1.5, duration: d * 0.1, ease: "power1.in" }, momentLabel);
           tl.to(cs, { scale, panX, panY, duration: d * 0.4, ease }, momentLabel);
+          tl.to(cs, { motionBlur: 0, duration: d * 0.2, ease: "power1.out" }, ">-0.1");
         }
 
         // Show icon after camera settles
