@@ -411,9 +411,10 @@ export default function TestFfmpgPage() {
     if (cs.iconVisible && cs.iconAlpha > 0) {
       ctx.save();
       ctx.globalAlpha = cs.iconAlpha * 0.6; // Max 60% opacity for the vignette
+      const maxDim = Math.max(CANVAS_W, CANVAS_H);
       const grad = ctx.createRadialGradient(
-        CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.2, // Small clear center
-        CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.8  // Large dark edges
+        CANVAS_W / 2, CANVAS_H / 2, maxDim * 0.2, // Small clear center
+        CANVAS_W / 2, CANVAS_H / 2, maxDim * 0.9  // Large dark edges covering corners
       );
       grad.addColorStop(0, "rgba(0, 0, 0, 0)");
       grad.addColorStop(1, "rgba(0, 0, 0, 0.9)");
