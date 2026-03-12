@@ -23,6 +23,7 @@ interface Moment {
   duration: number; // Duración mínima en segundos
   easing?: string;
   aiFocusPoint?: { x: number; y: number }; // Debug point from AI (%)
+  audioUrl?: string; 
 }
 
 interface Screen {
@@ -131,11 +132,28 @@ export default function TestFfmpgPage() {
 
   // ── Lottie handling ────────────────────────────────────────────────────────
   useEffect(() => {
-    fetch("/stars points.lottie")
+    fetch("/stars_points.json")
       .then(res => res.json())
       .then(data => { lottieDataRef.current = data; })
       .catch(err => console.error("Error loading lottie:", err));
   }, []);
+
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const playAudio = (url: string) => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    const audio = new Audio(url);
+    currentAudioRef.current = audio;
+    audio.play().catch(e => console.warn("Audio play blocked/failed:", e));
+  };
+  const stopAudio = () => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+  };
 
   // ── File handling ──────────────────────────────────────────────────────────
 
@@ -267,6 +285,34 @@ export default function TestFfmpgPage() {
       }
     } catch (e: any) { alert(e.message); }
     setIsAnalyzing(false);
+  };
+
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const generateAudioForMoments = async () => {
+    if (!screens.length) return;
+    setIsGeneratingAudio(true);
+    try {
+      const updatedScreens = [...screens];
+      for (let sIdx = 0; sIdx < updatedScreens.length; sIdx++) {
+        const screen = updatedScreens[sIdx];
+        for (let mIdx = 0; mIdx < screen.moments.length; mIdx++) {
+          const m = screen.moments[mIdx];
+          if (m.label && !m.audioUrl) {
+            const res = await fetch("/api/video/tts", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: m.label, language, sceneId: screen.id, subIndex: mIdx }),
+            });
+            const data = await res.json();
+            if (data.audioUrl) screen.moments[mIdx].audioUrl = data.audioUrl;
+          }
+        }
+      }
+      setScreens(updatedScreens);
+    } catch (e: any) {
+      alert("Error generando audio: " + e.message);
+    }
+    setIsGeneratingAudio(false);
   };
 
   // ── Moment management ──────────────────────────────────────────────────────
@@ -701,6 +747,7 @@ export default function TestFfmpgPage() {
         tlRef.current = null;
         renderFrame();
         setIsPlaying(false);
+        stopAudio();
       }
     });
     const cs = csRef.current;
@@ -753,6 +800,9 @@ export default function TestFfmpgPage() {
 
         // Sync current index
         tl.set(cs, { currentScreenIdx: sIdx, iconType }, momentLabel);
+        if (m.audioUrl) {
+          tl.call(() => playAudio(m.audioUrl!), [], momentLabel);
+        }
 
         // Camera movement
         if (sIdx === 0 && mIdx === 0) {
@@ -1300,6 +1350,10 @@ export default function TestFfmpgPage() {
                 <button onClick={analyzeWithAI} disabled={isAnalyzing}
                   className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:opacity-90 text-white px-4 py-2.5 rounded-xl font-medium text-sm disabled:opacity-50 transition-all">
                   {isAnalyzing ? <><Loader2 className="w-4 h-4 animate-spin" /> Analizando…</> : <><Wand2 className="w-4 h-4" /> Analizar con IA</>}
+                </button>
+                <button onClick={generateAudioForMoments} disabled={isGeneratingAudio || !screens.some(s => s.moments.length > 0)}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-pink-600 to-rose-600 hover:opacity-90 text-white px-4 py-2.5 rounded-xl font-medium text-sm disabled:opacity-50 transition-all">
+                  {isGeneratingAudio ? <><Loader2 className="w-4 h-4 animate-spin" /> Generando voz…</> : <><Play className="w-4 h-4" /> Generar Audio</>}
                 </button>
                 <button onClick={addMoment}
                   className="w-full flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-xl font-medium text-sm transition-all border border-neutral-700 hover:border-orange-500/40">
