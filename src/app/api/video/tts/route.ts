@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { uploadToS3, getPresignedUrl } from '@/lib/s3-utils';
+import { getTtsAudioUrl } from '@/lib/tts-utils';
 
 // ElevenLabs voice IDs by language (best native voices)
 const ELEVENLABS_VOICES: Record<string, string> = {
@@ -54,16 +54,15 @@ export async function POST(req: Request) {
       throw new Error(`ElevenLabs API error: ${elevenRes.status}`);
     }
 
-    // Upload the audio buffer to S3
-    const audioBuffer = Buffer.from(await elevenRes.arrayBuffer());
-    const s3Key = await uploadToS3(
-      `tts-${sceneId}-${subIndex}.mp3`,
-      audioBuffer,
-      "audio/mpeg"
+    // Generate audio and measure duration
+    const { audioUrl, durationMs } = await getTtsAudioUrl(
+      text,
+      language,
+      sceneId,
+      subIndex
     );
-    const audioUrl = await getPresignedUrl(s3Key);
-
-    return NextResponse.json({ audioUrl });
+    
+    return NextResponse.json({ audioUrl, durationMs });
 
   } catch (error: any) {
     console.error("ElevenLabs TTS error:", error);

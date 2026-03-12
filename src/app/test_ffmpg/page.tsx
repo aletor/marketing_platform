@@ -24,6 +24,7 @@ interface Moment {
   easing?: string;
   aiFocusPoint?: { x: number; y: number }; // Debug point from AI (%)
   audioUrl?: string; 
+  audioDurationMs?: number;
 }
 
 interface Screen {
@@ -325,7 +326,10 @@ export default function TestFfmpgPage() {
               body: JSON.stringify({ text: m.label, language, sceneId: screen.id, subIndex: mIdx }),
             });
             const data = await res.json();
-            if (data.audioUrl) screen.moments[mIdx].audioUrl = data.audioUrl;
+            if (data.audioUrl) {
+              screen.moments[mIdx].audioUrl = data.audioUrl;
+              screen.moments[mIdx].audioDurationMs = data.durationMs;
+            }
           }
         }
       }
@@ -805,8 +809,11 @@ export default function TestFfmpgPage() {
         const dotsCount = words.filter(w => w.endsWith('.')).length;
         const commaCount = words.filter(w => w.endsWith(',')).length;
         const wordDur = 1 / wordsPerSecond;
-        const textDuration = words.length > 0 ? (words.length * wordDur + 1.5 + (dotsCount * 1.5) + (commaCount * 1.0)) : 0;
-        const d = Math.max(m.duration, textDuration);
+        const estimatedTextDuration = words.length > 0 ? (words.length * wordDur + 1.5 + (dotsCount * 1.5) + (commaCount * 1.0)) : 0;
+        
+        // Use real audio duration if available, else estimated or manually set duration
+        const baseDuration = (m.audioDurationMs ? m.audioDurationMs / 1000 : estimatedTextDuration);
+        const d = Math.max(m.duration, baseDuration);
         
         const ease = m.easing ?? "power2.inOut";
         const panX = m.camPanX;
