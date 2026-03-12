@@ -407,6 +407,21 @@ export default function TestFfmpgPage() {
       if (dispScreen) drawSingleScreen(dispScreen);
     }
 
+    // ── VIGNETTE EFFECT (Dynamic with Icon) ─────────────────────────────────
+    if (cs.iconVisible && cs.iconAlpha > 0) {
+      ctx.save();
+      ctx.globalAlpha = cs.iconAlpha * 0.6; // Max 60% opacity for the vignette
+      const grad = ctx.createRadialGradient(
+        CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.2, // Small clear center
+        CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.8  // Large dark edges
+      );
+      grad.addColorStop(0, "rgba(0, 0, 0, 0)");
+      grad.addColorStop(1, "rgba(0, 0, 0, 0.9)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.restore();
+    }
+
     // Cursor — in WORLD coords
     if (cs.cursorVisible) {
       const cx = cs.cursorX, cy = cs.cursorY;
