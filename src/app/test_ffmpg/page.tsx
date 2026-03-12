@@ -410,6 +410,7 @@ export default function TestFfmpgPage() {
     // ── VIGNETTE EFFECT (Dynamic with Icon) ─────────────────────────────────
     if (cs.iconVisible && cs.iconAlpha > 0) {
       ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset to screen space
       ctx.globalAlpha = cs.iconAlpha * 0.6; // Max 60% opacity for the vignette
       const maxDim = Math.max(CANVAS_W, CANVAS_H);
       const grad = ctx.createRadialGradient(
