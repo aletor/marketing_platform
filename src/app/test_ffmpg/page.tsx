@@ -1067,9 +1067,6 @@ export default function TestFfmpgPage() {
     };
 
     mr.start(100);
-    if (!audioContextRef.current) {
-       // ensure initialized
-    }
 
     // Play animation while recording
     if (tlRef.current) tlRef.current.kill();
