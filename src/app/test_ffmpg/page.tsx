@@ -462,29 +462,37 @@ export default function TestFfmpgPage() {
       ctx.restore();
     }
 
-    // ── VIGNETTE BLUR OVERLAY (Lens Focus) ──────────────────────────────────
+    // ── VIGNETTE BLUR OVERLAY (Focus Lens Effect) ───────────────────────────
     if (cs.vignetteAlpha > 0) {
       ctx.save();
-      // Draw blurred overlay using the same render logic but with a filter
-      const blurAmount = Math.round(12 * cs.vignetteAlpha);
+      // Draw a blurred copy of the screen
+      // 24px blur at 1.0 alpha gives a strong peripheral effect
+      const maxBlur = 24; 
+      const blurAmount = Math.max(0.5, maxBlur * cs.vignetteAlpha);
       ctx.filter = `blur(${blurAmount}px)`;
       ctx.globalAlpha = cs.vignetteAlpha;
       
       const dispScreen = isPlaying ? curr : activeScreen;
       if (dispScreen) drawSingleScreen(dispScreen);
       
-      // Punch a hole in the blur to reveal the sharp center
-      // Use destination-out to erase the center of the blurred layer
+      // Use destination-out to carve a VERY SHARP hole in the middle
+      // This ensures the center is 100% sharp (0% blur)
       ctx.globalCompositeOperation = "destination-out";
+      const centerX = CANVAS_W / 2;
+      const centerY = CANVAS_H / 2;
+      const innerRadius = CANVAS_W * 0.25; // Large sharp center
+      const outerRadius = CANVAS_W * 0.95; // Gradual blur to edge
+      
       const holeGrad = ctx.createRadialGradient(
-        CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.1,
-        CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.6
+        centerX, centerY, innerRadius,
+        centerX, centerY, outerRadius
       );
-      holeGrad.addColorStop(0, "rgba(0,0,0,1)");     // Full erase in center
-      holeGrad.addColorStop(1, "rgba(0,0,0,0)");     // No erase at edges
+      holeGrad.addColorStop(0, "rgba(0,0,0,1)"); // Center: 0% blur (fully erased from blur layer)
+      holeGrad.addColorStop(0.2, "rgba(0,0,0,0.9)");
+      holeGrad.addColorStop(1, "rgba(0,0,0,0)"); // Edge: 100% blur (not erased)
+      
       ctx.fillStyle = holeGrad;
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      
       ctx.restore();
     }
 
