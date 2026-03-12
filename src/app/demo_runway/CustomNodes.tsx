@@ -14,6 +14,7 @@ interface BaseNodeData {
 export const VideoNode = memo(({ data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleFileUpload = async (file: File) => {
     setIsUploading(true);
@@ -38,33 +39,61 @@ export const VideoNode = memo(({ data }: NodeProps<any>) => {
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('video/')) {
       handleFileUpload(file);
     }
   };
 
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const onDragLeave = () => {
+    setIsDragging(false);
+  };
+
   return (
     <div 
-      className="custom-node video-node"
+      className={`custom-node video-node ${isDragging ? 'dragging' : ''}`}
       onDrop={onDrop}
-      onDragOver={(e) => e.preventDefault()}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
     >
       <div className="node-header">
         <Video size={16} /> VIDEO SOURCE {isUploading && <Loader2 size={12} className="animate-spin" />}
       </div>
       <div className="node-content">
-        <label className="node-label">Video URL</label>
-        <input 
-          className="node-input"
-          type="text" 
-          placeholder="https://..." 
-          onChange={(e) => nodeData.onChange?.(e.target.value)}
-          defaultValue={nodeData.value as string}
-        />
-        {nodeData.value && (
-          <video className="video-preview" src={nodeData.value as string} muted />
-        )}
+        <label className="node-label">Video Source</label>
+        
+        <div className={`drop-zone ${nodeData.value ? 'has-value' : ''}`}>
+          {isUploading ? (
+            <div className="drop-zone-info">
+              <Loader2 className="animate-spin" size={24} />
+              <span>Uploading...</span>
+            </div>
+          ) : nodeData.value ? (
+            <video className="video-preview" src={nodeData.value} muted autoPlay loop />
+          ) : (
+            <div className="drop-zone-info">
+              <Film size={24} />
+              <span>Drop video here</span>
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: 8 }}>
+          <label className="node-label" style={{ fontSize: '0.65rem' }}>Or paste URL</label>
+          <input 
+            className="node-input"
+            type="text" 
+            placeholder="https://..." 
+            onChange={(e) => nodeData.onChange?.(e.target.value)}
+            defaultValue={nodeData.value as string}
+          />
+        </div>
       </div>
       <Handle type="source" position={Position.Right} />
     </div>
