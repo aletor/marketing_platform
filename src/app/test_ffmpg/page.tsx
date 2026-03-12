@@ -79,9 +79,6 @@ interface CanvasState {
   iconVisible: boolean;
   iconType: string;
   iconAlpha: number;
-
-  // Vignette effect
-  vignetteAlpha: number;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -124,8 +121,7 @@ export default function TestFfmpgPage() {
     typedText: "", typedRect: null, typedAlpha: 0,
     subtitleText: "", subtitleVisible: false, subtitleScale: 1, subtitleActiveIdx: -1,
     currentScreenIdx: 0, nextScreenIdx: 0, transitionProgress: 0, transitionType: "none",
-    iconVisible: false, iconType: "sparkles", iconAlpha: 0,
-    vignetteAlpha: 0
+    iconVisible: false, iconType: "sparkles", iconAlpha: 0
   });
 
   const activeScreen = screens.find(s => s.id === activeScreenId) ?? null;
@@ -141,6 +137,37 @@ export default function TestFfmpgPage() {
 
   // ── File handling ──────────────────────────────────────────────────────────
 
+  // ── File handling ──────────────────────────────────────────────────────────
+
+  const getHex = (data: Uint8ClampedArray, x: number, y: number, width: number) => {
+    const i = (y * width + x) * 4;
+    const r = data[i];
+    const g = data[i+1];
+    const b = data[i+2];
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  };
+
+  const detectBorderColor = (img: HTMLImageElement): string => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "#000000";
+    canvas.width = 100; canvas.height = 100;
+    ctx.drawImage(img, 0, 0, 100, 100);
+    try {
+      const pixels = ctx.getImageData(0, 0, 100, 100).data;
+      const samples: string[] = [];
+      for(let x=0; x<100; x+=5) samples.push(getHex(pixels, x, 0, 100));
+      for(let x=0; x<100; x+=5) samples.push(getHex(pixels, x, 99, 100));
+      for(let y=0; y<100; y+=5) samples.push(getHex(pixels, 0, y, 100));
+      for(let y=0; y<100; y+=5) samples.push(getHex(pixels, 99, y, 100));
+      const counts: Record<string, number> = {};
+      samples.forEach(s => counts[s] = (counts[s] || 0) + 1);
+      let best = "#000000", max = -1;
+      for(const color in counts) if(counts[color] > max) { max = counts[color]; best = color; }
+      return best;
+    } catch { return "#000000"; }
+  };
+
   const loadFile = async (file: File): Promise<Screen> => {
     const url = URL.createObjectURL(file);
     const base64 = await new Promise<string>((res, rej) => {
@@ -149,14 +176,25 @@ export default function TestFfmpgPage() {
       reader.onload = () => res(reader.result as string);
       reader.onerror = rej;
     });
-    const screen: Screen = { id: uid(), file, url, base64, moments: [], bgColor: "#000000", transitionAfter: "none" };
-    // Preload image into cache immediately
+
     const img = new Image();
     img.src = url;
-    img.onload = () => { 
-      imgCache.current[url] = img; 
-      renderFrame(); 
+    await new Promise((res) => { img.onload = res; });
+    imgCache.current[url] = img;
+
+    const detectedBg = detectBorderColor(img);
+
+    const screen: Screen = { 
+      id: uid(), 
+      file, 
+      url, 
+      base64, 
+      moments: [], 
+      bgColor: detectedBg, 
+      transitionAfter: "none" 
     };
+    
+    renderFrame();
     return screen;
   };
 
@@ -462,40 +500,6 @@ export default function TestFfmpgPage() {
       ctx.restore();
     }
 
-    // ── VIGNETTE BLUR OVERLAY (Focus Lens Effect) ───────────────────────────
-    if (cs.vignetteAlpha > 0) {
-      ctx.save();
-      // Draw a blurred copy of the screen
-      // 24px blur at 1.0 alpha gives a strong peripheral effect
-      const maxBlur = 24; 
-      const blurAmount = Math.max(0.5, maxBlur * cs.vignetteAlpha);
-      ctx.filter = `blur(${blurAmount}px)`;
-      ctx.globalAlpha = cs.vignetteAlpha;
-      
-      const dispScreen = isPlaying ? curr : activeScreen;
-      if (dispScreen) drawSingleScreen(dispScreen);
-      
-      // Use destination-out to carve a VERY SHARP hole in the middle
-      // This ensures the center is 100% sharp (0% blur)
-      ctx.globalCompositeOperation = "destination-out";
-      const centerX = CANVAS_W / 2;
-      const centerY = CANVAS_H / 2;
-      const innerRadius = CANVAS_W * 0.25; // Large sharp center
-      const outerRadius = CANVAS_W * 0.95; // Gradual blur to edge
-      
-      const holeGrad = ctx.createRadialGradient(
-        centerX, centerY, innerRadius,
-        centerX, centerY, outerRadius
-      );
-      holeGrad.addColorStop(0, "rgba(0,0,0,1)"); // Center: 0% blur (fully erased from blur layer)
-      holeGrad.addColorStop(0.2, "rgba(0,0,0,0.9)");
-      holeGrad.addColorStop(1, "rgba(0,0,0,0)"); // Edge: 100% blur (not erased)
-      
-      ctx.fillStyle = holeGrad;
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.restore();
-    }
-
     // Subtitles — anchored at 65% of CANVAS height (35% from bottom)
     if (cs.subtitleVisible && cs.subtitleText) {
       ctx.save();
@@ -687,8 +691,7 @@ export default function TestFfmpgPage() {
       cursorVisible: false, highlightRect: null, 
       typedText: "", subtitleText: "", 
       currentScreenIdx: 0, nextScreenIdx: 0, transitionProgress: 0, transitionType: "none",
-      iconVisible: false, iconAlpha: 0, iconType: "sparkles",
-      vignetteAlpha: 0
+      iconVisible: false, iconAlpha: 0, iconType: "sparkles"
     });
 
     for (let sIdx = 0; sIdx < screens.length; sIdx++) {
@@ -734,12 +737,9 @@ export default function TestFfmpgPage() {
           tl.to(cs, { scale, panX, panY, duration: d * 0.4, ease }, momentLabel);
         }
 
-        // Show icon and vignette after camera settles
+        // Show icon after camera settles
         tl.to(cs, { iconVisible: true, iconAlpha: 1, duration: 0.5 }, `${momentLabel}+=${d * 0.3}`)
           .to(cs, { iconAlpha: 0, duration: 0.5, iconVisible: false }, `${momentLabel}+=${d - 0.5}`);
-
-        tl.to(cs, { vignetteAlpha: 1, duration: 0.6, ease: "sine.inOut" }, `${momentLabel}+=${d * 0.3}`)
-          .to(cs, { vignetteAlpha: 0, duration: 0.8, ease: "sine.inOut" }, `${momentLabel}+=${d - 1.0}`);
 
         // Hold for duration with no element animation
         tl.to({}, { duration: d }, momentLabel);
@@ -809,8 +809,7 @@ export default function TestFfmpgPage() {
           nextScreenIdx: sIdx + 1, 
           transitionType: screen.transitionAfter,
           subtitleVisible: false, cursorVisible: false, highlightAlpha: 0,
-          iconVisible: false, iconAlpha: 0,
-          vignetteAlpha: 0
+          iconVisible: false, iconAlpha: 0
         }, transLabel);
 
         // Smoothly bridge camera from current last moment to next screen's first moment
@@ -878,8 +877,7 @@ export default function TestFfmpgPage() {
       highlightRect: null, highlightAlpha: 0, 
       typedText: "", typedRect: null, typedAlpha: 0,
       subtitleText: "", subtitleVisible: false, subtitleScale: 1,
-      iconVisible: false, iconAlpha: 0, iconType: "sparkles",
-      vignetteAlpha: 0
+      iconVisible: false, iconAlpha: 0, iconType: "sparkles"
     });
     renderFrame();
   };
