@@ -88,13 +88,26 @@ export async function POST(req: NextRequest) {
           }
 
           // Resize carefully: only provide width to let Sharp calculate height proportionally
-          const resizedImage = await sharp(imageBuffer)
-            .resize(targetWidth) 
-            .png()
-            .toBuffer();
-             
-          compositeInputs.push({ input: resizedImage, top: layerY, left: layerX });
-          console.log(`[Layer ${idx}] Success: x=${layerX}, y=${layerY}, w=${targetWidth} (isBG: ${isBackground})`);
+          let resizedImageBuilder = sharp(imageBuffer)
+            .resize({
+              width: targetWidth,
+              withoutEnlargement: false, // Force resizing to target
+              fit: 'inside' // Ensure it fits within targetWidth bounds
+            });
+
+          const resizedImage = await resizedImageBuilder.png().toBuffer();
+          const metadata = await sharp(resizedImage).metadata();
+          
+          // CRITICAL: Ensure top/left + dimensions don't exceed canvas limits
+          const safeTop = Math.max(0, Math.min(layerY, height - (metadata.height || 0)));
+          const safeLeft = Math.max(0, Math.min(layerX, width - (metadata.width || 0)));
+
+          compositeInputs.push({ 
+            input: resizedImage, 
+            top: safeTop, 
+            left: safeLeft 
+          });
+          console.log(`[Layer ${idx}] Success: x=${safeLeft}, y=${safeTop}, w=${metadata.width} (isBG: ${isBackground})`);
         } catch (err: any) {
           console.error(`[Layer ${idx}] FETCH ERROR for ${layer.value}:`, err.message);
           // If a layer fails, we continue to prevent breaking the whole export
