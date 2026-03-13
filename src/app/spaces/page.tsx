@@ -203,7 +203,6 @@ const SpacesContent = () => {
           className="spaces-canvas"
         >
           <Background color="#111" gap={40} size={1} />
-          <Controls showInteractive={false} className="bg-black/50 border-white/10 rounded-lg overflow-hidden" />
           
           {/* Header Internal HUD */}
           <div className="absolute top-6 left-6 z-50 pointer-events-none">
