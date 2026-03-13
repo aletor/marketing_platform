@@ -136,7 +136,7 @@
   },
   {
     "id": "da1a13e8-260e-44e7-988b-bb16ec2a7af3",
-    "name": "2 nodos (Copy)",
+    "name": "RAMON",
     "nodes": [
       {
         "id": "welcome-prompt",
@@ -261,6 +261,6 @@
       }
     ],
     "createdAt": "2026-03-13T01:50:49.103Z",
-    "updatedAt": "2026-03-13T01:51:00.468Z"
+    "updatedAt": "2026-03-13T01:52:23.186Z"
   }
 ]

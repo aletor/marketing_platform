@@ -90,6 +90,7 @@ const SpacesContent = () => {
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [isGeneratingAssistant, setIsGeneratingAssistant] = useState(false);
 
   // Fetch saved spaces on mount
   useEffect(() => {
@@ -212,6 +213,35 @@ const SpacesContent = () => {
     }
   };
 
+  const onGenerateAssistant = async (prompt: string) => {
+    setIsGeneratingAssistant(true);
+    try {
+      const res = await fetch('/api/spaces/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+      const data = await res.json();
+      
+      if (data.nodes && data.edges) {
+        setNodes(data.nodes);
+        setEdges(data.edges);
+        setCurrentId(null);
+        setCurrentName('');
+        
+        // Smooth transition to center generated workflow
+        setTimeout(() => {
+          fitView({ padding: 0.2, duration: 800 });
+        }, 100);
+      }
+    } catch (err) {
+      console.error('Assistant Generation error:', err);
+      alert('AI Assistant failed to generate the space. Try again.');
+    } finally {
+      setIsGeneratingAssistant(false);
+    }
+  };
+
   const onConnect: OnConnect = useCallback(
     (params: any) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
@@ -249,7 +279,7 @@ const SpacesContent = () => {
 
   return (
     <div className="flex w-full h-full" ref={reactFlowWrapper}>
-      <Sidebar />
+      <Sidebar onGenerate={onGenerateAssistant} isGenerating={isGeneratingAssistant} />
       <div className="flex-1 relative">
         <ReactFlow
           nodes={nodes}
