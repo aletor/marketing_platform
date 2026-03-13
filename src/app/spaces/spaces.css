@@ -92,6 +92,7 @@
 .mask-node .node-header { color: #06b6d4; }
 .describer-node .node-header { color: #6366f1; }
 .background-node .node-header { color: #f59e0b; }
+.composer-node .node-header { color: #06b6d4; }
 
 /* Handle styling */
 .handle-wrapper {

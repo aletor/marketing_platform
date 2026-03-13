@@ -68,6 +68,7 @@ const nodeTypes: any = {
   maskExtraction: MaskExtractionNode,
   mediaDescriber: MediaDescriberNode,
   background: BackgroundNode,
+  imageComposer: ImageComposerNode,
 };
 
 const edgeTypes = {

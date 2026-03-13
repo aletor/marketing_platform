@@ -87,6 +87,9 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
         <div className="dndnode prompt border-amber-500/20 hover:border-amber-500/50" onDragStart={(event) => onDragStart(event, 'background')} draggable>
           <Paintbrush size={16} className="!text-amber-500" /> Canvas Background
         </div>
+        <div className="dndnode prompt border-cyan-500/20 hover:border-cyan-500/50" onDragStart={(event) => onDragStart(event, 'imageComposer')} draggable>
+          <Layers size={16} className="!text-cyan-500" /> Image Composer
+        </div>
       </div>
 
       <div className="sidebar-category">

@@ -162,6 +162,95 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
   );
 });
 
+// --- IMAGE COMPOSER NODE ---
+
+export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
+  const nodes = useNodes();
+  const edges = useEdges();
+  
+  // Find all sources connected to this node
+  const layers = useMemo(() => {
+    const connectedEdges = edges.filter(e => e.target === id);
+    return connectedEdges.map(edge => {
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      return {
+        id: sourceNode?.id,
+        type: sourceNode?.data.type,
+        value: sourceNode?.data.value,
+        color: sourceNode?.data.color,
+        width: sourceNode?.data.width,
+        height: sourceNode?.data.height
+      };
+    }).filter(l => l.value || l.color);
+  }, [nodes, edges, id]);
+
+  return (
+    <div className="custom-node composer-node">
+      <div className="handle-wrapper handle-left">
+        <Handle type="target" position={Position.Left} id="layers" className="handle-image" />
+        <span className="handle-label">Add Layers</span>
+      </div>
+      <div className="node-header">
+        <Layers size={16} /> IMAGE COMPOSER
+      </div>
+      <div className="node-content">
+        <div className="mb-2 flex justify-between items-center text-[9px] font-bold text-gray-500 uppercase tracking-widest">
+          <span>Active Layers</span>
+          <span className="bg-white/10 px-2 py-0.5 rounded-full text-white">{layers.length}</span>
+        </div>
+        
+        {/* Composition Preview Stack */}
+        <div className="relative w-full aspect-video bg-black/40 rounded-xl overflow-hidden border border-white/10 group">
+          {layers.length === 0 ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-700 gap-2">
+              <Layers size={32} />
+              <span className="text-[9px] font-black uppercase tracking-tighter">No layers connected</span>
+            </div>
+          ) : (
+            layers.map((layer, idx) => (
+              <div 
+                key={layer.id || idx} 
+                className="absolute inset-0 transition-all duration-500"
+                style={{ zIndex: idx }}
+              >
+                {/* If it's a background node (has color) */}
+                {layer.color ? (
+                  <div className="w-full h-full" style={{ backgroundColor: layer.color }}></div>
+                ) : (
+                  <img src={layer.value} className="w-full h-full object-contain" alt={`Layer ${idx}`} />
+                )}
+              </div>
+            ))
+          )}
+          
+          {/* Overlay Info on Hover */}
+          <div className="absolute bottom-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+             <div className="bg-black/80 backdrop-blur-md px-2 py-1 rounded text-[8px] font-mono text-cyan-400 border border-cyan-500/30">
+               STACK MODE: OVERLAY
+             </div>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-1">
+          {layers.map((l, i) => (
+            <div key={i} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg border border-white/[0.02] text-[9px]">
+              <div className="w-4 h-4 rounded text-[8px] flex items-center justify-center bg-white/10 text-gray-400 font-bold">{i+1}</div>
+              <span className="flex-1 truncate font-medium text-gray-400 uppercase tracking-tighter">
+                {l.color ? `Canvas: ${l.color}` : `Image: Layer Asset`}
+              </span>
+              <div className={`w-1.5 h-1.5 rounded-full ${l.color ? 'bg-amber-500' : 'bg-pink-500'}`}></div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="handle-wrapper handle-right">
+        <span className="handle-label">Composite out</span>
+        <Handle type="source" position={Position.Right} id="image" className="handle-image" />
+      </div>
+    </div>
+  );
+});
+
 // --- UNIVERSAL MEDIA INPUT NODE ---
 
 export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
