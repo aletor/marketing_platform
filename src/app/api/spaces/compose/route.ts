@@ -87,27 +87,32 @@ export async function POST(req: NextRequest) {
             targetWidth = Math.round((width * 0.4) * layerScale);
           }
 
-          // Resize carefully: only provide width to let Sharp calculate height proportionally
+          // Resize carefully: ensure the resulting image NEVER exceeds canvas dimensions
           let resizedImageBuilder = sharp(imageBuffer)
             .resize({
-              width: targetWidth,
-              withoutEnlargement: false, // Force resizing to target
-              fit: 'inside' // Ensure it fits within targetWidth bounds
+              width: Math.min(targetWidth, width),
+              height: height, // Hard limit for height too
+              withoutEnlargement: false,
+              fit: 'inside' // This ensures the image is contained within the [min(targetWidth, width), height] box
             });
 
           const resizedImage = await resizedImageBuilder.png().toBuffer();
           const metadata = await sharp(resizedImage).metadata();
           
+          const layerW = metadata.width || 0;
+          const layerH = metadata.height || 0;
+
           // CRITICAL: Ensure top/left + dimensions don't exceed canvas limits
-          const safeTop = Math.max(0, Math.min(layerY, height - (metadata.height || 0)));
-          const safeLeft = Math.max(0, Math.min(layerX, width - (metadata.width || 0)));
+          // We even subtract 1 pixel to be extra safe with rounding issues
+          const safeTop = Math.max(0, Math.min(layerY, height - layerH));
+          const safeLeft = Math.max(0, Math.min(layerX, width - layerW));
 
           compositeInputs.push({ 
             input: resizedImage, 
-            top: safeTop, 
-            left: safeLeft 
+            top: Math.floor(safeTop), 
+            left: Math.floor(safeLeft) 
           });
-          console.log(`[Layer ${idx}] Success: x=${safeLeft}, y=${safeTop}, w=${metadata.width} (isBG: ${isBackground})`);
+          console.log(`[Layer ${idx}] Success: x=${safeLeft}, y=${safeTop}, w=${layerW}, h=${layerH} (Canvas: ${width}x${height})`);
         } catch (err: any) {
           console.error(`[Layer ${idx}] FETCH ERROR for ${layer.value}:`, err.message);
           // If a layer fails, we continue to prevent breaking the whole export
