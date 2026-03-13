@@ -138,7 +138,16 @@ export const ButtonEdge = ({
 
   return (
     <>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, stroke: '#666', strokeWidth: 3 }} />
+      <BaseEdge 
+        path={edgePath} 
+        markerEnd={markerEnd} 
+        style={{ 
+          ...style, 
+          stroke: '#06b6d4', 
+          strokeWidth: 2.5,
+          filter: 'drop-shadow(0 0 5px rgba(6, 182, 212, 0.4))'
+        }} 
+      />
       <EdgeLabelRenderer>
         <div
           style={{

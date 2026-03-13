@@ -89,6 +89,7 @@ const nodeTypes: any = {
 
 const edgeTypes = {
   buttonEdge: ButtonEdge,
+  default: ButtonEdge, // Fallback for stability
 };
 
 const defaultEdgeOptions = {
@@ -731,6 +732,7 @@ const SpacesContent = () => {
           className="spaces-canvas"
         >
           <Background color="#111" gap={40} size={1} />
+          <Controls />
         </ReactFlow>
         
         {/* Header Internal HUD / Breadcrumbs */}
