@@ -303,6 +303,27 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
   const edges = useEdges();
   const [isExporting, setIsExporting] = useState(false);
   const [exportPreview, setExportPreview] = useState<string | null>(null);
+  const [format, setFormat] = useState<'png' | 'jpeg'>('png');
+
+  // Helper for "contain" logic
+  const drawImageContain = (ctx: CanvasRenderingContext2D, img: HTMLImageElement, w: number, h: number) => {
+    const imgAspect = img.width / img.height;
+    const canvasAspect = w / h;
+    let dx, dy, dw, dh;
+
+    if (imgAspect > canvasAspect) {
+      dw = w;
+      dh = w / imgAspect;
+      dx = 0;
+      dy = (h - dh) / 2;
+    } else {
+      dh = h;
+      dw = h * imgAspect;
+      dx = (w - dw) / 2;
+      dy = 0;
+    }
+    ctx.drawImage(img, dx, dy, dw, dh);
+  };
 
   // Find the single source connected to this node
   const sourceEdge = edges.find(e => e.target === id);
@@ -352,23 +373,41 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
             ctx.fillRect(0, 0, exportW, exportH);
           } else if (layer.value) {
             const img = await loadCanvasImage(layer.value);
-            ctx.drawImage(img, 0, 0, exportW, exportH);
+            drawImageContain(ctx, img, exportW, exportH);
           }
         }
       } else if (sourceNode && sourceNode.data && sourceNode.data.value) {
         // Just a single image
         const img = await loadCanvasImage(sourceNode.data.value as string);
-        ctx.drawImage(img, 0, 0, exportW, exportH);
+        drawImageContain(ctx, img, exportW, exportH);
       }
 
-      // Export as PNG
-      const dataUrl = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = `composition_${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
-      
-      setExportPreview(dataUrl);
+      // Export as specified format
+      const mime = format === 'png' ? 'image/png' : 'image/jpeg';
+      const extension = format === 'jpeg' ? 'jpg' : 'png';
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const filename = `AI_Space_Composition_${timestamp}.${extension}`;
+
+      canvas.toBlob((blob) => {
+        if (!blob) throw new Error("Could not generate image blob");
+        
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.style.display = 'none';
+        link.href = url;
+        link.download = filename;
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        // Final cleanup
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          setExportPreview(url); // We can use the object URL for preview too
+        }, 100);
+      }, mime, 0.95);
+
     } catch (error: any) {
       console.error("Export error details:", error);
       alert(`Export failed: ${error.message || "Unknown error"}. This usually happens due to CORS security blocking the image download.`);
@@ -387,6 +426,17 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
         <Download size={16} /> IMAGE EXPORT
       </div>
       <div className="node-content">
+        <div className="flex gap-2 mb-3">
+          <button 
+            onClick={() => setFormat('png')}
+            className={`flex-1 py-1 rounded text-[10px] font-bold transition-all ${format === 'png' ? 'bg-rose-500 text-white' : 'bg-white/5 text-gray-400 border border-white/10'}`}
+          >PNG</button>
+          <button 
+            onClick={() => setFormat('jpeg')}
+            className={`flex-1 py-1 rounded text-[10px] font-bold transition-all ${format === 'jpeg' ? 'bg-rose-500 text-white' : 'bg-white/5 text-gray-400 border border-white/10'}`}
+          >JPG</button>
+        </div>
+
         <button 
           className={`execute-btn w-full justify-center mb-4 ${isExporting ? 'opacity-50' : 'bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30'}`}
           onClick={handleExport}
@@ -395,9 +445,14 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
           {isExporting ? (
             <><Loader2 size={14} className="animate-spin" /> BUILDING...</>
           ) : (
-            <><Download size={14} /> EXPORT PNG</>
+            <><Download size={14} /> EXPORT {format.toUpperCase()}</>
           )}
         </button>
+
+        <div className="mb-2 flex justify-between items-center text-[8px] font-mono text-gray-500 uppercase">
+          <span>{layers[0]?.width || 1920}x{layers[0]?.height || 1080} PX</span>
+          <span>COMPOSITION MODE</span>
+        </div>
 
         <div className="relative w-full aspect-video bg-black/60 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
           {exportPreview || (sourceNode?.data.value && sourceNode.type !== 'imageComposer') ? (

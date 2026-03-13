@@ -237,7 +237,7 @@
       }
     ],
     "createdAt": "2026-03-13T01:50:49.103Z",
-    "updatedAt": "2026-03-13T08:32:03.445Z"
+    "updatedAt": "2026-03-13T09:47:27.481Z"
   },
   {
     "id": "25d0cbcc-73dc-471c-b092-b86a8224eea8",
@@ -416,5 +416,161 @@
     ],
     "createdAt": "2026-03-13T01:57:21.249Z",
     "updatedAt": "2026-03-13T01:57:21.249Z"
+  },
+  {
+    "id": "3794f2b9-2b79-4598-9bdf-8761b56e7967",
+    "name": "milan2",
+    "nodes": [
+      {
+        "id": "welcome-prompt",
+        "type": "promptInput",
+        "data": {
+          "value": "A high-tech digital laboratory with neon lights and floating holograms"
+        },
+        "position": {
+          "x": 477.39750709910254,
+          "y": 245.39692735470786
+        },
+        "measured": {
+          "width": 320,
+          "height": 167
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "id": "node_1773395104396_0_238",
+        "type": "mediaInput",
+        "position": {
+          "x": -51.231926986617005,
+          "y": -227.19079624920676
+        },
+        "data": {
+          "value": "https://content-engine-ai-docs-832666711966.s3.us-east-1.amazonaws.com/knowledge-files/1773395105053-tutorial.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA4DXWNW6PO45C3WGO%2F20260313%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260313T094506Z&X-Amz-Expires=3600&X-Amz-Signature=d8166cc7e75fb3d597abd0e8606c929ffca94361e70a0ebd81d2a480d5afd545&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+          "type": "video",
+          "label": "tutorial.mp4",
+          "loading": false,
+          "source": "upload",
+          "metadata": {
+            "size": "2.87 MB",
+            "resolution": "Auto-detected",
+            "codec": "MP4"
+          }
+        },
+        "measured": {
+          "width": 320,
+          "height": 550
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "id": "node_1773395119593_0_959",
+        "type": "mediaInput",
+        "position": {
+          "x": 1073.343890664476,
+          "y": 445.1678193329723
+        },
+        "data": {
+          "value": "https://content-engine-ai-docs-832666711966.s3.us-east-1.amazonaws.com/knowledge-files/1773395119636-24.webp?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA4DXWNW6PO45C3WGO%2F20260313%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260313T094520Z&X-Amz-Expires=3600&X-Amz-Signature=c9591e60823fbbf45f0a18ec6d6fe5e016f3bd1bb192e8560e92d72281434905&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+          "type": "image",
+          "label": "24.webp",
+          "loading": false,
+          "source": "upload",
+          "metadata": {
+            "size": "0.07 MB",
+            "resolution": "Auto-detected",
+            "codec": "WEBP"
+          }
+        },
+        "measured": {
+          "width": 320,
+          "height": 550
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "id": "node_1773395124389_877",
+        "type": "background",
+        "position": {
+          "x": 1109.3427311756864,
+          "y": -148.81304910200117
+        },
+        "data": {
+          "value": "",
+          "label": "background node"
+        },
+        "measured": {
+          "width": 424,
+          "height": 387
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "id": "node_1773395132139_922",
+        "type": "imageComposer",
+        "position": {
+          "x": 2009.3137439559493,
+          "y": 205.7755299334224
+        },
+        "data": {
+          "value": "",
+          "label": "imageComposer node"
+        },
+        "measured": {
+          "width": 320,
+          "height": 323
+        }
+      },
+      {
+        "id": "node_1773395146273_56",
+        "type": "imageExport",
+        "position": {
+          "x": 2565.495829854152,
+          "y": 252.57402259799605
+        },
+        "data": {
+          "value": "",
+          "label": "imageExport node"
+        },
+        "measured": {
+          "width": 450,
+          "height": 375
+        },
+        "selected": false
+      }
+    ],
+    "edges": [
+      {
+        "type": "buttonEdge",
+        "animated": true,
+        "source": "node_1773395124389_877",
+        "sourceHandle": "image",
+        "target": "node_1773395132139_922",
+        "targetHandle": "layer-0",
+        "id": "xy-edge__node_1773395124389_877image-node_1773395132139_922layer-0"
+      },
+      {
+        "type": "buttonEdge",
+        "animated": true,
+        "source": "node_1773395119593_0_959",
+        "target": "node_1773395132139_922",
+        "targetHandle": "layer-1",
+        "id": "xy-edge__node_1773395119593_0_959-node_1773395132139_922layer-1"
+      },
+      {
+        "type": "buttonEdge",
+        "animated": true,
+        "source": "node_1773395132139_922",
+        "sourceHandle": "image",
+        "target": "node_1773395146273_56",
+        "targetHandle": "image",
+        "id": "xy-edge__node_1773395132139_922image-node_1773395146273_56image"
+      }
+    ],
+    "createdAt": "2026-03-13T09:47:18.478Z",
+    "updatedAt": "2026-03-13T09:47:18.478Z"
   }
 ]
