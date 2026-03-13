@@ -20,7 +20,9 @@ import {
   Zap,
   PlusSquare,
   ImageIcon,
-  RefreshCw
+  RefreshCw,
+  Scissors,
+  Layers
 } from 'lucide-react';
 import './spaces.css';
 
@@ -449,6 +451,104 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Image out</span>
         <Handle type="source" position={Position.Right} className="handle-image" />
+      </div>
+    </div>
+  );
+});
+export const MaskExtractionNode = memo(({ id, data }: NodeProps<any>) => {
+  const nodeData = data as BaseNodeData & { mask_type?: string, expansion?: number, feather?: number };
+  const nodes = useNodes();
+  const edges = useEdges();
+  const { setNodes } = useReactFlow();
+  const [status, setStatus] = useState('idle');
+  const [result, setResult] = useState<string | null>(null);
+
+  const updateNestedData = (key: string, val: any) => {
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
+  };
+
+  const onRun = async () => {
+    const media = nodes.find(n => n.id === edges.find(e => e.target === id && e.targetHandle === 'media')?.source)?.data.value;
+    if (!media) return alert("Need media input!");
+
+    setStatus('running');
+    // Simulated processing for demonstration
+    setTimeout(() => {
+      setStatus('success');
+      setResult('https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1000&auto=format&fit=crop'); // Placeholder for mask
+    }, 2000);
+  };
+
+  return (
+    <div className={`custom-node mask-node ${status === 'running' ? 'node-glow-running' : ''}`}>
+      <div className="handle-wrapper handle-left">
+        <Handle type="target" position={Position.Left} id="media" className="handle-video" />
+        <span className="handle-label">Media in</span>
+      </div>
+      
+      <div className="node-header">
+        <Scissors size={16} /> MASK / MATTE EXTRACTION
+        {status === 'running' && <Loader2 size={12} className="animate-spin ml-auto" />}
+      </div>
+      
+      <div className="node-content">
+        <div className="mb-4">
+          <label className="node-label">Mask Target</label>
+          <select 
+            className="node-input"
+            value={nodeData.mask_type || 'person'}
+            onChange={(e) => updateNestedData('mask_type', e.target.value)}
+          >
+            <option value="person">Subject (Person)</option>
+            <option value="face">Face Focus</option>
+            <option value="object">Custom Object</option>
+            <option value="screen">Screen (Chroma)</option>
+            <option value="background">Background Only</option>
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label className="node-label">Expansion</label>
+            <input 
+              type="range" min="-50" max="50" step="1"
+              value={nodeData.expansion ?? 0}
+              onChange={(e) => updateNestedData('expansion', parseInt(e.target.value))}
+              className="w-full accent-cyan-500"
+            />
+            <div className="text-[9px] text-center text-gray-500 mt-1">{nodeData.expansion ?? 0}px</div>
+          </div>
+          <div>
+            <label className="node-label">Feather</label>
+            <input 
+              type="range" min="0" max="100" step="1"
+              value={nodeData.feather ?? 5}
+              onChange={(e) => updateNestedData('feather', parseInt(e.target.value))}
+              className="w-full accent-cyan-500"
+            />
+            <div className="text-[9px] text-center text-gray-500 mt-1">{nodeData.feather ?? 5}px</div>
+          </div>
+        </div>
+
+        <button className="execute-btn w-full justify-center mb-4" onClick={onRun} disabled={status === 'running'}>
+          {status === 'running' ? 'EXTRACTING...' : 'EXTRACT MASK'}
+        </button>
+
+        <div className="drop-zone overflow-hidden bg-black/60 min-h-[140px] flex flex-col items-center justify-center border-dashed border-cyan-500/20">
+          {result ? (
+            <img src={result} className="w-full h-full object-contain mix-blend-screen opacity-80" alt="Mask Preview" />
+          ) : (
+            <>
+              <Layers className="text-gray-800 mb-2" size={32} />
+              <span className="text-[9px] text-gray-600 uppercase font-black">Mask Preview</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="handle-wrapper handle-right">
+        <span className="handle-label">Mask Asset</span>
+        <Handle type="source" position={Position.Right} id="mask" className="handle-image" />
       </div>
     </div>
   );

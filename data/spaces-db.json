@@ -111,30 +111,6 @@
     "updatedAt": "2026-03-13T01:47:30.252Z"
   },
   {
-    "id": "b252621f-4344-47bd-9f90-3727fcdabb8c",
-    "name": "vacio",
-    "nodes": [
-      {
-        "id": "welcome-prompt",
-        "type": "promptInput",
-        "data": {
-          "value": "A high-tech digital laboratory with neon lights and floating holograms"
-        },
-        "position": {
-          "x": 400,
-          "y": 150
-        },
-        "measured": {
-          "width": 320,
-          "height": 167
-        }
-      }
-    ],
-    "edges": [],
-    "createdAt": "2026-03-13T01:48:45.601Z",
-    "updatedAt": "2026-03-13T01:48:45.601Z"
-  },
-  {
     "id": "da1a13e8-260e-44e7-988b-bb16ec2a7af3",
     "name": "RAMON",
     "nodes": [
@@ -261,6 +237,184 @@
       }
     ],
     "createdAt": "2026-03-13T01:50:49.103Z",
-    "updatedAt": "2026-03-13T01:52:23.186Z"
+    "updatedAt": "2026-03-13T08:32:03.445Z"
+  },
+  {
+    "id": "25d0cbcc-73dc-471c-b092-b86a8224eea8",
+    "name": "AUTO",
+    "nodes": [
+      {
+        "id": "n1",
+        "type": "promptInput",
+        "position": {
+          "x": 67.7841561423651,
+          "y": -87.6923076923077
+        },
+        "data": {
+          "label": "Prompt 1",
+          "value": "El primer prompt"
+        },
+        "measured": {
+          "width": 320,
+          "height": 167
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "id": "n2",
+        "type": "promptInput",
+        "position": {
+          "x": 67.7841561423651,
+          "y": 138.36969001148105
+        },
+        "data": {
+          "label": "Prompt 2",
+          "value": "El segundo prompt"
+        },
+        "measured": {
+          "width": 320,
+          "height": 167
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "id": "n3",
+        "type": "promptInput",
+        "position": {
+          "x": 78.98966704936853,
+          "y": 354.6268656716418
+        },
+        "data": {
+          "label": "Prompt 3",
+          "value": "El tercer prompt"
+        },
+        "measured": {
+          "width": 320,
+          "height": 167
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "id": "n4",
+        "type": "promptInput",
+        "position": {
+          "x": 48.17451205510906,
+          "y": 610.1033295063146
+        },
+        "data": {
+          "label": "Prompt 4",
+          "value": "El cuarto prompt"
+        },
+        "measured": {
+          "width": 320,
+          "height": 167
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "id": "n5",
+        "type": "concatenator",
+        "position": {
+          "x": 562.47990815155,
+          "y": 338.24339839265207
+        },
+        "data": {
+          "label": "Concatenador",
+          "value": "El primer prompt El segundo prompt El tercer prompt El cuarto prompt"
+        },
+        "measured": {
+          "width": 475,
+          "height": 161
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "id": "n6",
+        "type": "enhancer",
+        "position": {
+          "x": 1127.2101033295066,
+          "y": 321.4351320321469
+        },
+        "data": {
+          "label": "Mejorador",
+          "value": ""
+        },
+        "measured": {
+          "width": 320,
+          "height": 207
+        },
+        "selected": true,
+        "dragging": false
+      },
+      {
+        "id": "n7",
+        "type": "grokProcessor",
+        "position": {
+          "x": 1600.02009184845,
+          "y": 317.2330654420207
+        },
+        "data": {
+          "label": "Grok Imagine",
+          "value": ""
+        },
+        "measured": {
+          "width": 320,
+          "height": 173
+        },
+        "selected": false,
+        "dragging": false
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1-5",
+        "source": "n1",
+        "target": "n5",
+        "type": "buttonEdge",
+        "animated": true
+      },
+      {
+        "id": "e2-5",
+        "source": "n2",
+        "target": "n5",
+        "type": "buttonEdge",
+        "animated": true
+      },
+      {
+        "id": "e3-5",
+        "source": "n3",
+        "target": "n5",
+        "type": "buttonEdge",
+        "animated": true
+      },
+      {
+        "id": "e4-5",
+        "source": "n4",
+        "target": "n5",
+        "type": "buttonEdge",
+        "animated": true
+      },
+      {
+        "id": "e5-6",
+        "source": "n5",
+        "target": "n6",
+        "type": "buttonEdge",
+        "animated": true
+      },
+      {
+        "id": "e6-7",
+        "source": "n6",
+        "target": "n7",
+        "type": "buttonEdge",
+        "animated": true
+      }
+    ],
+    "createdAt": "2026-03-13T01:57:21.249Z",
+    "updatedAt": "2026-03-13T01:57:21.249Z"
   }
 ]

@@ -74,6 +74,7 @@
 .prompt-node .node-header { color: #3b82f6; }
 .processor-node .node-header { color: #a855f7; }
 .tool-node .node-header { color: #10b981; }
+.mask-node .node-header { color: #06b6d4; }
 
 /* Handle styling */
 .handle-wrapper {

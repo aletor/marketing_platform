@@ -10,7 +10,8 @@ import {
   Zap, 
   ImageIcon,
   Sparkles,
-  Loader2
+  Loader2,
+  Scissors
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -102,6 +103,9 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
         </div>
         <div className="dndnode processor" onDragStart={(event) => onDragStart(event, 'nanoBanana')} draggable>
           <ImageIcon size={16} /> Nano Banana 2
+        </div>
+        <div className="dndnode processor border-cyan-500/20 hover:border-cyan-500/50" onDragStart={(event) => onDragStart(event, 'maskExtraction')} draggable>
+          <Scissors size={16} className="!text-cyan-500" /> Mask Extractor
         </div>
       </div>
 
