@@ -25,6 +25,7 @@ import {
   Layers,
   Link,
   FilePlus,
+  FileText,
   Music,
   Info,
   Globe
@@ -152,18 +153,31 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
     if (nodeData.type === 'image') return <ImageIcon size={16} />;
     if (nodeData.type === 'audio') return <Music size={16} />;
     if (nodeData.type === 'pdf') return <FilePlus size={16} />;
-    if (nodeData.type === 'txt') return <Type size={16} />;
-    return <Video size={16} />;
+    if (nodeData.type === 'txt') return <FileText size={16} />;
+    if (nodeData.type === 'url') return <Globe size={16} />;
+    return <Film size={16} />;
+  };
+
+  const getTitleColor = () => {
+    switch (nodeData.type) {
+      case 'video': return '#f43f5e';
+      case 'image': return '#ec4899';
+      case 'audio': return '#a855f7';
+      case 'pdf': return '#f97316';
+      case 'txt': return '#f59e0b';
+      case 'url': return '#10b981';
+      default: return '#9ca3af';
+    }
   };
 
   const handleClass = nodeData.type ? `handle-${nodeData.type}` : 'handle-video';
 
   return (
     <div className="custom-node media-node">
-      <div className="node-header flex justify-between items-center">
+      <div className="node-header flex justify-between items-center" style={{ color: getTitleColor() }}>
         <div className="flex items-center gap-2">
           {getIcon()}
-          <span>MEDIA INPUT</span>
+          <span className="font-black tracking-tighter uppercase">{nodeData.type || 'Media'} Input</span>
         </div>
         {nodeData.type && (
           <span className="text-[8px] bg-white/10 px-2 py-0.5 rounded-full font-black uppercase tracking-widest text-gray-400">
