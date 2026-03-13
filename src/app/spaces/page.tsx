@@ -560,9 +560,11 @@ const SpacesContent = () => {
 
         setNodes(validatedNodes);
         setEdges(data.edges);
-        setActiveProjectId(null);
-        setActiveSpaceId(null);
-        setCurrentName('');
+        
+        // Remove the forced reset of IDs to maintain context inside spaces or projects
+        // setActiveProjectId(null);
+        // setActiveSpaceId(null);
+        // setCurrentName('');
         
         // Smooth transition to center generated workflow
         setTimeout(() => {
