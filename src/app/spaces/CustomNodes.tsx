@@ -280,7 +280,8 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
     metadata?: { duration?: string, resolution?: string, fps?: number, size?: string, codec?: string }
   };
   const { setNodes } = useReactFlow();
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingLocal, setIsUploadingLocal] = useState(false);
+  const isUploading = isUploadingLocal || nodeData.loading;
   const [activeTab, setActiveTab] = useState<'upload' | 'url'>(nodeData.source === 'url' ? 'url' : 'upload');
   const [urlInput, setUrlInput] = useState(nodeData.source === 'url' ? nodeData.value : '');
   const [showFullSize, setShowFullSize] = useState(false);
@@ -299,7 +300,7 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
   };
 
   const handleFileUpload = async (file: File) => {
-    setIsUploading(true);
+    setIsUploadingLocal(true);
     const formData = new FormData();
     formData.append('file', file);
     try {
@@ -316,7 +317,7 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
         updateNodeData({ value: json.url, type, source: 'upload', metadata: mockMetadata });
       }
     } catch (err) { console.error("Upload error:", err); } 
-    finally { setIsUploading(false); }
+    finally { setIsUploadingLocal(false); }
   };
 
   const handleUrlSubmit = () => {

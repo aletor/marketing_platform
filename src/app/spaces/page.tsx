@@ -264,20 +264,81 @@ const SpacesContent = () => {
     (event: React.DragEvent) => {
       event.preventDefault();
 
-      const type = event.dataTransfer.getData('application/reactflow');
-
-      if (!type) return;
+      const reactFlowType = event.dataTransfer.getData('application/reactflow');
+      const files = Array.from(event.dataTransfer.files);
 
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
 
+      // Handle Native File Drops
+      if (files.length > 0) {
+        files.forEach(async (file, index) => {
+          const type = (name: string, mime: string): any => {
+            if (mime.startsWith('video/') || name.match(/\.(mp4|mov|avi|webm|mkv)$/i)) return 'video';
+            if (mime.startsWith('image/') || name.match(/\.(jpg|jpeg|png|webp|avif|gif|svg)$/i)) return 'image';
+            if (mime.startsWith('audio/') || name.match(/\.(mp3|wav|ogg|flac|m4a)$/i)) return 'audio';
+            if (mime === 'application/pdf' || name.endsWith('.pdf')) return 'pdf';
+            if (mime.startsWith('text/') || name.endsWith('.txt')) return 'txt';
+            return 'url';
+          };
+
+          const fileType = type(file.name, file.type);
+          const nodeId = `node_${Date.now()}_${index}_${Math.floor(Math.random() * 1000)}`;
+          
+          const newNode = {
+            id: nodeId,
+            type: 'mediaInput',
+            position: { x: position.x + (index * 20), y: position.y + (index * 20) },
+            data: { 
+              value: '', 
+              type: fileType, 
+              label: file.name,
+              loading: true,
+              source: 'upload'
+            },
+          };
+
+          setNodes((nds) => [...nds, newNode]);
+
+          // Trigger Upload
+          const formData = new FormData();
+          formData.append('file', file);
+          try {
+            const res = await fetch('/api/runway/upload', { method: 'POST', body: formData });
+            const json = await res.json();
+            if (json.url) {
+              setNodes((nds) => nds.map((n) => n.id === nodeId ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  value: json.url,
+                  loading: false,
+                  metadata: {
+                    size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+                    resolution: (fileType === 'video' || fileType === 'image') ? 'Auto-detected' : '-',
+                    codec: file.type.split('/')[1]?.toUpperCase() || 'RAW'
+                  }
+                }
+              } : n));
+            }
+          } catch (err) {
+            console.error("Auto-drop upload error:", err);
+            setNodes((nds) => nds.map((n) => n.id === nodeId ? { ...n, data: { ...n.data, loading: false, error: true } } : n));
+          }
+        });
+        return;
+      }
+
+      // Handle Sidebar Drops
+      if (!reactFlowType) return;
+
       const newNode = {
         id: `node_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-        type,
+        type: reactFlowType,
         position,
-        data: { value: '', label: `${type} node` },
+        data: { value: '', label: `${reactFlowType} node` },
       };
 
       setNodes((nds) => [...nds, newNode]);
