@@ -384,43 +384,34 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
         drawImageContain(ctx, img, exportW, exportH);
       }
 
-      // 1. Set Preview Immediately (using fast DataURL)
-      const previewUrl = canvas.toDataURL('image/png', 0.5);
-      setExportPreview(previewUrl);
-
-      // 2. Trigger Download (using robust Blob)
+      // 1. Generate High-Quality DataURL for both Preview and Download
+      // DataURLs are often more reliable than Blobs for local filename preservation in Chrome
       const mime = format === 'png' ? 'image/png' : 'image/jpeg';
-      const extension = format === 'jpeg' ? 'jpg' : 'png';
-      const cleanTimestamp = new Date().getTime();
-      const filename = `AI_Space_Export_${cleanTimestamp}.${extension}`;
+      const quality = format === 'jpeg' ? 0.92 : 1.0;
+      const dataUrl = canvas.toDataURL(mime, quality);
+      
+      // Update preview immediately
+      setExportPreview(dataUrl);
 
-      canvas.toBlob((blob) => {
-        if (!blob) throw new Error("Could not generate image blob");
-        console.log(`[Export] Blob generated: ${Math.round(blob.size / 1024)} KB, type: ${blob.type}`);
-        
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        
-        // Critical for Chrome: Ensure link is in DOM and has correct attributes
-        link.style.display = 'none';
-        link.href = url;
-        link.download = filename;
-        link.setAttribute('download', filename); // Double insurance
-        
-        document.body.appendChild(link);
-        
-        // Slight delay to ensure DOM update
-        setTimeout(() => {
-          link.click();
-          console.log(`[Export] Download triggered: ${filename}`);
-          
-          // Cleanup after a generous delay
-          setTimeout(() => {
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-          }, 1000);
-        }, 50);
-      }, mime, 0.95);
+      // 2. Strong Download Trigger
+      const extension = format === 'jpeg' ? 'jpg' : 'png';
+      const timestamp = new Date().getTime();
+      const filename = `AI_Composition_${timestamp}.${extension}`;
+
+      console.log(`[Export] Triggering download: ${filename} (${Math.round(dataUrl.length / 1024)} KB)`);
+      
+      const link = document.createElement('a');
+      link.setAttribute('href', dataUrl);
+      link.setAttribute('download', filename);
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        if (link.parentNode) document.body.removeChild(link);
+      }, 500);
 
     } catch (error: any) {
       console.error("Export error details:", error);
