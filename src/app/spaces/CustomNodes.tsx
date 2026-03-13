@@ -362,6 +362,8 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
       canvas.width = exportW;
       canvas.height = exportH;
 
+      console.log(`[Export] Canvas initialized: ${exportW}x${exportH}`);
+
       // Clear canvas
       ctx.clearRect(0, 0, exportW, exportH);
 
@@ -382,30 +384,42 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
         drawImageContain(ctx, img, exportW, exportH);
       }
 
-      // Export as specified format
+      // 1. Set Preview Immediately (using fast DataURL)
+      const previewUrl = canvas.toDataURL('image/png', 0.5);
+      setExportPreview(previewUrl);
+
+      // 2. Trigger Download (using robust Blob)
       const mime = format === 'png' ? 'image/png' : 'image/jpeg';
       const extension = format === 'jpeg' ? 'jpg' : 'png';
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const filename = `AI_Space_Composition_${timestamp}.${extension}`;
+      const cleanTimestamp = new Date().getTime();
+      const filename = `AI_Space_Export_${cleanTimestamp}.${extension}`;
 
       canvas.toBlob((blob) => {
         if (!blob) throw new Error("Could not generate image blob");
+        console.log(`[Export] Blob generated: ${Math.round(blob.size / 1024)} KB, type: ${blob.type}`);
         
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
+        
+        // Critical for Chrome: Ensure link is in DOM and has correct attributes
         link.style.display = 'none';
         link.href = url;
         link.download = filename;
+        link.setAttribute('download', filename); // Double insurance
         
         document.body.appendChild(link);
-        link.click();
         
-        // Final cleanup
+        // Slight delay to ensure DOM update
         setTimeout(() => {
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-          setExportPreview(url); // We can use the object URL for preview too
-        }, 100);
+          link.click();
+          console.log(`[Export] Download triggered: ${filename}`);
+          
+          // Cleanup after a generous delay
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }, 1000);
+        }, 50);
       }, mime, 0.95);
 
     } catch (error: any) {
