@@ -109,5 +109,140 @@
     ],
     "createdAt": "2026-03-13T01:45:55.683Z",
     "updatedAt": "2026-03-13T01:47:30.252Z"
+  },
+  {
+    "id": "b252621f-4344-47bd-9f90-3727fcdabb8c",
+    "name": "vacio",
+    "nodes": [
+      {
+        "id": "welcome-prompt",
+        "type": "promptInput",
+        "data": {
+          "value": "A high-tech digital laboratory with neon lights and floating holograms"
+        },
+        "position": {
+          "x": 400,
+          "y": 150
+        },
+        "measured": {
+          "width": 320,
+          "height": 167
+        }
+      }
+    ],
+    "edges": [],
+    "createdAt": "2026-03-13T01:48:45.601Z",
+    "updatedAt": "2026-03-13T01:48:45.601Z"
+  },
+  {
+    "id": "da1a13e8-260e-44e7-988b-bb16ec2a7af3",
+    "name": "2 nodos (Copy)",
+    "nodes": [
+      {
+        "id": "welcome-prompt",
+        "type": "promptInput",
+        "data": {
+          "value": "A high-tech digital laboratory with neon lights and floating holograms"
+        },
+        "position": {
+          "x": 374.7981162757933,
+          "y": 189.28528933479285
+        },
+        "measured": {
+          "width": 320,
+          "height": 167
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "id": "node_1773366334117_643",
+        "type": "promptInput",
+        "position": {
+          "x": 370.2625683086866,
+          "y": -13.333432727278334
+        },
+        "data": {
+          "value": "jajajajaa",
+          "label": "promptInput node"
+        },
+        "measured": {
+          "width": 320,
+          "height": 167
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "id": "node_1773366342702_914",
+        "type": "concatenator",
+        "position": {
+          "x": 940.1565449468825,
+          "y": 84.95924170046273
+        },
+        "data": {
+          "value": "jajajajaa A high-tech digital laboratory with neon lights and floating holograms",
+          "label": "concatenator node"
+        },
+        "measured": {
+          "width": 548,
+          "height": 161
+        }
+      },
+      {
+        "id": "node_1773366431549_796",
+        "type": "runwayProcessor",
+        "position": {
+          "x": 1062.8975605744577,
+          "y": 423.0059226331833
+        },
+        "data": {
+          "value": "",
+          "label": "runwayProcessor node"
+        },
+        "measured": {
+          "width": 320,
+          "height": 173
+        }
+      },
+      {
+        "id": "node_1773366433199_415",
+        "type": "nanoBanana",
+        "position": {
+          "x": 1154.727516233342,
+          "y": -226.2479743936659
+        },
+        "data": {
+          "value": "",
+          "label": "nanoBanana node"
+        },
+        "measured": {
+          "width": 320,
+          "height": 291
+        },
+        "selected": false,
+        "dragging": false
+      }
+    ],
+    "edges": [
+      {
+        "type": "buttonEdge",
+        "animated": true,
+        "source": "node_1773366334117_643",
+        "target": "node_1773366342702_914",
+        "targetHandle": "p0",
+        "id": "xy-edge__node_1773366334117_643-node_1773366342702_914p0"
+      },
+      {
+        "type": "buttonEdge",
+        "animated": true,
+        "source": "welcome-prompt",
+        "target": "node_1773366342702_914",
+        "targetHandle": "p1",
+        "id": "xy-edge__welcome-prompt-node_1773366342702_914p1"
+      }
+    ],
+    "createdAt": "2026-03-13T01:50:49.103Z",
+    "updatedAt": "2026-03-13T01:50:49.103Z"
   }
 ]

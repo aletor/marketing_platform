@@ -37,7 +37,11 @@ import {
   Check, 
   Settings2,
   Calendar,
-  Clock
+  Clock,
+  Copy,
+  Workflow,
+  Loader2,
+  X 
 } from 'lucide-react';
 
 const initialNodes: Node[] = [
@@ -154,6 +158,30 @@ const SpacesContent = () => {
       }
     } catch (err) {
       console.error('Delete error:', err);
+    }
+  };
+
+  const duplicateSpace = async (space: any) => {
+    setIsSaving(true);
+    try {
+      const copyToSave = {
+        name: `${space.name} (Copy)`,
+        nodes: space.nodes,
+        edges: space.edges
+      };
+
+      const res = await fetch('/api/spaces', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(copyToSave)
+      });
+      
+      const updatedList = await res.json();
+      if (Array.isArray(updatedList)) setSavedSpaces(updatedList);
+    } catch (err) {
+      console.error('Duplicate error:', err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -339,7 +367,15 @@ const SpacesContent = () => {
                         </div>
                         <div className="flex gap-2">
                           <button 
+                            onClick={() => duplicateSpace(space)}
+                            title="Duplicate Space"
+                            className="p-2.5 text-gray-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all"
+                          >
+                            <Copy size={16} />
+                          </button>
+                          <button 
                             onClick={() => deleteSpace(space.id)}
+                            title="Delete Space"
                             className="p-2.5 text-gray-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
                           >
                             <Trash2 size={16} />
@@ -373,5 +409,3 @@ export default function SpacesPage() {
     </div>
   );
 }
-
-import { Workflow, Loader2, X } from 'lucide-react';
