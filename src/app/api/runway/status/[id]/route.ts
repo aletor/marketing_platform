@@ -5,11 +5,9 @@ const runway = new RunwayML({
   apiKey: process.env.RUNWAYML_API_KEY,
 });
 
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
   try {
+    const params = await props.params;
     const taskId = params.id;
     if (!taskId) {
       return NextResponse.json({ error: "Task ID is required" }, { status: 400 });

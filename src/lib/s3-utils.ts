@@ -13,9 +13,16 @@ const s3Client = new S3Client({
 export const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || "content-engine-ai-docs-832666711966";
 
 export async function uploadToS3(filename: string, fileBuffer: Buffer, contentType: string) {
+  // Sanitize filename: remove accents, spaces and special characters for AI compatibility
+  const sanitizedFilename = filename
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/\s+/g, "_") // Replace spaces with underscore
+    .replace(/[^a-zA-Z0-9._-]/g, ""); // Remove everything else except basic chars
+
   const params = {
     Bucket: BUCKET_NAME,
-    Key: `knowledge-files/${Date.now()}-${filename}`,
+    Key: `knowledge-files/${Date.now()}-${sanitizedFilename}`,
     Body: fileBuffer,
     ContentType: contentType,
   };

@@ -36,6 +36,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "remotion": "^4.0.434",
+    "replicate": "^1.4.0",
     "shotstack-sdk": "^0.2.9",
     "uuid": "^13.0.0"
   },

@@ -15,10 +15,11 @@ import {
   OnConnect,
   NodeTypes,
   ReactFlowProvider,
+  reconnectEdge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { VideoNode, PromptNode, RunwayNode } from './CustomNodes';
+import { VideoNode, PromptNode, RunwayNode, GrokNode, ButtonEdge } from './CustomNodes';
 import './nodes.css';
 
 const initialNodes: Node[] = [
@@ -37,8 +38,14 @@ const initialNodes: Node[] = [
   {
     id: 'runway-1',
     type: 'runwayProcessor',
+    data: { taskId: null, duration: 5 },
+    position: { x: 450, y: 50 },
+  },
+  {
+    id: 'grok-1',
+    type: 'grokProcessor',
     data: { taskId: null },
-    position: { x: 450, y: 180 },
+    position: { x: 450, y: 400 },
   },
 ];
 
@@ -66,55 +73,44 @@ export default function RunwayDemoPage() {
     []
   );
 
-  // Helper for nodes to update their data in the main state
-  const onNodeDataChange = useCallback((id: string, key: string, value: any) => {
-    setNodes((nds) =>
-      nds.map((node) => {
-        if (node.id === id) {
-          return { ...node, data: { ...node.data, [key]: value } };
-        }
-        return node;
-      })
-    );
+  const edgeReconnectRoot = React.useRef<boolean>(false);
+
+  const onReconnectStart = useCallback(() => {
+    edgeReconnectRoot.current = false;
   }, []);
 
-  // Helper for RunwayNode to get inputs from connected nodes
-  const getInputsForNode = useCallback((id: string) => {
-    const targetNode = nodes.find(n => n.id === id);
-    const connectedEdges = edges.filter((e) => e.target === id);
-    let prompt = '';
-    let video = '';
-    const duration = (targetNode?.data.duration as number) || 5;
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: any) => {
+      edgeReconnectRoot.current = true;
+      setEdges((els) => reconnectEdge(oldEdge, newConnection, els));
+    },
+    []
+  );
 
-    connectedEdges.forEach((edge) => {
-      const sourceNode = nodes.find((n) => n.id === edge.source);
-      if (sourceNode) {
-        if (edge.targetHandle === 'prompt') {
-          prompt = sourceNode.data.value as string;
-        } else if (edge.targetHandle === 'video') {
-          video = sourceNode.data.value as string;
-        }
-      }
-    });
+  const onReconnectEnd = useCallback((_: any, edge: Edge) => {
+    if (!edgeReconnectRoot.current) {
+      setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+    }
+    edgeReconnectRoot.current = false;
+  }, []);
 
-    return { prompt, video, duration };
-  }, [nodes, edges]);
+  // No need for helper functions here anymore, handled in custom nodes using hooks
 
   const nodeTypes: NodeTypes = useMemo(() => ({
-    videoInput: (props: any) => (
-      <VideoNode {...props} data={{ ...props.data, onChange: (val: string) => onNodeDataChange(props.id, 'value', val) }} />
-    ),
-    promptInput: (props: any) => (
-      <PromptNode {...props} data={{ ...props.data, onChange: (val: string) => onNodeDataChange(props.id, 'value', val) }} />
-    ),
-    runwayProcessor: (props: any) => (
-      <RunwayNode {...props} data={{ 
-        ...props.data, 
-        getInputs: () => getInputsForNode(props.id),
-        onDurationChange: (val: number) => onNodeDataChange(props.id, 'duration', val)
-      }} />
-    ),
-  }), [onNodeDataChange, getInputsForNode]);
+    videoInput: VideoNode,
+    promptInput: PromptNode,
+    runwayProcessor: RunwayNode,
+    grokProcessor: GrokNode,
+  } as any), []);
+
+  const edgeTypes = useMemo(() => ({
+    buttonEdge: ButtonEdge,
+  }), []);
+
+  const defaultEdgeOptions = useMemo(() => ({
+    type: 'buttonEdge',
+    animated: true,
+  }), []);
 
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -142,7 +138,12 @@ export default function RunwayDemoPage() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onReconnect={onReconnect}
+            onReconnectStart={onReconnectStart}
+            onReconnectEnd={onReconnectEnd}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            defaultEdgeOptions={defaultEdgeOptions}
             fitView
             className="runway-node-canvas"
           >
