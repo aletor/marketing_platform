@@ -25,9 +25,9 @@ Your task is to translate a user's natural language request into a node-based wo
    - "nodes": Array of nodes with { id, type, position: {x, y}, data: { label, value } }
    - "edges": Array of edges with { id, source, target, type: 'buttonEdge', animated: true }
 3. Handles:
-   - mediaInput: output is "media"
+   - mediaInput: output is "video", "image", "sound", "pdf", "txt", or "url" (pick the one that matches best)
    - promptInput: output is "prompt"
-   - runwayProcessor: inputs are "media", "prompt", output is "video"
+   - runwayProcessor: inputs are "video", "prompt", output is "video"
    - grokProcessor: input is "prompt", output is "image"
    - concatenator: inputs are "p1", "p2", ..., output is "prompt"
    - enhancer: input is "prompt", output is "prompt"

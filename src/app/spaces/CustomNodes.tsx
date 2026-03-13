@@ -93,9 +93,9 @@ export const ButtonEdge = ({
 
 export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { 
-    type?: 'video' | 'image' | 'audio',
+    type?: 'video' | 'image' | 'audio' | 'pdf' | 'txt' | 'url',
     source?: 'upload' | 'url' | 'asset',
-    metadata?: { duration?: number, resolution?: string, fps?: number, size?: string, codec?: string }
+    metadata?: { duration?: string, resolution?: string, fps?: number, size?: string, codec?: string }
   };
   const { setNodes } = useReactFlow();
   const [isUploading, setIsUploading] = useState(false);
@@ -107,6 +107,15 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
     setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...updates } } : n)));
   };
 
+  const getFileType = (fileName: string, mime: string): 'video' | 'image' | 'audio' | 'pdf' | 'txt' | 'url' => {
+    if (mime.startsWith('video/') || fileName.match(/\.(mp4|mov|avi|webm|mkv)$/i)) return 'video';
+    if (mime.startsWith('image/') || fileName.match(/\.(jpg|jpeg|png|webp|avif|gif|svg)$/i)) return 'image';
+    if (mime.startsWith('audio/') || fileName.match(/\.(mp3|wav|ogg|flac|m4a)$/i)) return 'audio';
+    if (mime === 'application/pdf' || fileName.endsWith('.pdf')) return 'pdf';
+    if (mime.startsWith('text/') || fileName.endsWith('.txt')) return 'txt';
+    return 'url';
+  };
+
   const handleFileUpload = async (file: File) => {
     setIsUploading(true);
     const formData = new FormData();
@@ -115,13 +124,12 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
       const res = await fetch('/api/runway/upload', { method: 'POST', body: formData });
       const json = await res.json();
       if (json.url) {
-        // Extract simulated metadata based on file type
-        const type = file.type.startsWith('video/') ? 'video' : file.type.startsWith('image/') ? 'image' : 'audio';
+        const type = getFileType(file.name, file.type);
         const mockMetadata = {
           size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-          resolution: type === 'audio' ? '-' : '1920x1080',
-          duration: type === 'image' ? '-' : '00:42',
-          codec: type === 'video' ? 'H.264' : type === 'image' ? 'PNG' : 'WAV'
+          resolution: (type === 'video' || type === 'image') ? '1920x1080' : '-',
+          duration: (type === 'video' || type === 'audio') ? '00:42' : '-',
+          codec: file.type.split('/')[1]?.toUpperCase() || 'UNKNOWN'
         };
         updateNodeData({ value: json.url, type, source: 'upload', metadata: mockMetadata });
       }
@@ -131,11 +139,10 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
 
   const handleUrlSubmit = () => {
     if (!urlInput) return;
-    const isImage = /\.(jpg|jpeg|png|webp|avif|gif)$/i.test(urlInput);
-    const isAudio = /\.(mp3|wav|ogg)$/i.test(urlInput);
+    const type = getFileType(urlInput, '');
     updateNodeData({ 
       value: urlInput, 
-      type: isImage ? 'image' : isAudio ? 'audio' : 'video', 
+      type, 
       source: 'url',
       metadata: { resolution: 'Remote URL', duration: 'Unknown' }
     });
@@ -144,8 +151,12 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
   const getIcon = () => {
     if (nodeData.type === 'image') return <ImageIcon size={16} />;
     if (nodeData.type === 'audio') return <Music size={16} />;
+    if (nodeData.type === 'pdf') return <FilePlus size={16} />;
+    if (nodeData.type === 'txt') return <Type size={16} />;
     return <Video size={16} />;
   };
+
+  const handleClass = nodeData.type ? `handle-${nodeData.type}` : 'handle-video';
 
   return (
     <div className="custom-node media-node">
@@ -279,7 +290,7 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
 
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Media Asset</span>
-        <Handle type="source" position={Position.Right} className="handle-video" />
+        <Handle type="source" position={Position.Right} className={handleClass} />
       </div>
     </div>
   );
@@ -613,6 +624,7 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
     </div>
   );
 });
+
 export const MaskExtractionNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { mask_type?: string, expansion?: number, feather?: number };
   const nodes = useNodes();
@@ -640,7 +652,7 @@ export const MaskExtractionNode = memo(({ id, data }: NodeProps<any>) => {
   return (
     <div className={`custom-node mask-node ${status === 'running' ? 'node-glow-running' : ''}`}>
       <div className="handle-wrapper handle-left">
-        <Handle type="target" position={Position.Left} id="media" className="handle-video" />
+        <Handle type="target" position={Position.Left} id="media" />
         <span className="handle-label">Media in</span>
       </div>
       
@@ -706,8 +718,9 @@ export const MaskExtractionNode = memo(({ id, data }: NodeProps<any>) => {
 
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Mask Asset</span>
-        <Handle type="source" position={Position.Right} id="mask" className="handle-image" />
+        <Handle type="source" position={Position.Right} id="mask" className="handle-mask" />
       </div>
     </div>
   );
 });
+;

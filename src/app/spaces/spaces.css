@@ -130,6 +130,11 @@
 .handle-prompt { border-color: #3b82f6 !important; }
 .handle-video { border-color: #f43f5e !important; }
 .handle-image { border-color: #ec4899 !important; }
+.handle-sound { border-color: #a855f7 !important; }
+.handle-mask { border-color: #06b6d4 !important; }
+.handle-pdf { border-color: #f97316 !important; }
+.handle-txt { border-color: #f59e0b !important; }
+.handle-url { border-color: #10b981 !important; }
 
 .react-flow__handle:hover {
   transform: scale(1.5);
