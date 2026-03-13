@@ -1727,100 +1727,239 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
 });
 
 export const MaskExtractionNode = memo(({ id, data }: NodeProps<any>) => {
-  const nodeData = data as BaseNodeData & { mask_type?: string, expansion?: number, feather?: number };
+  const nodeData = data as BaseNodeData & { 
+    mask_type?: string, 
+    expansion?: number, 
+    feather?: number,
+    edgeSmooth?: number,
+    confidence?: number,
+    customPrompt?: string,
+    result_rgba?: string,
+    result_mask?: string
+  };
   const nodes = useNodes();
   const edges = useEdges();
   const { setNodes } = useReactFlow();
   const [status, setStatus] = useState('idle');
-  const [result, setResult] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState<'original' | 'mask' | 'cutout' | 'overlay'>('cutout');
 
   const updateNestedData = (key: string, val: any) => {
     setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
   };
 
   const onRun = async () => {
-    const media = nodes.find(n => n.id === edges.find(e => e.target === id && e.targetHandle === 'media')?.source)?.data.value;
+    const sourceEdge = edges.find(e => e.target === id && e.targetHandle === 'media');
+    const sourceNode = nodes.find(n => n.id === sourceEdge?.source);
+    const media = sourceNode?.data.value;
+
     if (!media) return alert("Need media input!");
 
     setStatus('running');
-    // Simulated processing for demonstration
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/spaces/matte', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: media,
+          target: nodeData.mask_type || 'person',
+          customPrompt: nodeData.customPrompt || '',
+          expansion: nodeData.expansion ?? 0,
+          feather: nodeData.feather ?? 5,
+          edgeSmooth: nodeData.edgeSmooth ?? 2,
+          confidence: nodeData.confidence ?? 0.5
+        })
+      });
+
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+
+      setNodes((nds: any) => nds.map((n: any) => n.id === id ? { 
+        ...n, 
+        data: { 
+          ...n.data, 
+          result_rgba: json.rgba_image, 
+          result_mask: json.mask,
+          value: json.rgba_image, // Primary output is the RGBA image
+          metadata: json.metadata
+        } 
+      } : n));
+      
       setStatus('success');
-      setResult('https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1000&auto=format&fit=crop'); // Placeholder for mask
-    }, 2000);
+    } catch (err: any) {
+      console.error(err);
+      alert(`Matte Error: ${err.message}`);
+      setStatus('idle');
+    }
+  };
+
+  const getPreviewImage = () => {
+    const sourceEdge = edges.find(e => e.target === id && e.targetHandle === 'media');
+    const sourceNode = nodes.find(n => n.id === sourceEdge?.source);
+    const original = sourceNode?.data.value as string | undefined;
+
+    switch (previewMode) {
+      case 'original': return original;
+      case 'mask': return nodeData.result_mask;
+      case 'cutout': return nodeData.result_rgba;
+      case 'overlay': return original; 
+      default: return original;
+    }
   };
 
   return (
-    <div className={`custom-node mask-node ${status === 'running' ? 'node-glow-running' : ''}`}>
-      <NodeLabel id={id} label={nodeData.label} defaultLabel="Mask Extraction" />
+    <div className={`custom-node mask-node w-[400px] ${status === 'running' ? 'node-glow-running' : ''}`}>
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Matte Mask" />
       <div className="handle-wrapper handle-left">
-        <Handle type="target" position={Position.Left} id="media" />
-        <span className="handle-label">Media in</span>
+        <Handle type="target" position={Position.Left} id="media" className="handle-image" />
+        <span className="handle-label">Source</span>
       </div>
       
       <div className="node-header">
-        <Scissors size={16} /> MASK / MATTE EXTRACTION
+        <Scissors size={16} /> AI MATTE EXTRACTION
         {status === 'running' && <Loader2 size={12} className="animate-spin ml-auto" />}
       </div>
       
-      <div className="node-content">
-        <div className="mb-4">
-          <label className="node-label">Mask Target</label>
-          <select 
-            className="node-input"
-            value={nodeData.mask_type || 'person'}
-            onChange={(e) => updateNestedData('mask_type', e.target.value)}
-          >
-            <option value="person">Subject (Person)</option>
-            <option value="face">Face Focus</option>
-            <option value="object">Custom Object</option>
-            <option value="screen">Screen (Chroma)</option>
-            <option value="background">Background Only</option>
-          </select>
+      <div className="flex flex-col">
+        {/* TOP: PREVIEW AREA */}
+        <div className="relative group/preview overflow-hidden bg-black/80 h-[220px] flex items-center justify-center border-b border-white/5">
+           <div className="absolute top-2 left-2 z-10 flex gap-1">
+              {(['original', 'mask', 'cutout'] as const).map(mode => (
+                <button 
+                  key={mode}
+                  onClick={() => setPreviewMode(mode)}
+                  className={`px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-widest transition-all ${previewMode === mode ? 'bg-cyan-500 text-black' : 'bg-white/10 text-white/50 hover:bg-white/20'}`}
+                >
+                  {mode}
+                </button>
+              ))}
+           </div>
+
+           {getPreviewImage() ? (
+             <img 
+               src={getPreviewImage()} 
+               className={`w-full h-full object-contain ${previewMode === 'mask' ? 'invert brightness-150' : ''}`} 
+               alt="Matte Preview" 
+             />
+           ) : (
+             <div className="flex flex-col items-center gap-2 opacity-20">
+                <ImageIcon size={40} />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Connect Image</span>
+             </div>
+           )}
+
+           {status === 'running' && (
+             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+                <div className="w-12 h-1 h-32 bg-cyan-500/20 rounded-full overflow-hidden mb-3">
+                   <div className="h-full bg-cyan-500 animate-pulse width-full" style={{ width: '100%' }} />
+                </div>
+                <span className="text-[10px] font-black text-cyan-400 uppercase animate-pulse">Computing Matte...</span>
+             </div>
+           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div>
-            <label className="node-label">Expansion</label>
-            <input 
-              type="range" min="-50" max="50" step="1"
-              value={nodeData.expansion ?? 0}
-              onChange={(e) => updateNestedData('expansion', parseInt(e.target.value))}
-              className="w-full accent-cyan-500"
-            />
-            <div className="text-[9px] text-center text-gray-500 mt-1">{nodeData.expansion ?? 0}px</div>
+        {/* BOTTOM: SETTINGS AREA */}
+        <div className="node-content space-y-4 p-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="node-label">Detection Target</label>
+              <select 
+                className="node-input"
+                value={nodeData.mask_type || 'person'}
+                onChange={(e) => updateNestedData('mask_type', e.target.value)}
+              >
+                <option value="person">Person (Matting)</option>
+                <option value="hair">Focus Hair</option>
+                <option value="face">Face Det.</option>
+                <option value="object">General Object</option>
+                <option value="clothes">Clothing</option>
+                <option value="background">Background</option>
+                <option value="custom">Custom Prompt</option>
+              </select>
+            </div>
+            {nodeData.mask_type === 'custom' && (
+              <div>
+                <label className="node-label">Custom Target</label>
+                <input 
+                  type="text"
+                  placeholder="e.g. car, dog..."
+                  className="node-input text-[10px]"
+                  value={nodeData.customPrompt || ''}
+                  onChange={(e) => updateNestedData('customPrompt', e.target.value)}
+                />
+              </div>
+            )}
+            <div>
+              <label className="node-label">Confidence</label>
+              <input 
+                type="range" min="0.1" max="1" step="0.05"
+                value={nodeData.confidence ?? 0.5}
+                onChange={(e) => updateNestedData('confidence', parseFloat(e.target.value))}
+                className="w-full h-1 accent-cyan-500 rounded-lg appearance-none bg-white/10"
+              />
+              <div className="text-[8px] text-gray-500 mt-1 font-bold">MIN CONF: {(nodeData.confidence ?? 0.5).toFixed(2)}</div>
+            </div>
           </div>
-          <div>
-            <label className="node-label">Feather</label>
-            <input 
-              type="range" min="0" max="100" step="1"
-              value={nodeData.feather ?? 5}
-              onChange={(e) => updateNestedData('feather', parseInt(e.target.value))}
-              className="w-full accent-cyan-500"
-            />
-            <div className="text-[9px] text-center text-gray-500 mt-1">{nodeData.feather ?? 5}px</div>
+
+          <div className="grid grid-cols-2 gap-4">
+             <div className="space-y-3">
+                <div>
+                   <label className="node-label flex justify-between uppercase">Expansion <span className="text-cyan-400">{nodeData.expansion ?? 0}px</span></label>
+                   <input 
+                    type="range" min="-100" max="100" step="1"
+                    value={nodeData.expansion ?? 0}
+                    onChange={(e) => updateNestedData('expansion', parseInt(e.target.value))}
+                    className="w-full h-1 accent-cyan-500 rounded-lg appearance-none bg-white/10"
+                   />
+                </div>
+                <div>
+                   <label className="node-label flex justify-between uppercase">Feather <span className="text-pink-500">{nodeData.feather ?? 5}px</span></label>
+                   <input 
+                    type="range" min="0" max="50" step="0.5"
+                    value={nodeData.feather ?? 5}
+                    onChange={(e) => updateNestedData('feather', parseFloat(e.target.value))}
+                    className="w-full h-1 accent-pink-500 rounded-lg appearance-none bg-white/10"
+                   />
+                </div>
+             </div>
+             <div className="space-y-3">
+                <div>
+                   <label className="node-label flex justify-between uppercase">Edge Smooth <span className="text-purple-400">{nodeData.edgeSmooth ?? 2}px</span></label>
+                   <input 
+                    type="range" min="0" max="10" step="0.2"
+                    value={nodeData.edgeSmooth ?? 2}
+                    onChange={(e) => updateNestedData('edgeSmooth', parseFloat(e.target.value))}
+                    className="w-full h-1 accent-purple-500 rounded-lg appearance-none bg-white/10"
+                   />
+                </div>
+                <div className="flex items-end h-full">
+                   <button 
+                    onClick={onRun}
+                    disabled={status === 'running'}
+                    className={`execute-btn w-full justify-center group/btn relative overflow-hidden ${status === 'running' ? 'opacity-50' : 'bg-gradient-to-r from-cyan-600 to-blue-600'}`}
+                   >
+                     {status === 'running' ? <Loader2 size={12} className="animate-spin" /> : <Play size={10} className="mr-2" />}
+                     {status === 'running' ? 'PROCESSING' : 'RUN EXTRACTOR'}
+                   </button>
+                </div>
+             </div>
           </div>
-        </div>
-
-        <button className="execute-btn w-full justify-center mb-4" onClick={onRun} disabled={status === 'running'}>
-          {status === 'running' ? 'EXTRACTING...' : 'EXTRACT MASK'}
-        </button>
-
-        <div className="drop-zone overflow-hidden bg-black/60 min-h-[140px] flex flex-col items-center justify-center border-dashed border-cyan-500/20">
-          {result ? (
-            <img src={result} className="w-full h-full object-contain mix-blend-screen opacity-80" alt="Mask Preview" />
-          ) : (
-            <>
-              <Layers className="text-gray-800 mb-2" size={32} />
-              <span className="text-[9px] text-gray-600 uppercase font-black">Mask Preview</span>
-            </>
-          )}
         </div>
       </div>
 
-      <div className="handle-wrapper handle-right">
-        <span className="handle-label">Mask Asset</span>
-        <Handle type="source" position={Position.Right} id="mask" className="handle-mask" />
+      {/* MULTI OUTPUTS */}
+      <div className="flex flex-col gap-2 absolute right-[-45px] top-[40px]">
+          <div className="relative group/h">
+             <Handle type="source" position={Position.Right} id="rgba" className="handle-image !right-0" />
+             <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[7px] font-black uppercase text-pink-500 bg-black/80 px-1 border border-pink-500/20 rounded opacity-0 group-hover/h:opacity-100 transition-opacity">RGBA</span>
+          </div>
+          <div className="relative mt-8 group/h">
+             <Handle type="source" position={Position.Right} id="mask" className="handle-mask !right-0" />
+             <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[7px] font-black uppercase text-cyan-400 bg-black/80 px-1 border border-cyan-400/20 rounded opacity-0 group-hover/h:opacity-100 transition-opacity whitespace-nowrap">MASK ONLY</span>
+          </div>
+          <div className="relative mt-8 group/h">
+             <Handle type="source" position={Position.Right} id="meta" className="handle-txt !right-0" />
+             <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[7px] font-black uppercase text-amber-500 bg-black/80 px-1 border border-amber-500/20 rounded opacity-0 group-hover/h:opacity-100 transition-opacity">META</span>
+          </div>
       </div>
     </div>
   );

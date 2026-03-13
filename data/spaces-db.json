@@ -311,5 +311,65 @@
     },
     "createdAt": "2026-03-13T15:05:40.888Z",
     "updatedAt": "2026-03-13T15:05:40.888Z"
+  },
+  {
+    "id": "f1fb14bc-e81a-4640-8f76-2050f17908d5",
+    "name": "prueba_mascara",
+    "rootSpaceId": "a1d8c5dc-ecb3-4fec-8f0d-b57d42fcbaee",
+    "spaces": {
+      "null": {
+        "nodes": [
+          {
+            "id": "node_1773422140947_0_249",
+            "type": "mediaInput",
+            "position": {
+              "x": 218.5904244333794,
+              "y": -165.7833396763317
+            },
+            "data": {
+              "value": "https://content-engine-ai-docs-832666711966.s3.us-east-1.amazonaws.com/knowledge-files/1773422140989-AI_Space_Output_1773397244284.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA4DXWNW6PO45C3WGO%2F20260313%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260313T171543Z&X-Amz-Expires=3600&X-Amz-Signature=729770959ab1e34cefa274376e06b4041d27d57f046bbfe06aa3d38dc360cec8&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+              "type": "image",
+              "label": "AI_Space_Output_1773397244284.png",
+              "loading": false,
+              "source": "upload",
+              "s3Key": "knowledge-files/1773422140989-AI_Space_Output_1773397244284.png",
+              "metadata": {
+                "size": "2.69 MB",
+                "resolution": "Auto-detected",
+                "codec": "PNG"
+              }
+            },
+            "measured": {
+              "width": 320,
+              "height": 501
+            },
+            "selected": false,
+            "dragging": false
+          },
+          {
+            "id": "node_1773422152389_681",
+            "type": "maskExtraction",
+            "position": {
+              "x": 741.4578977314067,
+              "y": -99.84766881302865
+            },
+            "data": {
+              "value": "",
+              "label": "maskExtraction node"
+            },
+            "measured": {
+              "width": 320,
+              "height": 441
+            },
+            "selected": false,
+            "dragging": false
+          }
+        ],
+        "edges": [],
+        "updatedAt": "2026-03-13T17:17:13.920Z"
+      }
+    },
+    "createdAt": "2026-03-13T17:17:13.943Z",
+    "updatedAt": "2026-03-13T17:17:13.943Z"
   }
 ]
