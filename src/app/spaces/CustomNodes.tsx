@@ -393,25 +393,36 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
       // Update preview immediately
       setExportPreview(dataUrl);
 
-      // 2. Strong Download Trigger
+      // 2. Professional Server-Side Download Trigger
+      // This is the ONLY way to 100% guarantee filenames and extensions in many browsers
       const extension = format === 'jpeg' ? 'jpg' : 'png';
       const timestamp = new Date().getTime();
       const filename = `AI_Composition_${timestamp}.${extension}`;
 
-      console.log(`[Export] Triggering download: ${filename} (${Math.round(dataUrl.length / 1024)} KB)`);
+      console.log(`[Export] Requesting server-side download for: ${filename}`);
+      
+      const downloadRes = await fetch('/api/spaces/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64: dataUrl, filename, format })
+      });
+
+      if (!downloadRes.ok) throw new Error("Server failed to generate download file");
+
+      const blob = await downloadRes.blob();
+      const downloadUrl = URL.createObjectURL(blob);
       
       const link = document.createElement('a');
-      link.setAttribute('href', dataUrl);
-      link.setAttribute('download', filename);
-      link.style.display = 'none';
-      
+      link.href = downloadUrl;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       
-      // Cleanup
+      // Final Cleanup
       setTimeout(() => {
-        if (link.parentNode) document.body.removeChild(link);
-      }, 500);
+        document.body.removeChild(link);
+        URL.revokeObjectURL(downloadUrl);
+      }, 1000);
 
     } catch (error: any) {
       console.error("Export error details:", error);
