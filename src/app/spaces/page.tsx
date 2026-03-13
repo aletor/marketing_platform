@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -388,4 +388,4 @@ export default function SpacesPage() {
   );
 }
 
-import { Workflow } from 'lucide-react';
+import { Workflow, Loader2, X } from 'lucide-react';
