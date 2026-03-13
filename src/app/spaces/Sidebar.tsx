@@ -14,7 +14,8 @@ import {
   Scissors,
   FilePlus,
   Eye,
-  Paintbrush
+  Paintbrush,
+  Layers
 } from 'lucide-react';
 
 interface SidebarProps {

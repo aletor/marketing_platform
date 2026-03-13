@@ -176,10 +176,10 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
       return {
         id: sourceNode?.id,
         type: sourceNode?.data.type,
-        value: sourceNode?.data.value,
-        color: sourceNode?.data.color,
-        width: sourceNode?.data.width,
-        height: sourceNode?.data.height
+        value: sourceNode?.data.value as string | undefined,
+        color: sourceNode?.data.color as string | undefined,
+        width: sourceNode?.data.width as number | undefined,
+        height: sourceNode?.data.height as number | undefined
       };
     }).filter(l => l.value || l.color);
   }, [nodes, edges, id]);

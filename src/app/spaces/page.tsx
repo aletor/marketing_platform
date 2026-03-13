@@ -29,6 +29,7 @@ import {
   MaskExtractionNode,
   MediaDescriberNode,
   BackgroundNode,
+  ImageComposerNode,
   ButtonEdge 
 } from './CustomNodes';
 import Sidebar from './Sidebar';
