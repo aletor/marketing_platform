@@ -276,7 +276,9 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
 
 const loadCanvasImage = async (url: string): Promise<HTMLImageElement> => {
   try {
-    const res = await fetch(url);
+    // Force requests through our local proxy to bypass CORS/S3 Signatures issues in the browser
+    const proxyUrl = `/api/spaces/proxy?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl);
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const blob = await res.blob();
     const objectUrl = URL.createObjectURL(blob);
