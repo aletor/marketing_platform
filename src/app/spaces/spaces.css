@@ -70,7 +70,7 @@
 }
 
 /* Specific Node Types */
-.video-node .node-header { color: #f43f5e; }
+.media-node .node-header { color: #f43f5e; }
 .prompt-node .node-header { color: #3b82f6; }
 .processor-node .node-header { color: #a855f7; }
 .tool-node .node-header { color: #10b981; }

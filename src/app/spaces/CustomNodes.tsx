@@ -22,7 +22,12 @@ import {
   ImageIcon,
   RefreshCw,
   Scissors,
-  Layers
+  Layers,
+  Link,
+  FilePlus,
+  Music,
+  Info,
+  Globe
 } from 'lucide-react';
 import './spaces.css';
 
@@ -84,13 +89,21 @@ export const ButtonEdge = ({
 
 // --- CORE INPUT NODES ---
 
-export const VideoNode = memo(({ id, data }: NodeProps<any>) => {
-  const nodeData = data as BaseNodeData;
+// --- UNIVERSAL MEDIA INPUT NODE ---
+
+export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
+  const nodeData = data as BaseNodeData & { 
+    type?: 'video' | 'image' | 'audio',
+    source?: 'upload' | 'url' | 'asset',
+    metadata?: { duration?: number, resolution?: string, fps?: number, size?: string, codec?: string }
+  };
   const { setNodes } = useReactFlow();
   const [isUploading, setIsUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'upload' | 'url'>(nodeData.source === 'url' ? 'url' : 'upload');
+  const [urlInput, setUrlInput] = useState(nodeData.source === 'url' ? nodeData.value : '');
 
-  const updateValue = (val: string) => {
-    setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, value: val } } : n)));
+  const updateNodeData = (updates: any) => {
+    setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...updates } } : n)));
   };
 
   const handleFileUpload = async (file: File) => {
@@ -100,27 +113,133 @@ export const VideoNode = memo(({ id, data }: NodeProps<any>) => {
     try {
       const res = await fetch('/api/runway/upload', { method: 'POST', body: formData });
       const json = await res.json();
-      if (json.url) updateValue(json.url);
+      if (json.url) {
+        // Extract simulated metadata based on file type
+        const type = file.type.startsWith('video/') ? 'video' : file.type.startsWith('image/') ? 'image' : 'audio';
+        const mockMetadata = {
+          size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+          resolution: type === 'audio' ? '-' : '1920x1080',
+          duration: type === 'image' ? '-' : '00:42',
+          codec: type === 'video' ? 'H.264' : type === 'image' ? 'PNG' : 'WAV'
+        };
+        updateNodeData({ value: json.url, type, source: 'upload', metadata: mockMetadata });
+      }
     } catch (err) { console.error("Upload error:", err); } 
     finally { setIsUploading(false); }
   };
 
+  const handleUrlSubmit = () => {
+    if (!urlInput) return;
+    const isImage = /\.(jpg|jpeg|png|webp|avif|gif)$/i.test(urlInput);
+    const isAudio = /\.(mp3|wav|ogg)$/i.test(urlInput);
+    updateNodeData({ 
+      value: urlInput, 
+      type: isImage ? 'image' : isAudio ? 'audio' : 'video', 
+      source: 'url',
+      metadata: { resolution: 'Remote URL', duration: 'Unknown' }
+    });
+  };
+
+  const getIcon = () => {
+    if (nodeData.type === 'image') return <ImageIcon size={16} />;
+    if (nodeData.type === 'audio') return <Music size={16} />;
+    return <Video size={16} />;
+  };
+
   return (
-    <div className="custom-node video-node">
-      <div className="node-header"><Video size={16} /> VIDEO SOURCE</div>
-      <div className="node-content">
-        <div className="drop-zone" onDrop={(e) => {
-          e.preventDefault();
-          const file = e.dataTransfer.files[0];
-          if (file?.type.startsWith('video/')) handleFileUpload(file);
-        }} onDragOver={(e) => e.preventDefault()}>
-          {isUploading ? <Loader2 className="animate-spin" /> : 
-           nodeData.value ? <video src={nodeData.value} className="video-preview" muted /> : 
-           <span className="text-[10px] text-gray-500">Drop Video Here</span>}
+    <div className="custom-node media-node">
+      <div className="node-header flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          {getIcon()}
+          <span>MEDIA INPUT</span>
         </div>
+        {nodeData.type && (
+          <span className="text-[8px] bg-white/10 px-2 py-0.5 rounded-full font-black uppercase tracking-widest text-gray-400">
+            {nodeData.type}
+          </span>
+        )}
       </div>
+
+      <div className="node-content">
+        {/* Tabs */}
+        <div className="flex gap-1 p-1 bg-black/40 rounded-xl mb-4">
+          <button 
+            onClick={() => setActiveTab('upload')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${activeTab === 'upload' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
+          >
+            <FilePlus size={12} /> Upload
+          </button>
+          <button 
+            onClick={() => setActiveTab('url')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${activeTab === 'url' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
+          >
+            <Link size={12} /> URL
+          </button>
+        </div>
+
+        {activeTab === 'upload' ? (
+          <div className="drop-zone min-h-[140px]" onDrop={(e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file) handleFileUpload(file);
+          }} onDragOver={(e) => e.preventDefault()}>
+            {isUploading ? <Loader2 className="animate-spin text-rose-500" /> : 
+             nodeData.value && nodeData.type === 'video' ? <video src={nodeData.value} className="video-preview" muted /> : 
+             nodeData.value && nodeData.type === 'image' ? <img src={nodeData.value} className="video-preview object-contain" alt="Preview" /> :
+             nodeData.value && nodeData.type === 'audio' ? (
+               <div className="flex flex-col items-center gap-2">
+                 <Music size={32} className="text-rose-500" />
+                 <span className="text-[10px] text-gray-400">Audio Track Loaded</span>
+               </div>
+             ) :
+             <div className="flex flex-col items-center gap-2">
+               <FilePlus size={24} className="text-gray-700" />
+               <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight text-center">Drag and drop file or click to choose</span>
+             </div>}
+          </div>
+        ) : (
+          <div className="space-y-3">
+             <div className="relative">
+               <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={14} />
+               <input 
+                 type="text"
+                 placeholder="Paste media link here..."
+                 className="node-input pl-9 text-xs"
+                 value={urlInput || ''}
+                 onChange={(e) => setUrlInput(e.target.value)}
+                 onKeyDown={(e) => e.key === 'Enter' && handleUrlSubmit()}
+               />
+             </div>
+             <button 
+               onClick={handleUrlSubmit}
+               className="execute-btn w-full justify-center"
+             >
+               FETCH MEDIA
+             </button>
+          </div>
+        )}
+
+        {/* Metadata section */}
+        {nodeData.metadata && (
+          <div className="mt-4 pt-4 border-t border-white/5">
+            <div className="flex items-center gap-2 mb-2">
+              <Info size={10} className="text-gray-600" />
+              <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Asset Metadata</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(nodeData.metadata).map(([key, val]) => (
+                <div key={key} className="bg-black/20 p-2 rounded-lg border border-white/[0.02]">
+                  <span className="block text-[8px] text-gray-600 uppercase font-bold mb-0.5">{key}</span>
+                  <span className="block text-[10px] text-gray-300 font-mono truncate">{val as string}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="handle-wrapper handle-right">
-        <span className="handle-label">Video out</span>
+        <span className="handle-label">Media Asset</span>
         <Handle type="source" position={Position.Right} className="handle-video" />
       </div>
     </div>

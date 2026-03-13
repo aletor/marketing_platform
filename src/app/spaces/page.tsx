@@ -19,7 +19,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { 
-  VideoNode, 
+  MediaInputNode, 
   PromptNode, 
   RunwayNode, 
   GrokNode, 
@@ -56,7 +56,7 @@ const initialNodes: Node[] = [
 ];
 
 const nodeTypes: any = {
-  videoInput: VideoNode,
+  mediaInput: MediaInputNode,
   promptInput: PromptNode,
   runwayProcessor: RunwayNode,
   grokProcessor: GrokNode,

@@ -75,8 +75,8 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
 
       <div className="sidebar-category">
         <h3 className="sidebar-category-title">Core Inputs</h3>
-        <div className="dndnode video" onDragStart={(event) => onDragStart(event, 'videoInput')} draggable>
-          <Video size={16} /> Video Source
+        <div className="dndnode video border-rose-500/20 hover:border-rose-500/50" onDragStart={(event) => onDragStart(event, 'mediaInput')} draggable>
+          <FilePlus size={16} className="!text-rose-500" /> Media Input
         </div>
         <div className="dndnode prompt" onDragStart={(event) => onDragStart(event, 'promptInput')} draggable>
           <Type size={16} /> Prompt Input
