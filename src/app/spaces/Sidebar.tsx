@@ -11,7 +11,8 @@ import {
   ImageIcon,
   Sparkles,
   Loader2,
-  Scissors
+  Scissors,
+  FilePlus
 } from 'lucide-react';
 
 interface SidebarProps {

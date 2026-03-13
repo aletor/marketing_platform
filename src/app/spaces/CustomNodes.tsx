@@ -101,6 +101,7 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
   const [isUploading, setIsUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'upload' | 'url'>(nodeData.source === 'url' ? 'url' : 'upload');
   const [urlInput, setUrlInput] = useState(nodeData.source === 'url' ? nodeData.value : '');
+  const [showFullSize, setShowFullSize] = useState(false);
 
   const updateNodeData = (updates: any) => {
     setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...updates } } : n)));
@@ -178,24 +179,35 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
         </div>
 
         {activeTab === 'upload' ? (
-          <div className="drop-zone min-h-[140px]" onDrop={(e) => {
-            e.preventDefault();
-            const file = e.dataTransfer.files[0];
-            if (file) handleFileUpload(file);
-          }} onDragOver={(e) => e.preventDefault()}>
-            {isUploading ? <Loader2 className="animate-spin text-rose-500" /> : 
-             nodeData.value && nodeData.type === 'video' ? <video src={nodeData.value} className="video-preview" muted /> : 
-             nodeData.value && nodeData.type === 'image' ? <img src={nodeData.value} className="video-preview object-contain" alt="Preview" /> :
-             nodeData.value && nodeData.type === 'audio' ? (
+          <div className="flex flex-col items-center">
+            <div className="drop-zone min-h-[140px] w-full max-w-[250px]" onDrop={(e) => {
+              e.preventDefault();
+              const file = e.dataTransfer.files[0];
+              if (file) handleFileUpload(file);
+            }} onDragOver={(e) => e.preventDefault()}>
+              {isUploading ? <Loader2 className="animate-spin text-rose-500" /> : 
+               nodeData.value && nodeData.type === 'video' ? <video src={nodeData.value} className="video-preview !max-w-[250px]" muted /> : 
+               nodeData.value && nodeData.type === 'image' ? <img src={nodeData.value} className="video-preview object-contain !max-w-[250px]" alt="Preview" /> :
+               nodeData.value && nodeData.type === 'audio' ? (
+                 <div className="flex flex-col items-center gap-2">
+                   <Music size={32} className="text-rose-500" />
+                   <span className="text-[10px] text-gray-400">Audio Track Loaded</span>
+                 </div>
+               ) :
                <div className="flex flex-col items-center gap-2">
-                 <Music size={32} className="text-rose-500" />
-                 <span className="text-[10px] text-gray-400">Audio Track Loaded</span>
-               </div>
-             ) :
-             <div className="flex flex-col items-center gap-2">
-               <FilePlus size={24} className="text-gray-700" />
-               <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight text-center">Drag and drop file or click to choose</span>
-             </div>}
+                 <FilePlus size={24} className="text-gray-700" />
+                 <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight text-center">Drag and drop file or click to choose</span>
+               </div>}
+            </div>
+            
+            {nodeData.value && (nodeData.type === 'video' || nodeData.type === 'image') && (
+              <button 
+                onClick={() => setShowFullSize(true)}
+                className="mt-2 flex items-center gap-2 text-[10px] font-bold text-gray-400 hover:text-white transition-colors py-1 px-3 bg-white/5 rounded-full"
+              >
+                <Maximize2 size={12} /> VER TAMAÑO COMPLETO
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -216,6 +228,33 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
              >
                FETCH MEDIA
              </button>
+             {nodeData.value && (nodeData.type === 'video' || nodeData.type === 'image') && (
+               <div className="flex justify-center">
+                 <img src={nodeData.value} className="max-w-[250px] rounded-lg border border-white/10 mb-2" alt="Preview" />
+               </div>
+             )}
+             {nodeData.value && (nodeData.type === 'video' || nodeData.type === 'image') && (
+                <button 
+                  onClick={() => setShowFullSize(true)}
+                  className="w-full flex items-center justify-center gap-2 text-[10px] font-bold text-gray-400 hover:text-white transition-colors py-2 bg-white/5 rounded-lg border border-white/5"
+                >
+                  <Maximize2 size={12} /> VER TAMAÑO COMPLETO
+                </button>
+             )}
+          </div>
+        )}
+
+        {/* Fullsize Backdrop */}
+        {showFullSize && nodeData.value && (
+          <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-10 cursor-zoom-out nodrag nopan" onClick={() => setShowFullSize(false)}>
+            <div className="absolute top-10 right-10 text-white hover:scale-110 transition-transform">
+              <X size={40} strokeWidth={3} />
+            </div>
+            {nodeData.type === 'video' ? (
+              <video src={nodeData.value} className="max-w-full max-h-full rounded-2xl shadow-2xl" controls autoPlay />
+            ) : (
+              <img src={nodeData.value} className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain" alt="Full size" />
+            )}
           </div>
         )}
 
