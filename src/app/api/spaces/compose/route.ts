@@ -83,11 +83,11 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Compose API] Done. Serving ${safeFilename} (${Math.round(outputBuffer.length / 1024)} KB)`);
 
-    return new NextResponse(new Uint8Array(outputBuffer), {
+    return new Response(new Uint8Array(outputBuffer), {
       status: 200,
       headers: {
         'Content-Type': mimeType,
-        'Content-Disposition': `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(safeFilename)}`,
+        'Content-Disposition': `attachment; filename="${safeFilename}"`,
         'Content-Length': outputBuffer.length.toString(),
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },

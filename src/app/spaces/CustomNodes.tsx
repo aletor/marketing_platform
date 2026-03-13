@@ -392,25 +392,35 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
       const extension = format === 'jpeg' ? 'jpg' : 'png';
       const filename = `AI_Space_Output_${new Date().getTime()}.${extension}`;
 
-      console.log(`[Export] Triggering server-side composition for ${filename}...`);
+      console.log(`[Export] Requesting Lambda-style composition for ${filename}...`);
 
-      // We use a hidden form to send layers and receive the file download directly
-      // This is the most robust way to trigger a "Save As" dialog with the correct name.
-      if (downloadFormRef.current) {
-        const layersInput = downloadFormRef.current.querySelector('input[name="layers"]') as HTMLInputElement;
-        const filenameInput = downloadFormRef.current.querySelector('input[name="filename"]') as HTMLInputElement;
-        const formatInput = downloadFormRef.current.querySelector('input[name="format"]') as HTMLInputElement;
-        const widthInput = downloadFormRef.current.querySelector('input[name="width"]') as HTMLInputElement;
-        const heightInput = downloadFormRef.current.querySelector('input[name="height"]') as HTMLInputElement;
+      const formData = new FormData();
+      formData.append('layers', JSON.stringify(layers));
+      formData.append('filename', filename);
+      formData.append('format', format);
+      formData.append('width', w.toString());
+      formData.append('height', h.toString());
 
-        if (layersInput) layersInput.value = JSON.stringify(layers);
-        if (filenameInput) filenameInput.value = filename;
-        if (formatInput) formatInput.value = format;
-        if (widthInput) widthInput.value = w.toString();
-        if (heightInput) heightInput.value = h.toString();
+      const res = await fetch('/api/spaces/compose', {
+        method: 'POST',
+        body: formData
+      });
 
-        downloadFormRef.current.submit();
-      }
+      if (!res.ok) throw new Error("Server composition failed");
+
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename; // This is the gold standard for filename preservation
+      document.body.appendChild(link);
+      link.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      }, 1500);
 
     } catch (error: any) {
       console.error("Export error details:", error);
