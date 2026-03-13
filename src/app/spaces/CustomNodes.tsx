@@ -1854,11 +1854,13 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
 
   const renderInternalIcon = (cat: string) => {
     switch (cat) {
-      case 'ai': return <Zap size={14} key={cat} className="text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]" />;
+      case 'ai': return <Zap size={14} key={cat} className="text-purple-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.5)]" />;
       case 'image': return <ImageIcon size={14} key={cat} className="text-pink-400 drop-shadow-[0_0_5px_rgba(244,63,94,0.5)]" />;
+      case 'canvas': return <Layers size={14} key={cat} className="text-amber-500 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]" />;
       case 'prompt': return <Type size={14} key={cat} className="text-blue-400 drop-shadow-[0_0_5px_rgba(59,130,246,0.5)]" />;
       case 'logic': return <RefreshCw size={14} key={cat} className="text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]" />;
       case 'video': return <Film size={14} key={cat} className="text-rose-400 drop-shadow-[0_0_5px_rgba(251,113,133,0.5)]" />;
+      case 'tool': return <Scissors size={14} key={cat} className="text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]" />;
       default: return null;
     }
   };

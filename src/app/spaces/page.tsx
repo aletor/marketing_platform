@@ -136,23 +136,37 @@ const SpacesContent = () => {
     const categoriesSet = new Set<string>();
     nodes.forEach(n => {
       const type = (n.type || '').toLowerCase();
-      const nodeLabel = (n.data?.label || '').toLowerCase();
-
-      if (type.includes('grok') || type.includes('runway') || type.includes('assistant') || type.includes('enhancer')) {
+      
+      // AI Category (Grok, Runway, Assistants)
+      if (type.includes('grok') || type.includes('runway') || type.includes('assistant') || type.includes('processor')) {
         categoriesSet.add('ai');
-      } else if (
-        (type.includes('image') || type.includes('media') || type.includes('background')) && 
-        type !== 'spaceinput' && type !== 'spaceoutput'
-      ) {
-        categoriesSet.add('image');
-      } else if (type.includes('prompt')) {
-        categoriesSet.add('prompt');
-      } else if (type.includes('composer') || type.includes('concatenator') || type.includes('batch')) {
+      } 
+      
+      // Logic/Composition Category (Composers, Concatenators, Batch)
+      if (type.includes('composer') || type.includes('concatenator') || type.includes('batch')) {
         categoriesSet.add('logic');
-      } else if (type.includes('video')) {
+      }
+
+      // Prompt Category
+      if (type.includes('prompt')) {
+        categoriesSet.add('prompt');
+      }
+
+      // Media Categories (Video, Image)
+      if (type.includes('video')) {
         categoriesSet.add('video');
-      } else if (type.includes('mask') || type.includes('extraction')) {
-        categoriesSet.add('logic'); // Logic/Tool icon
+      } else if ((type.includes('image') || type.includes('media')) && !type.includes('composer') && type !== 'spaceinput' && type !== 'spaceoutput') {
+        categoriesSet.add('image');
+      }
+
+      // Canvas Category (Backgrounds)
+      if (type.includes('background')) {
+        categoriesSet.add('canvas');
+      }
+
+      // Tool Category (Masking, Extraction, Describing)
+      if (type.includes('mask') || type.includes('extraction') || type.includes('describer')) {
+        categoriesSet.add('tool');
       }
     });
 
@@ -161,7 +175,7 @@ const SpacesContent = () => {
       value: null as string | null,
       hasInput: !!inputNode,
       hasOutput: !!outputNode,
-      internalCategories: Array.from(categoriesSet).slice(0, 4) // Show up to 4 icons
+      internalCategories: Array.from(categoriesSet).slice(0, 5) // Show up to 5 icons now
     };
 
     if (!outputNode) return result;
