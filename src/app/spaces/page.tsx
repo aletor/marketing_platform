@@ -28,6 +28,7 @@ import {
   NanoBananaNode,
   MaskExtractionNode,
   MediaDescriberNode,
+  BackgroundNode,
   ButtonEdge 
 } from './CustomNodes';
 import Sidebar from './Sidebar';
@@ -66,6 +67,7 @@ const nodeTypes: any = {
   nanoBanana: NanoBananaNode,
   maskExtraction: MaskExtractionNode,
   mediaDescriber: MediaDescriberNode,
+  background: BackgroundNode,
 };
 
 const edgeTypes = {

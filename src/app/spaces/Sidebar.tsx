@@ -13,7 +13,8 @@ import {
   Loader2,
   Scissors,
   FilePlus,
-  Eye
+  Eye,
+  Paintbrush
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -82,6 +83,9 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
         </div>
         <div className="dndnode prompt" onDragStart={(event) => onDragStart(event, 'promptInput')} draggable>
           <Type size={16} /> Prompt Input
+        </div>
+        <div className="dndnode prompt border-amber-500/20 hover:border-amber-500/50" onDragStart={(event) => onDragStart(event, 'background')} draggable>
+          <Paintbrush size={16} className="!text-amber-500" /> Canvas Background
         </div>
       </div>
 

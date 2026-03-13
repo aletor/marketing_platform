@@ -29,7 +29,8 @@ import {
   Music,
   Info,
   Globe,
-  Eye
+  Eye,
+  Paintbrush
 } from 'lucide-react';
 import './spaces.css';
 
@@ -90,6 +91,76 @@ export const ButtonEdge = ({
 };
 
 // --- CORE INPUT NODES ---
+
+export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
+  const nodeData = data as BaseNodeData & { width?: number, height?: number, color?: string };
+  const { setNodes } = useReactFlow();
+
+  const updateData = (key: string, val: any) => {
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
+  };
+
+  const w = nodeData.width ?? 1920;
+  const h = nodeData.height ?? 1080;
+  const color = nodeData.color ?? '#000000';
+
+  return (
+    <div className="custom-node background-node">
+      <div className="node-header">
+        <Paintbrush size={16} /> BACKGROUND / CANVAS
+      </div>
+      <div className="node-content">
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="node-label">Width (px)</label>
+            <input 
+              type="number" 
+              className="node-input" 
+              value={w}
+              onChange={(e) => updateData('width', parseInt(e.target.value))}
+            />
+          </div>
+          <div>
+            <label className="node-label">Height (px)</label>
+            <input 
+              type="number" 
+              className="node-input" 
+              value={h}
+              onChange={(e) => updateData('height', parseInt(e.target.value))}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="node-label">Background Color</label>
+          <div className="flex gap-3 items-center bg-black/40 p-3 rounded-xl border border-white/5">
+            <input 
+              type="color" 
+              className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-none"
+              value={color}
+              onChange={(e) => updateData('color', e.target.value)}
+            />
+            <input 
+              type="text" 
+              className="flex-1 bg-transparent border-none text-[10px] font-mono text-gray-300 uppercase focus:outline-none"
+              value={color}
+              onChange={(e) => updateData('color', e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/5 flex flex-col items-center justify-center min-h-[100px]" style={{ backgroundColor: color + '44' }}>
+          <div className="w-20 h-12 border border-white/20 rounded shadow-lg" style={{ backgroundColor: color }}></div>
+          <span className="text-[8px] font-black text-gray-500 uppercase mt-2">{w}x{h} ASPECT</span>
+        </div>
+      </div>
+      <div className="handle-wrapper handle-right">
+        <span className="handle-label">Canvas Layer</span>
+        <Handle type="source" position={Position.Right} id="mask" className="handle-mask" />
+      </div>
+    </div>
+  );
+});
 
 // --- UNIVERSAL MEDIA INPUT NODE ---
 
@@ -593,6 +664,7 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
   const edges = useEdges();
   const { setNodes } = useReactFlow();
   const [status, setStatus] = useState('idle');
+  const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<string | null>(null);
 
   const onRun = async () => {
@@ -606,7 +678,7 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
     
     // Simulate progress increment while waiting for API
     const progressInterval = setInterval(() => {
-      setProgress(prev => {
+      setProgress((prev: number) => {
         if (prev >= 95) return prev;
         return prev + (prev < 50 ? 5 : 2);
       });
