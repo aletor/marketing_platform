@@ -2,7 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { base64, filename, format } = await req.json();
+    // Handle both JSON and Form Data (forms send URL-encoded/form-data)
+    let base64, filename, format;
+    
+    const contentType = req.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const body = await req.json();
+      base64 = body.base64;
+      filename = body.filename;
+      format = body.format;
+    } else {
+      const formData = await req.formData();
+      base64 = formData.get('base64') as string;
+      filename = formData.get('filename') as string;
+      format = formData.get('format') as string;
+    }
 
     if (!base64) {
       return NextResponse.json({ error: 'Image data is required' }, { status: 400 });
