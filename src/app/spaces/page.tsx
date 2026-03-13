@@ -731,9 +731,10 @@ const SpacesContent = () => {
           className="spaces-canvas"
         >
           <Background color="#111" gap={40} size={1} />
-          
-          {/* Header Internal HUD / Breadcrumbs */}
-          <div key="header-hud" className="absolute top-6 left-6 z-50 flex items-center gap-2">
+        </ReactFlow>
+        
+        {/* Header Internal HUD / Breadcrumbs */}
+        <div key="header-hud" className="absolute top-6 left-6 z-50 flex items-center gap-2">
             <div className="px-4 py-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-3">
               <div className={`w-2 h-2 rounded-full ${activeProjectId ? 'bg-green-500' : 'bg-rose-500'}`} />
               <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">
@@ -746,15 +747,16 @@ const SpacesContent = () => {
             
             {navigationStack.length > 0 && (
               <>
-                <div className="w-6 h-[1px] bg-white/10" />
+                <div key="sep" className="w-6 h-[1px] bg-white/10" />
                 <button 
+                  key="back-btn"
                   onClick={handleGoBack}
                   className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-2 text-white text-[10px] font-black uppercase tracking-widest transition-all group pointer-events-auto"
                 >
                   <ChevronLeft size={14} className="text-cyan-400 group-hover:-translate-x-1 transition-transform" />
                   Return
                 </button>
-                <div className="px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-xl flex items-center gap-2">
+                <div key="current-space" className="px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-xl flex items-center gap-2">
                    <Layers size={12} className="text-cyan-400" />
                    <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">
                      {spacesMap[activeSpaceId as string]?.name || 'Sub-Space'}
@@ -762,10 +764,10 @@ const SpacesContent = () => {
                 </div>
               </>
             )}
-          </div>
+        </div>
 
-          {/* Action HUD */}
-          <div key="action-hud" className="absolute top-6 right-6 z-50 flex gap-2">
+        {/* Action HUD */}
+        <div key="action-hud" className="absolute top-6 right-6 z-50 flex gap-2">
             <button 
               onClick={autoLayoutNodes}
               className="px-4 py-2.5 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105"
@@ -792,10 +794,10 @@ const SpacesContent = () => {
               {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} 
               {activeProjectId ? 'Save Changes' : 'Save Project'}
             </button>
-          </div>
+        </div>
 
-          {/* Legend HUD */}
-          <div key="legend-hud" className="absolute bottom-6 left-6 flex flex-wrap gap-x-6 gap-y-3 px-6 py-4 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl z-50 pointer-events-none shadow-2xl max-w-[600px]">
+        {/* Legend HUD */}
+        <div key="legend-hud" className="absolute bottom-6 left-6 flex flex-wrap gap-x-6 gap-y-3 px-6 py-4 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl z-50 pointer-events-none shadow-2xl max-w-[600px]">
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Prompt</span>
@@ -832,8 +834,7 @@ const SpacesContent = () => {
               <div className="w-4 h-4 bg-red-500/20 rounded-full flex items-center justify-center border border-red-500/40 text-[8px] font-black text-red-500">X</div>
               <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Disconnect wire</span>
             </div>
-          </div>
-        </ReactFlow>
+        </div>
 
         {/* Modals */}
         {showSaveModal && (

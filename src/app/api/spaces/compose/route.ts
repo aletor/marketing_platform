@@ -3,9 +3,10 @@ import sharp from 'sharp';
 import axios from 'axios';
 
 export async function POST(req: NextRequest) {
+  let layersJson = '[]';
   try {
     const body = await req.formData();
-    const layersJson = body.get('layers') as string;
+    layersJson = body.get('layers') as string;
     const format = (body.get('format') as string) || 'png';
     const filename = (body.get('filename') as string) || `Composition_${Date.now()}.${format === 'jpeg' ? 'jpg' : 'png'}`;
     const width = parseInt(body.get('width') as string) || 1920;
@@ -13,6 +14,7 @@ export async function POST(req: NextRequest) {
 
     console.log("--- COMPOSE ENGINE START ---");
     console.log(`Dimensions: ${width}x${height}, Format: ${format}`);
+    // ... rest of logic
     console.log(`Layers JSON length: ${layersJson?.length || 0}`);
 
     const layers = JSON.parse(layersJson || '[]');
@@ -117,7 +119,7 @@ export async function POST(req: NextRequest) {
     // Sanitize filename
     const safeFilename = filename.replace(/[^a-z0-9.]/gi, '_');
 
-    console.log(`[Compose API] Done. Serving ${safeFilename} (${Math.round(outputBuffer.length / 1024)} KB)`);
+    console.log(`[Compose API] SUCCESS: Exported ${safeFilename} (${Math.round(outputBuffer.length / 1024)} KB)`);
 
     return new Response(new Uint8Array(outputBuffer), {
       status: 200,
@@ -130,7 +132,14 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('[Compose API] Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[Compose API] CRITICAL ERROR:', error);
+    let layersCount = 0;
+    try { layersCount = JSON.parse(layersJson || '[]').length; } catch(e) {}
+    
+    return NextResponse.json({ 
+      error: error.message || 'Unknown composition error',
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      layersCount
+    }, { status: 500 });
   }
 }

@@ -1010,7 +1010,10 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
         body: formData
       });
 
-      if (!res.ok) throw new Error("Server composition failed");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Server composition failed");
+      }
 
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
