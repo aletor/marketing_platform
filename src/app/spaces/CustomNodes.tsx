@@ -602,6 +602,16 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
     if (!prompt) return alert("Need prompt!");
 
     setStatus('running');
+    setProgress(0);
+    
+    // Simulate progress increment while waiting for API
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 95) return prev;
+        return prev + (prev < 50 ? 5 : 2);
+      });
+    }, 300);
+
     try {
       const res = await fetch('/api/replicate/generate', {
         method: 'POST',
@@ -615,6 +625,10 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
         })
       });
       const json = await res.json();
+      
+      clearInterval(progressInterval);
+      setProgress(100);
+
       if (json.output) {
         const outUrl = typeof json.output === 'string' ? json.output : json.output[0];
         setResult(outUrl);
@@ -622,6 +636,7 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
         setStatus('success');
       }
     } catch (e) { 
+      clearInterval(progressInterval);
       console.error(e);
       setStatus('error'); 
     }
@@ -638,11 +653,20 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
         <span className="handle-label">Prompt in</span>
       </div>
 
-      <div className="node-header"><ImageIcon size={16} /> NANO BANANA 2</div>
       <div className="node-content">
-        <button className="execute-btn w-full justify-center mb-4" onClick={onRun} disabled={status === 'running'}>
+        <button className="execute-btn w-full justify-center mb-2" onClick={onRun} disabled={status === 'running'}>
           {status === 'running' ? 'GENERATE...' : 'GENERATE IMAGE'}
         </button>
+
+        {status === 'running' && (
+          <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden mb-4 border border-white/5">
+            <div 
+              className="h-full bg-gradient-to-r from-pink-500 to-purple-500 transition-all duration-300 ease-out shadow-[0_0_8px_rgba(236,72,153,0.5)]"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
+
         <div className="drop-zone overflow-hidden bg-black/60 min-h-[160px]">
           {result ? <img src={result} className="w-full h-full object-cover" alt="Result" /> : 
            <ImageIcon className="text-gray-800" size={32} />}
