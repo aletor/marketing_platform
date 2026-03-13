@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     // Get a URL that Runway can access
     const url = await getPresignedUrl(s3Key);
 
-    return NextResponse.json({ url });
+    return NextResponse.json({ url, s3Key });
   } catch (error: any) {
     console.error("[Runway Upload Error]:", error);
     return NextResponse.json({ error: error.message || "Upload failed" }, { status: 500 });

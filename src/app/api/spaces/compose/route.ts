@@ -11,26 +11,39 @@ export async function POST(req: NextRequest) {
     const width = parseInt(body.get('width') as string) || 1920;
     const height = parseInt(body.get('height') as string) || 1080;
 
-    const layers = JSON.parse(layersJson);
+    console.log("--- COMPOSE ENGINE START ---");
+    console.log(`Dimensions: ${width}x${height}, Format: ${format}`);
+    console.log(`Layers JSON length: ${layersJson?.length || 0}`);
 
-    console.log(`[Compose API] Building ${width}x${height} image with ${layers.length} layers...`);
+    const layers = JSON.parse(layersJson || '[]');
+    console.log(`Active Layers Count: ${layers.length}`);
 
-    // 1. Create base image
+    // 1. Create base image (solid black instead of transparent to verify visibility)
     let canvas = sharp({
       create: {
         width,
         height,
         channels: 4,
-        background: { r: 0, g: 0, b: 0, alpha: 0 }
+        background: { r: 0, g: 0, b: 0, alpha: 0 } // Reverted to transparent base
       }
     });
 
     const compositeInputs = [];
 
+    // Coordinate remapping ratio
+    const previewWidth = parseInt(body.get('previewWidth') as string) || width;
+    const ratio = width / previewWidth;
+    console.log(`Coordinate Mapping Ratio: ${ratio} (Canvas: ${width} / Preview: ${previewWidth})`);
+
     // 2. Process layers
-    for (const layer of layers) {
+    for (const [idx, layer] of layers.entries()) {
+      console.log(`[Layer ${idx}] Type: ${layer.type}, HasValue: ${!!layer.value}, Color: ${layer.color}`);
+      
+      const layerX = Math.round((layer.x || 0) * ratio);
+      const layerY = Math.round((layer.y || 0) * ratio);
+      const layerScale = layer.scale || 1;
+
       if (layer.color) {
-        // Create a solid color buffer
         const colorLayer = await sharp({
           create: {
             width,
@@ -39,32 +52,49 @@ export async function POST(req: NextRequest) {
             background: layer.color
           }
         }).png().toBuffer();
-        
         compositeInputs.push({ input: colorLayer, top: 0, left: 0 });
       } else if (layer.value) {
         try {
-          // Fetch image buffer
-          const response = await axios.get(layer.value, { responseType: 'arraybuffer' });
-          const imageBuffer = Buffer.from(response.data);
+          console.log(`[Layer ${idx}] Fetching URL: ${layer.value}`);
           
-          // Resize image to "contain" within the canvas
+          // Use axios with a real-looking User-Agent to avoid blocks
+          const res = await axios.get(layer.value, { 
+            responseType: 'arraybuffer',
+            timeout: 10000,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+          });
+          
+          const imageBuffer = Buffer.from(res.data);
+          
+          // Determine Target Width
+          let targetWidth = width;
+          
+          // Background types or index 0 usually take full width if not scaled
+          const isBackground = layer.type === 'background' || (idx === 0 && layerScale === 1 && layerX === 0 && layerY === 0);
+          
+          if (!isBackground) {
+            // Assets follow the Editor logic: 40% of canvas width * scale
+            targetWidth = Math.round((width * 0.4) * layerScale);
+          }
+
+          // Resize carefully: only provide width to let Sharp calculate height proportionally
           const resizedImage = await sharp(imageBuffer)
-            .resize({
-              width,
-              height,
-              fit: 'contain',
-              background: { r: 0, g: 0, b: 0, alpha: 0 }
-            })
+            .resize(targetWidth) 
             .png()
             .toBuffer();
-            
-          compositeInputs.push({ input: resizedImage, top: 0, left: 0 });
-        } catch (err) {
-          console.error(`[Compose API] Failed to fetch layer image: ${layer.value}`, err);
+             
+          compositeInputs.push({ input: resizedImage, top: layerY, left: layerX });
+          console.log(`[Layer ${idx}] Success: x=${layerX}, y=${layerY}, w=${targetWidth} (isBG: ${isBackground})`);
+        } catch (err: any) {
+          console.error(`[Layer ${idx}] FETCH ERROR for ${layer.value}:`, err.message);
+          // If a layer fails, we continue to prevent breaking the whole export
         }
       }
     }
 
+    console.log(`Final composition with ${compositeInputs.length} inputs...`);
     // 3. Composite everything
     let result = canvas.composite(compositeInputs);
 

@@ -50,7 +50,13 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
           <textarea 
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Describe your workflow (e.g., 'Generate video from my prompt')..."
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleGenerate();
+              }
+            }}
+            placeholder="Describe tus modificaciones (ej. 'Añade un fondo verde')..."
             className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-rose-500/50 transition-colors min-h-[80px] resize-none mb-3"
           />
           <button 
@@ -60,11 +66,11 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
           >
             {isGenerating ? (
               <>
-                <Loader2 size={14} className="animate-spin" /> Architects at work...
+                <Loader2 size={14} className="animate-spin" /> Procesando cambios...
               </>
             ) : (
               <>
-                <Sparkles size={14} /> Generate Space
+                <Sparkles size={14} /> Modificar
               </>
             )}
           </button>

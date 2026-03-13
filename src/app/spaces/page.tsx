@@ -31,10 +31,12 @@ import {
   BackgroundNode,
   ImageComposerNode,
   ImageExportNode,
+  UrlImageNode,
   ButtonEdge 
 } from './CustomNodes';
 import Sidebar from './Sidebar';
 import './spaces.css';
+import { NODE_REGISTRY } from './nodeRegistry';
 import { 
   Save, 
   FolderOpen, 
@@ -47,7 +49,9 @@ import {
   Workflow,
   Loader2,
   X,
-  Edit2
+  Edit2,
+  Maximize,
+  LayoutGrid
 } from 'lucide-react';
 
 const initialNodes: Node[] = [
@@ -72,6 +76,7 @@ const nodeTypes: any = {
   background: BackgroundNode,
   imageComposer: ImageComposerNode,
   imageExport: ImageExportNode,
+  urlImage: UrlImageNode,
 };
 
 const edgeTypes = {
@@ -101,6 +106,7 @@ const SpacesContent = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [isGeneratingAssistant, setIsGeneratingAssistant] = useState(false);
+  const [spaceToDelete, setSpaceToDelete] = useState<any | null>(null);
 
   // Fetch saved spaces on mount
   useEffect(() => {
@@ -223,18 +229,91 @@ const SpacesContent = () => {
     }
   };
 
+  const autoLayoutNodes = useCallback(() => {
+    const nodeWidth = 350;
+    const nodeHeight = 450;
+    const paddingX = 250; // Increased from 100
+    const paddingY = 150; // Increased from 50
+
+    // 1. Build dependency map
+    const incomingEdges: Record<string, string[]> = {};
+    nodes.forEach(n => incomingEdges[n.id] = []);
+    edges.forEach(e => {
+      if (incomingEdges[e.target]) incomingEdges[e.target].push(e.source);
+    });
+
+    // 2. Identify layers (Sugiyama-style)
+    const layers: Record<string, number> = {};
+    const getLayer = (nodeId: string, visited = new Set()): number => {
+      if (layers[nodeId] !== undefined) return layers[nodeId];
+      if (visited.has(nodeId)) return 0; // Prevent circularity crashes
+      
+      visited.add(nodeId);
+      const deps = incomingEdges[nodeId] || [];
+      if (deps.length === 0) {
+        layers[nodeId] = 0;
+        return 0;
+      }
+      
+      const maxDepLayer = Math.max(...deps.map(d => getLayer(d, visited)));
+      layers[nodeId] = maxDepLayer + 1;
+      return layers[nodeId];
+    };
+
+    nodes.forEach(n => getLayer(n.id));
+
+    // 3. Group nodes by layer
+    const grouped: Record<number, string[]> = {};
+    Object.entries(layers).forEach(([id, layer]) => {
+      if (!grouped[layer]) grouped[layer] = [];
+      grouped[layer].push(id);
+    });
+
+    // 4. Calculate new positions
+    const newNodes = nodes.map(node => {
+      const layer = layers[node.id] || 0;
+      const indexInLayer = grouped[layer].indexOf(node.id);
+      
+      // Vertical centering: find total height of this layer
+      const layerNodes = grouped[layer].length;
+      const totalLayerHeight = layerNodes * nodeHeight + (layerNodes - 1) * paddingY;
+      const startY = -totalLayerHeight / 2;
+
+      return {
+        ...node,
+        position: {
+          x: layer * (nodeWidth + paddingX),
+          y: startY + indexInLayer * (nodeHeight + paddingY)
+        }
+      };
+    });
+
+    setNodes(newNodes);
+    setTimeout(() => fitView({ padding: 0.2, duration: 800 }), 100);
+  }, [nodes, edges, setNodes, fitView]);
+
   const onGenerateAssistant = async (prompt: string) => {
     setIsGeneratingAssistant(true);
     try {
       const res = await fetch('/api/spaces/assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ 
+          prompt,
+          currentNodes: nodes,
+          currentEdges: edges
+        })
       });
       const data = await res.json();
       
       if (data.nodes && data.edges) {
-        setNodes(data.nodes);
+        // Validation: Ensure all nodes have a valid position {x, y}
+        const validatedNodes = data.nodes.map((n: any) => ({
+          ...n,
+          position: n.position || { x: 0, y: 0 } // Fail-safe default
+        }));
+
+        setNodes(validatedNodes);
         setEdges(data.edges);
         setCurrentId(null);
         setCurrentName('');
@@ -253,9 +332,42 @@ const SpacesContent = () => {
   };
 
   const onConnect: OnConnect = useCallback(
-    (params: any) => setEdges((eds) => addEdge(params, eds)),
+    (params) => setEdges((eds) => addEdge({ ...params, type: 'button' }, eds)),
     [setEdges]
   );
+
+  const isValidConnection = useCallback((connection: any) => {
+    const sourceNode = nodes.find((n) => n.id === connection.source);
+    const targetNode = nodes.find((n) => n.id === connection.target);
+
+    if (!sourceNode || !targetNode) return false;
+
+    // Get source handle type
+    const sourceMetadata = NODE_REGISTRY[sourceNode.type];
+    const sourceHandleType = sourceMetadata?.outputs.find(o => o.id === connection.sourceHandle)?.type;
+
+    // Get target handle type
+    const targetMetadata = NODE_REGISTRY[targetNode.type];
+    let targetHandleType = targetMetadata?.inputs.find(i => i.id === connection.targetHandle)?.type;
+
+    // Handle "layer-n" inputs for composer (they are always images)
+    if (connection.targetHandle?.startsWith('layer-')) {
+      targetHandleType = 'image';
+    }
+
+    // Special cases for generic mediaInput
+    if (sourceNode.type === 'mediaInput') {
+       // mediaInput identifies as 'url' in registry, but we can be more specific if its data.type matches target
+       const actualType = (sourceNode.data as any)?.type; // image, video, audio
+       if (actualType === targetHandleType) return true;
+    }
+
+    // If source or target is explicitly 'url', allow it (most flexible)
+    if (sourceHandleType === 'url' || targetHandleType === 'url') return true;
+
+    // Match exact types
+    return sourceHandleType === targetHandleType;
+  }, [nodes]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -316,6 +428,7 @@ const SpacesContent = () => {
                 data: {
                   ...n.data,
                   value: json.url,
+                  s3Key: json.s3Key, // Store physical key for cleanup
                   loading: false,
                   metadata: {
                     size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
@@ -358,18 +471,21 @@ const SpacesContent = () => {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          isValidConnection={isValidConnection}
           onDrop={onDrop}
           onDragOver={onDragOver}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={defaultEdgeOptions}
           fitView
+          minZoom={0.1}
+          maxZoom={4}
           className="spaces-canvas"
         >
           <Background color="#111" gap={40} size={1} />
           
           {/* Header Internal HUD */}
-          <div className="absolute top-6 left-6 z-50 pointer-events-none">
+          <div key="header-hud" className="absolute top-6 left-6 z-50 pointer-events-none">
             <div className="px-4 py-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-3">
               <div className={`w-2 h-2 rounded-full ${currentId ? 'bg-green-500' : 'bg-rose-500'}`} />
               <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">
@@ -382,7 +498,19 @@ const SpacesContent = () => {
           </div>
 
           {/* Action HUD */}
-          <div className="absolute top-6 right-6 z-50 flex gap-2">
+          <div key="action-hud" className="absolute top-6 right-6 z-50 flex gap-2">
+            <button 
+              onClick={autoLayoutNodes}
+              className="px-4 py-2.5 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105"
+            >
+              <LayoutGrid size={14} className="text-emerald-400" /> Order Nodes
+            </button>
+            <button 
+              onClick={() => fitView({ padding: 0.2, duration: 800 })}
+              className="px-4 py-2.5 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105"
+            >
+              <Maximize size={14} className="text-cyan-400" /> Fit View
+            </button>
             <button 
               onClick={() => setShowLoadModal(true)}
               className="px-4 py-2.5 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105"
@@ -400,7 +528,7 @@ const SpacesContent = () => {
           </div>
 
           {/* Legend HUD */}
-          <div className="absolute bottom-6 left-6 flex flex-wrap gap-x-6 gap-y-3 px-6 py-4 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl z-50 pointer-events-none shadow-2xl max-w-[600px]">
+          <div key="legend-hud" className="absolute bottom-6 left-6 flex flex-wrap gap-x-6 gap-y-3 px-6 py-4 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl z-50 pointer-events-none shadow-2xl max-w-[600px]">
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Prompt</span>
@@ -543,7 +671,7 @@ const SpacesContent = () => {
                             <Copy size={16} />
                           </button>
                           <button 
-                            onClick={() => deleteSpace(space.id)}
+                            onClick={() => setSpaceToDelete(space)}
                             title="Delete Space"
                             className="p-2.5 text-gray-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
                           >
@@ -560,6 +688,42 @@ const SpacesContent = () => {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {spaceToDelete && (
+          <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+            <div className="w-full max-w-md bg-[#0a0a0a] border border-rose-500/30 rounded-3xl p-8 shadow-[0_0_50px_rgba(244,63,94,0.2)] relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-rose-500 to-transparent" />
+              
+              <div className="w-16 h-16 bg-rose-500/10 rounded-2xl flex items-center justify-center border border-rose-500/20 mb-6 mx-auto">
+                <Trash2 size={32} className="text-rose-500 mr-0" />
+              </div>
+
+              <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter text-center">Delete Space?</h2>
+              <p className="text-gray-400 text-xs mb-8 text-center px-4 leading-relaxed">
+                This will permanently remove <span className="text-white font-bold">"{spaceToDelete.name}"</span> and all its associated media assets from the server.
+              </p>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setSpaceToDelete(null)}
+                  className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all"
+                >
+                  CANCEL
+                </button>
+                <button 
+                  onClick={() => {
+                    deleteSpace(spaceToDelete.id);
+                    setSpaceToDelete(null);
+                  }}
+                  className="flex-2 py-4 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-lg shadow-rose-600/20"
+                >
+                  CONFIRM DELETE
+                </button>
               </div>
             </div>
           </div>

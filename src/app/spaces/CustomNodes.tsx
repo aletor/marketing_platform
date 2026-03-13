@@ -1,6 +1,7 @@
 "use client";
 
 import React, { memo, useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Handle, Position, NodeProps, BaseEdge, EdgeLabelRenderer, getBezierPath, EdgeProps, useReactFlow, useNodes, useEdges } from '@xyflow/react';
 import { 
   Video, 
@@ -30,7 +31,13 @@ import {
   Info,
   Globe,
   Eye,
-  Paintbrush
+  Paintbrush,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Move,
+  Maximize,
+  MousePointer2
 } from 'lucide-react';
 import './spaces.css';
 
@@ -43,6 +50,66 @@ interface BaseNodeData {
   label?: string;
   loading?: boolean;
 }
+
+const NodeLabel = ({ id, label, defaultLabel }: { id: string, label?: string, defaultLabel: string }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [val, setVal] = useState(label || '');
+  const { setNodes } = useReactFlow();
+  const allNodes = useNodes();
+
+  // Find index of this node among others of the SAME type
+  const nodeType = allNodes.find(n => n.id === id)?.type;
+  const sameTypeNodes = allNodes
+    .filter(n => n.type === nodeType)
+    .sort((a, b) => {
+      // Sort by Y then X for logical numbering
+      if (a.position.y !== b.position.y) return a.position.y - b.position.y;
+      return a.position.x - b.position.x;
+    });
+  
+  const index = sameTypeNodes.findIndex(n => n.id === id) + 1;
+  const isSystemLabel = label && (label.startsWith('AI_SPACE_') || label.match(/\.(jpg|jpeg|png|webp|mp4)$/i));
+  const displayLabel = (label && !isSystemLabel) ? label : `${defaultLabel} ${index}`;
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    // Limit to 5 words as requested
+    const trimmed = val.split(' ').slice(0, 5).join(' ');
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, label: trimmed } } : n));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleBlur();
+    if (e.key === 'Escape') {
+      setVal(label || '');
+      setIsEditing(false);
+    }
+  };
+
+  return (
+    <div className="absolute -top-7 left-0 z-[100] group/label">
+      {isEditing ? (
+        <input
+          autoFocus
+          className="bg-cyan-500/20 border border-cyan-500/50 text-[10px] font-black uppercase tracking-widest text-cyan-400 focus:outline-none px-2 py-0.5 rounded-lg cursor-text min-w-[120px] shadow-lg shadow-cyan-500/10"
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+        />
+      ) : (
+        <div 
+          onDoubleClick={() => setIsEditing(true)}
+          className="px-2 py-0.5 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 text-[9px] font-black text-white/40 truncate hover:text-cyan-400 group-hover/label:border-cyan-500/30 transition-all uppercase tracking-widest cursor-pointer select-none flex items-center gap-2"
+          title="Double click to rename (max 5 words)"
+        >
+          <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/50 animate-pulse" />
+          {displayLabel}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const ButtonEdge = ({
   id,
@@ -107,8 +174,9 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className="custom-node background-node">
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Background" />
       <div className="node-header">
-        <Paintbrush size={16} /> BACKGROUND / CANVAS
+        <Paintbrush size={16} /> CANVAS
       </div>
       <div className="node-content">
         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -163,6 +231,126 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
   );
 });
 
+export const UrlImageNode = memo(({ id, data }: NodeProps<any>) => {
+  const nodeData = data as BaseNodeData & { 
+    urls?: string[], 
+    selectedIndex?: number 
+  };
+  const { setNodes } = useReactFlow();
+  
+  const urls = nodeData.urls || [];
+  const selectedIndex = nodeData.selectedIndex ?? 0;
+  const currentUrl = urls[selectedIndex] || nodeData.value || '';
+
+  const updateData = (updates: any) => {
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, ...updates } } : n));
+  };
+
+  const next = () => {
+    if (urls.length === 0) return;
+    const nextIdx = (selectedIndex + 1) % urls.length;
+    updateData({ selectedIndex: nextIdx, value: urls[nextIdx] });
+  };
+
+  const prev = () => {
+    if (urls.length === 0) return;
+    const prevIdx = (selectedIndex - 1 + urls.length) % urls.length;
+    updateData({ selectedIndex: prevIdx, value: urls[prevIdx] });
+  };
+
+  return (
+    <div className="custom-node url-image-node border-cyan-500/30">
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Image Search" />
+      <div className="node-header text-cyan-400">
+        <Globe size={16} /> CAROUSEL
+      </div>
+      <div className="node-content">
+        <div className="relative w-full aspect-video bg-black/60 rounded-xl overflow-hidden border border-white/10 group mb-3 shadow-inner">
+          {currentUrl ? (
+            <img src={currentUrl} className="w-full h-full object-contain" alt="Carousel" />
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-700 gap-2">
+              <Globe size={32} />
+              <span className="text-[9px] font-black uppercase tracking-tighter">No URL provided</span>
+            </div>
+          )}
+          
+          {urls.length > 1 && (
+            <>
+              <button 
+                onClick={prev}
+                className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 bg-black/80 backdrop-blur-md rounded-full text-white border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-cyan-500/20"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button 
+                onClick={next}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-black/80 backdrop-blur-md rounded-full text-white border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-cyan-500/20"
+              >
+                <ChevronRight size={16} />
+              </button>
+              <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded text-[8px] font-mono text-cyan-400 border border-cyan-500/20">
+                {selectedIndex + 1} / {urls.length}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="space-y-4">
+           <div>
+              <label className="node-label text-gray-500">Active URL</label>
+              <div className="relative">
+                <Link className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={12} />
+                <input 
+                  type="text"
+                  className="node-input pl-9 text-[10px]"
+                  placeholder="Paste URL..."
+                  value={currentUrl}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const newUrls = [...urls];
+                    if (newUrls.length === 0) newUrls.push(val);
+                    else newUrls[selectedIndex] = val;
+                    updateData({ urls: newUrls, value: val });
+                  }}
+                />
+              </div>
+           </div>
+
+           {urls.length > 0 && (
+             <div className="pt-2 border-t border-white/5">
+                <div className="text-[8px] font-black text-gray-600 uppercase mb-2 tracking-widest flex justify-between items-center">
+                  <span>Gallery Stack</span>
+                  <button 
+                    onClick={() => updateData({ urls: [...urls, ''] })}
+                    className="text-cyan-500 hover:text-cyan-400 flex items-center gap-1 transition-colors"
+                  >
+                    <Plus size={10} /> ADD URL
+                  </button>
+                </div>
+                <div className="flex gap-1 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
+                  {urls.map((url, i) => (
+                    <div 
+                      key={i}
+                      onClick={() => updateData({ selectedIndex: i, value: url })}
+                      className={`flex-shrink-0 w-12 h-12 rounded-lg border transition-all cursor-pointer overflow-hidden ${i === selectedIndex ? 'border-cyan-500 ring-2 ring-cyan-500/20' : 'border-white/10 opacity-50 hover:opacity-100'}`}
+                    >
+                      {url ? <img src={url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-white/5 flex items-center justify-center"><Link size={10} /></div>}
+                    </div>
+                  ))}
+                </div>
+             </div>
+           )}
+        </div>
+      </div>
+      <div className="handle-wrapper handle-right">
+        <span className="handle-label">Image Out</span>
+        <Handle type="source" position={Position.Right} id="image" className="handle-image" />
+      </div>
+    </div>
+  );
+});
+
 // --- IMAGE COMPOSER NODE ---
 
 // --- IMAGE COMPOSER NODE ---
@@ -170,7 +358,29 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
 export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
   const nodes = useNodes();
   const edges = useEdges();
+  const { setNodes } = useReactFlow();
+  const previewRef = useRef<HTMLDivElement>(null);
   
+  const nodeData = data as BaseNodeData & { 
+    layersConfig?: Record<string, { x: number, y: number, scale: number }>,
+    selectedLayerId?: string
+  };
+
+  const layersConfig: Record<string, { x: number, y: number, scale: number }> = nodeData.layersConfig || {};
+  const selectedLayerId = nodeData.selectedLayerId || null;
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
+
+  // Dragging State (local for performance)
+  const [dragInfo, setDragInfo] = useState<{ 
+    handleId: string, 
+    startX: number, 
+    startY: number, 
+    initialX: number, 
+    initialY: number, 
+    initialScale: number, 
+    mode: 'move' | 'scale-br' | 'scale-bl' | 'scale-tr' | 'scale-tl' 
+  } | null>(null);
+
   // Find all edges connected TO this node, sorted by handle ID (layer-0, layer-1...)
   const connectedInputs = useMemo(() => 
     edges.filter((e: any) => e.target === id).sort((a: any, b: any) => (a.targetHandle || '').localeCompare(b.targetHandle || '')),
@@ -181,27 +391,78 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
   const layers = useMemo(() => {
     return connectedInputs.map(edge => {
       const sourceNode = nodes.find(n => n.id === edge.source);
+      const hId = edge.targetHandle || 'layer-0';
+      const config = layersConfig[hId] || { x: 0, y: 0, scale: 1 };
+      
       return {
         id: sourceNode?.id,
-        handleId: edge.targetHandle,
+        edgeId: edge.id,
+        handleId: hId,
         type: sourceNode?.data.type,
         value: sourceNode?.data.value as string | undefined,
         color: sourceNode?.data.color as string | undefined,
-        width: sourceNode?.data.width as number | undefined,
-        height: sourceNode?.data.height as number | undefined
+        width: sourceNode?.data.width as number || 1920,
+        height: sourceNode?.data.height as number || 1080,
+        ...config
       };
     }).filter(l => l.value || l.color);
-  }, [connectedInputs, nodes]);
+  }, [connectedInputs, nodes, layersConfig]);
 
-  // Dynamic Handle IDs: used ones + 1 extra
+  const updateData = (updates: any) => {
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, ...updates } } : n));
+  };
+
+  // --- Real-time Composition Engine ---
+  useEffect(() => {
+    const renderFlattened = async () => {
+      if (layers.length === 0) return;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 1920;
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      for (const layer of layers) {
+        if (layer.color) {
+          ctx.fillStyle = layer.color;
+          ctx.fillRect(0, 0, 1920, 1080);
+        } else if (layer.value) {
+          try {
+            const img = await loadCanvasImage(layer.value);
+            const scale = layer.scale || 1;
+            const targetW = 1920 * 0.4 * scale;
+            const targetH = (targetW / img.naturalWidth) * img.naturalHeight;
+            
+            // Draw at absolute 1920x1080 coordinates
+            ctx.drawImage(img, layer.x, layer.y, targetW, targetH);
+          } catch (e) {
+            console.warn("Failed to render layer for flattened output", layer.value);
+          }
+        }
+      }
+
+      const flattenedUrl = canvas.toDataURL('image/png');
+      // Only update if value changed to prevent loops
+      if (nodeData.value !== flattenedUrl) {
+         updateData({ value: flattenedUrl });
+      }
+    };
+
+    const timer = setTimeout(renderFlattened, 300); // Debounce for performance
+    return () => clearTimeout(timer);
+  }, [layers, nodeData.value]);
+
+  // Dynamic Handle IDs
   const handleIds = useMemo(() => {
     const ids = connectedInputs.map((e: any) => e.targetHandle || 'layer-0');
     const lastNum = ids.length > 0 ? parseInt(ids[ids.length - 1].replace('layer-', '')) : -1;
     return [...new Set([...ids, `layer-${lastNum + 1}`])];
   }, [connectedInputs]);
 
+
   return (
-    <div className="custom-node composer-node min-w-[300px]">
+    <div className="custom-node composer-node min-w-[340px]">
       {handleIds.map((hId: any, index: number) => (
         <div key={hId} className="handle-wrapper handle-left" style={{ top: `${(index + 1) * (100 / (handleIds.length + 1))}%` }}>
           <Handle type="target" position={Position.Left} id={hId} className="handle-image" />
@@ -209,68 +470,309 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
         </div>
       ))}
 
-      <div className="node-header">
-        <Layers size={16} /> IMAGE COMPOSER
+      <div className="node-header flex-col items-start gap-0">
+        <NodeLabel id={id} label={nodeData.label} defaultLabel="Composer" />
+        <div className="flex items-center w-full gap-2">
+          <Layers size={14} /> IMAGE COMPOSER
+          <button 
+            onClick={() => setIsStudioOpen(true)}
+            className="ml-auto bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-tighter hover:bg-cyan-500/30 transition-all flex items-center gap-1.5"
+          >
+            <Maximize2 size={10} /> Studio Mode
+          </button>
+        </div>
       </div>
+      
       <div className="node-content">
-        <div className="mb-2 flex justify-between items-center text-[9px] font-bold text-gray-500 uppercase tracking-widest">
-          <span>Active Layers</span>
-          <span className="bg-white/10 px-2 py-0.5 rounded-full text-white">{layers.length}</span>
+        <div className="mb-3 flex justify-between items-center text-[9px] font-bold text-gray-400 uppercase tracking-widest px-1">
+          <div className="flex items-center gap-1.5"><Move size={12} className="text-cyan-500" /> Interactive Canvas</div>
+          <span className="bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full text-cyan-400">{layers.length} Layers</span>
         </div>
         
-        {/* Composition Preview Stack with Checkerboard Background */}
-        <div className="relative w-full aspect-video bg-black/60 rounded-xl overflow-hidden border border-white/10 group shadow-inner" 
-             style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '10px 10px', backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0px' }}>
-          
+        {/* COMPOSITION CANVAS */}
+        <div 
+          ref={previewRef}
+          className="relative w-full aspect-video bg-[#0a0a0a] rounded-xl overflow-hidden border border-white/10 group shadow-2xl select-none" 
+          style={{ backgroundImage: 'radial-gradient(#1a1a1a 1px, transparent 1px)', backgroundSize: '16px 16px' }}
+        >
           {layers.length === 0 ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-700 gap-2">
-              <Layers size={32} />
-              <span className="text-[9px] font-black uppercase tracking-tighter">No layers connected</span>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-800 gap-2">
+              <Layers size={40} strokeWidth={1} />
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Connect layers to compose</span>
             </div>
           ) : (
-            layers.map((layer, idx) => (
-              <div 
-                key={layer.handleId || idx} 
-                className="absolute inset-0 transition-all duration-500 animate-in fade-in zoom-in-95"
-                style={{ zIndex: idx }}
-              >
-                {/* If it's a background node (has color) */}
-                {layer.color ? (
-                  <div className="w-full h-full" style={{ backgroundColor: layer.color }}></div>
-                ) : (
-                  <img src={layer.value} className="w-full h-full object-contain" alt={`Layer ${idx}`} />
-                )}
-              </div>
-            ))
+            layers.map((layer, idx) => {
+              const isSelected = selectedLayerId === layer.handleId;
+              return (
+                <div 
+                  key={`${layer.handleId}-${layer.edgeId}-${idx}`} 
+                  data-layer-id={layer.handleId}
+                  className={`absolute transition-shadow transition-[border-color] ${isSelected ? 'ring-2 ring-cyan-500/50 z-50' : 'hover:ring-1 hover:ring-white/30'}`}
+                  style={{ 
+                    zIndex: idx,
+                    left: `${(layer.x / 1920) * 100}%`,
+                    top: `${(layer.y / 1080) * 100}%`,
+                    width: (layer.color || (idx === 0 && layer.scale === 1 && layer.x === 0 && layer.y === 0)) ? '100%' : `${40 * (layer.scale || 1)}%`,
+                    height: (layer.color || (idx === 0 && layer.scale === 1 && layer.x === 0 && layer.y === 0)) ? '100%' : 'auto',
+                    pointerEvents: 'none' // Static preview
+                  }}
+                >
+                  <div className="relative group/layer w-full h-full">
+                    {layer.color ? (
+                      <div className="w-full h-full min-h-[40px] rounded" style={{ backgroundColor: layer.color }}></div>
+                    ) : (
+                      <img src={layer.value} className="w-full h-full object-contain pointer-events-none" alt={`Layer ${idx}`} />
+                    )}
+                    
+                    {isSelected && (
+                      <div className="absolute top-2 left-2 bg-cyan-600/90 text-[7px] text-white px-1.5 py-0.5 rounded font-black uppercase shadow-sm">
+                         L{idx+1}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
           )}
-          
-          {/* Overlay Info on Hover */}
-          <div className="absolute bottom-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-             <div className="bg-black/80 backdrop-blur-md px-2 py-1 rounded text-[8px] font-mono text-cyan-400 border border-cyan-500/30">
-               MULTILAYER COMPOSITE
-             </div>
-          </div>
         </div>
 
-        <div className="mt-4 space-y-1 max-h-[120px] overflow-y-auto pr-1 custom-scrollbar">
-          {layers.map((l, i) => (
-            <div key={i} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg border border-white/[0.02] text-[9px] hover:bg-white/10 transition-colors">
-              <div className="w-4 h-4 rounded text-[8px] flex items-center justify-center bg-white/10 text-gray-400 font-bold">{i+1}</div>
-              <span className="flex-1 truncate font-medium text-gray-400 uppercase tracking-tighter">
-                {l.color ? `Canvas: ${l.color}` : `Image: Layer Asset`}
-              </span>
-              <div className={`w-1.5 h-1.5 rounded-full ${l.color ? 'bg-amber-500 shadow-[0_0_5px_#f59e0b]' : 'bg-pink-500 shadow-[0_0_5px_#ec4899]'}`}></div>
-            </div>
-          ))}
+        {/* LAYER MANAGER LIST */}
+        <div className="mt-4 border-t border-white/5 pt-3">
+          <div className="text-[8px] font-black text-gray-500 uppercase mb-2 tracking-widest flex items-center gap-2 px-1">
+             <MousePointer2 size={10} /> Selection Manager
+          </div>
+          <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar">
+            {layers.slice().reverse().map((l, i) => {
+              const actualIdx = layers.length - 1 - i;
+              const isSelected = selectedLayerId === l.handleId;
+              return (
+                <div 
+                  key={actualIdx} 
+                  onClick={() => updateData({ selectedLayerId: l.handleId })}
+                  className={`group flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer ${isSelected ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/[0.03] border-white/5 hover:bg-white/10 hover:border-white/10'}`}
+                >
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black ${isSelected ? 'bg-cyan-500 text-white' : 'bg-white/10 text-gray-500'}`}>
+                    {actualIdx + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-[9px] font-bold truncate ${isSelected ? 'text-cyan-400' : 'text-gray-400'}`}>
+                      {l.color ? `Canvas Layer` : `Source Asset`}
+                    </div>
+                    <div className="text-[7px] text-gray-600 font-mono truncate">
+                       X: {Math.round(l.x)} | S: {l.scale.toFixed(2)}
+                    </div>
+                  </div>
+                  <div className={`w-2 h-2 rounded-full ${l.color ? 'bg-amber-500' : 'bg-cyan-500'} ${isSelected ? 'animate-pulse' : 'opacity-40'}`}></div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
+      
       <div className="handle-wrapper handle-right">
-        <span className="handle-label">Image out</span>
+        <span className="handle-label">Result</span>
         <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
+
+      {isStudioOpen && createPortal(
+        <ComposerStudio 
+          layers={layers}
+          layersConfig={layersConfig}
+          onSave={(newConfig) => {
+            updateData({ layersConfig: newConfig });
+            setIsStudioOpen(false);
+          }}
+          onClose={() => setIsStudioOpen(false)}
+        />,
+        document.body
+      )}
     </div>
   );
 });
+
+// --- COMPOSER STUDIO MODAL ---
+
+interface ComposerStudioProps {
+  layers: any[];
+  layersConfig: Record<string, any>;
+  onSave: (config: Record<string, any>) => void;
+  onClose: () => void;
+}
+
+const ComposerStudio = ({ layers, layersConfig: initialConfig, onSave, onClose }: ComposerStudioProps) => {
+  const [config, setConfig] = useState(initialConfig);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [drag, setDrag] = useState<{ id: string, startX: number, startY: number, initX: number, initY: number, initS: number, mode: string } | null>(null);
+  const studioRef = useRef<HTMLDivElement>(null);
+
+  // Handle keyboard movement
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!selectedId) return;
+      const c = config[selectedId] || { x: 0, y: 0, scale: 1 };
+      let { x, y } = c;
+      if (e.key === 'ArrowUp') y -= 5;
+      else if (e.key === 'ArrowDown') y += 5;
+      else if (e.key === 'ArrowLeft') x -= 5;
+      else if (e.key === 'ArrowRight') x += 5;
+      else return;
+      
+      e.preventDefault();
+      e.stopPropagation();
+      setConfig({ ...config, [selectedId]: { ...c, x, y } });
+    };
+    window.addEventListener('keydown', onKey, true); // Use capture to block parent
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [selectedId, config]);
+
+  const onDown = (e: React.PointerEvent, id: string, mode = 'move') => {
+    e.stopPropagation();
+    const c = config[id] || { x: 0, y: 0, scale: 1 };
+    setDrag({ id, startX: e.clientX, startY: e.clientY, initX: c.x, initY: c.y, initS: c.scale, mode });
+    setSelectedId(id);
+  };
+
+  const onMove = (e: PointerEvent) => {
+    if (!drag || !studioRef.current) return; // Added studioRef check
+    
+    const rect = studioRef.current.getBoundingClientRect();
+    const scaleX = 1920 / rect.width;
+    const scaleY = 1080 / rect.height;
+    
+    const dx = (e.clientX - drag.startX) * scaleX; // Scaled dx
+    const dy = (e.clientY - drag.startY) * scaleY; // Scaled dy
+    const c = config[drag.id] || { x: 0, y: 0, scale: 1 };
+
+    if (drag.mode === 'move') {
+      setConfig({ ...config, [drag.id]: { ...c, x: drag.initX + dx, y: drag.initY + dy } });
+    } else {
+      // Pivot-based scaling logic (Uniform)
+      const sf = 0.005;
+      // Use scaled dx/dy for moveDeltaScreen as well
+      const moveDeltaScreen = (drag.mode.includes('tl') || drag.mode.includes('bl')) ? (-dx + dy) : (dx + dy);
+      const newS = Math.max(0.1, drag.initS + moveDeltaScreen * sf);
+      
+      // Reference dimensions (fixed internal 1920x1080)
+      const baseW = 1920 * 0.4;
+      const baseH = 1080 * 0.4; // 16:9 approx
+      
+      let newX = drag.initX;
+      let newY = drag.initY;
+
+      // Calculate translation to keep opposite corner fixed
+      if (drag.mode === 'scale-tl') { // Pivot is BR
+        newX = drag.initX - (baseW * (newS - drag.initS));
+        newY = drag.initY - (baseH * (newS - drag.initS));
+      } else if (drag.mode === 'scale-tr') { // Pivot is BL
+        newY = drag.initY - (baseH * (newS - drag.initS));
+      } else if (drag.mode === 'scale-bl') { // Pivot is TR
+        newX = drag.initX - (baseW * (newS - drag.initS));
+      }
+      // scale-br keeps TL (origin) fixed, so no X/Y change
+
+      setConfig({ ...config, [drag.id]: { ...c, scale: newS, x: newX, y: newY } });
+    }
+  };
+
+  useEffect(() => {
+    if (!drag) return;
+    const up = () => setDrag(null);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', up);
+    return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', up); };
+  }, [drag, config]);
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 studio-overlay" onPointerDown={() => setSelectedId(null)}>
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 h-16 border-b border-white/5 bg-black/60 flex items-center px-8 gap-6 backdrop-blur-md">
+        <button onClick={() => onSave(config)} className="text-gray-500 hover:text-white transition-colors cursor-pointer"><X size={20} /></button>
+        <div className="h-6 w-px bg-white/10" />
+        <div className="flex items-center gap-3">
+          <Layers className="text-cyan-500" size={18} />
+          <span className="text-[11px] font-black uppercase tracking-[3px] text-white">Advanced Composer <span className="text-cyan-500/50">Studio</span></span>
+        </div>
+        <div className="ml-auto flex items-center gap-4">
+          <button onClick={() => setConfig({})} className="text-[10px] font-black text-rose-500/60 hover:text-rose-500 transition-colors uppercase tracking-[2px]">Clear Layout</button>
+          <button 
+            onClick={() => onSave(config)}
+            className="group relative bg-cyan-500 hover:bg-cyan-400 text-black px-10 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[2px] transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+          >
+            Guardar y Cerrar
+            <div className="absolute inset-0 rounded-full group-hover:animate-ping bg-cyan-500/20 pointer-events-none"></div>
+          </button>
+        </div>
+      </div>
+
+      {/* Canvas Area */}
+      <div className="relative w-full h-full flex items-center justify-center pt-16 pb-20">
+        <div 
+          ref={studioRef} // Added studioRef
+          className="relative aspect-video bg-[#050505] border border-white/10 rounded-2xl shadow-[0_40px_100px_rgba(0,0,0,1)] overflow-hidden select-none group/canvas"
+          style={{ 
+            width: 'min(92vw, 1600px)',
+            backgroundImage: 'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)', 
+            backgroundSize: '32px 32px' 
+          }}
+        >
+          {layers.map((l, idx) => {
+            const isSel = selectedId === l.handleId;
+            const c = config[l.handleId] || { x: 0, y: 0, scale: 1 };
+            return (
+              <div
+                key={`${l.handleId}-${l.edgeId}-${idx}`}
+                onPointerDown={(e) => onDown(e, l.handleId!)}
+                className={`absolute cursor-move ${isSel ? 'z-50' : 'hover:z-10'}`} // Removed transition-[box-shadow,transform] duration-200
+                style={{
+                  left: `${(c.x / 1920) * 100}%`,
+                  top: `${(c.y / 1080) * 100}%`,
+                  width: (l.color || (idx === 0 && c.scale === 1 && c.x === 0 && c.y === 0)) ? '100%' : `${40 * c.scale}%`,
+                  height: (l.color || (idx === 0 && c.scale === 1 && c.x === 0 && c.y === 0)) ? '100%' : 'auto',
+                  zIndex: idx,
+                }}
+              >
+                <div className={`relative w-full h-full p-0.5 rounded-lg ${isSel ? 'ring-2 ring-cyan-500 shadow-[0_0_40px_rgba(6,182,212,0.4)]' : 'group-hover/canvas:ring-1 group-hover/canvas:ring-white/10'}`}>
+                  {l.color ? (
+                    <div className="w-full h-full min-h-[40px] rounded shadow-lg" style={{ backgroundColor: l.color }}></div>
+                  ) : (
+                    <img src={l.value} className="w-full h-full object-contain pointer-events-none drop-shadow-2xl" alt="" />
+                  )}
+
+                  {isSel && (
+                    <>
+                      {/* Scale Handles */}
+                      <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-cyan-500 rounded-full cursor-nwse-resize shadow-lg hover:scale-150 transition-transform" onPointerDown={(e) => onDown(e, l.handleId!, 'scale-tl')} />
+                      <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-cyan-500 rounded-full cursor-nesw-resize shadow-lg hover:scale-150 transition-transform" onPointerDown={(e) => onDown(e, l.handleId!, 'scale-tr')} />
+                      <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-cyan-500 rounded-full cursor-nesw-resize shadow-lg hover:scale-150 transition-transform" onPointerDown={(e) => onDown(e, l.handleId!, 'scale-bl')} />
+                      <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-cyan-500 rounded-full cursor-nwse-resize shadow-lg hover:scale-150 transition-transform" onPointerDown={(e) => onDown(e, l.handleId!, 'scale-br')} />
+                      
+                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-2 whitespace-nowrap bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-cyan-500/30 text-[9px] font-black uppercase text-cyan-400 shadow-xl pointer-events-none">
+                         <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse" />
+                         L{idx + 1} • {Math.round(c.scale * 100)}%
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Footer Status */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-12 text-gray-400 text-[8px] font-black uppercase tracking-[3px] bg-white/5 backdrop-blur-xl px-10 py-3 rounded-full border border-white/10 shadow-2xl">
+        <div className="flex items-center gap-3">DRAG <span className="text-gray-600">to move</span></div>
+        <div className="w-px h-3 bg-white/10" />
+        <div className="flex items-center gap-3 text-cyan-500">HANDLES <span className="text-cyan-500/40">to pivot-scale</span></div>
+        <div className="w-px h-3 bg-white/10" />
+        <div className="flex items-center gap-3">ARROWS <span className="text-gray-600">fine-tune</span></div>
+        <div className="w-px h-3 bg-white/10" />
+        <div className="flex items-center gap-3 text-rose-500/60">X <span className="text-rose-500/30">to close</span></div>
+      </div>
+    </div>
+  );
+};
 
   // --- IMAGE EXPORT NODE ---
 
@@ -354,22 +856,57 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
   const sourceEdge = edges.find(e => e.target === id);
   const sourceNode = sourceEdge ? nodes.find(n => n.id === sourceEdge.source) : null;
 
-  // If source is a composer, get all its inputs
+  // Map handles to actual layer data (supports both ImageComposer and direct single connections)
   const layers = useMemo(() => {
-    if (!sourceNode || sourceNode.type !== 'imageComposer') return [];
-    const composerEdges = edges.filter(e => e.target === sourceNode.id)
-      .sort((a: any, b: any) => (a.targetHandle || '').localeCompare(b.targetHandle || ''));
-    
-    return composerEdges.map(edge => {
-      const node = nodes.find(n => n.id === edge.source);
-      return {
-        type: node?.type,
-        value: node?.data.value as string | undefined,
-        color: node?.data.color as string | undefined,
-        width: node?.data.width as number || 0,
-        height: node?.data.height as number || 0
-      };
-    }).filter(l => (l.value as string) || (l.color as string));
+    if (!sourceNode) return [];
+
+    // Case 1: Source is a Composer (multiple layers)
+    if (sourceNode.type === 'imageComposer') {
+      // If the composer already has a flattened 'value', use it as a single layer
+      if (sourceNode.data.value) {
+        return [{
+          type: 'flattened',
+          value: sourceNode.data.value as string,
+          x: 0,
+          y: 0,
+          scale: 1,
+          width: 1920,
+          height: 1080
+        }];
+      }
+
+      // Fallback: Reconstruct (for compatibility during transition)
+      const composerEdges = edges.filter(e => e.target === sourceNode.id)
+        .sort((a: any, b: any) => (a.targetHandle || '').localeCompare(b.targetHandle || ''));
+      
+      const layersConfig: Record<string, any> = sourceNode.data.layersConfig || {};
+      
+      return composerEdges.map(edge => {
+        const node = nodes.find(n => n.id === edge.source);
+        const hId = edge.targetHandle || 'layer-0';
+        const config = (layersConfig as any)[hId] || { x: 0, y: 0, scale: 1 };
+        
+        return {
+          type: node?.type,
+          value: (node?.data?.value || ((node?.data as any)?.urls && (node?.data as any)?.urls[(node?.data as any)?.selectedIndex || 0])) as string | undefined,
+          color: node?.data?.color as string | undefined,
+          width: node?.data?.width as number || 0,
+          height: node?.data?.height as number || 0,
+          x: config.x,
+          y: config.y,
+          scale: config.scale
+        };
+      }).filter(l => (l.value as string) || (l.color as string));
+    }
+
+    // Case 2: Source is a direct Node (MediaInput, Background, etc)
+    return [{
+      type: sourceNode.type,
+      value: sourceNode.data.value as string | undefined,
+      color: (sourceNode.data as any).color as string | undefined,
+      width: (sourceNode.data as any).width as number || 0,
+      height: (sourceNode.data as any).height as number || 0
+    }].filter(l => l.value || l.color);
   }, [sourceNode, edges, nodes]);
 
   // Determine export dimensions intelligently
@@ -400,6 +937,19 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
       formData.append('format', format);
       formData.append('width', w.toString());
       formData.append('height', h.toString());
+      
+      // Coordinate Remapping Metadata
+      // If we are coming from a Composer, our coordinates are already normalized to 1920x1080
+      if (sourceNode.type === 'imageComposer') {
+        formData.append('previewWidth', '1920');
+        formData.append('previewHeight', '1080');
+      } else {
+        const composerPreview = document.querySelector(`[data-id="${sourceNode.id}"] .aspect-video`);
+        if (composerPreview) {
+          formData.append('previewWidth', composerPreview.clientWidth.toString());
+          formData.append('previewHeight', composerPreview.clientHeight.toString());
+        }
+      }
 
       const res = await fetch('/api/spaces/compose', {
         method: 'POST',
@@ -433,6 +983,7 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className="custom-node export-node border-rose-500/30">
+      <NodeLabel id={id} label={data.label} defaultLabel="Export" />
       {/* Hidden form for server-side Lambda-style Composition & Download */}
       <form 
         ref={downloadFormRef} 
@@ -585,9 +1136,17 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
 
   const handleClass = nodeData.type ? `handle-${nodeData.type}` : 'handle-video';
 
+  const getSmartDefaultLabel = () => {
+    if (nodeData.type === 'image') return "Image Input";
+    if (nodeData.type === 'video') return "Video Input";
+    if (nodeData.type === 'audio') return "Audio Input";
+    return "Media Input";
+  };
+
   return (
     <div className="custom-node media-node">
-      <div className="node-header flex justify-between items-center" style={{ color: getTitleColor() }}>
+      <NodeLabel id={id} label={nodeData.label} defaultLabel={getSmartDefaultLabel()} />
+      <div className="node-header flex-col items-start gap-0" style={{ color: getTitleColor() }}>
         <div className="flex items-center gap-2">
           {getIcon()}
           <span className="font-black tracking-tighter uppercase">{nodeData.type || 'Media'} Input</span>
@@ -728,7 +1287,10 @@ export const PromptNode = memo(({ id, data }: NodeProps<any>) => {
   const { setNodes } = useReactFlow();
   return (
     <div className="custom-node prompt-node">
-      <div className="node-header"><Type size={16} /> PROMPT</div>
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Prompt" />
+      <div className="node-header">
+        <Type size={16} /> PROMPT
+      </div>
       <div className="node-content">
         <textarea 
           className="node-textarea nowheel nodrag nokey"
@@ -782,6 +1344,7 @@ export const ConcatenatorNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className="custom-node tool-node min-w-[180px]">
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Concatenator" />
       {handleIds.map((hId: any, index: number) => (
         <div key={hId} className="handle-wrapper handle-left" style={{ top: `${(index + 1) * (100 / (handleIds.length + 1))}%` }}>
           <Handle type="target" position={Position.Left} id={hId} className="handle-prompt" />
@@ -836,6 +1399,7 @@ export const EnhancerNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className="custom-node tool-node">
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Enhancer" />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} className="handle-prompt" />
         <span className="handle-label">Prompt in</span>
@@ -900,6 +1464,7 @@ export const RunwayNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}>
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Runway Gen-3" />
       <div className="handle-wrapper handle-left" style={{ top: '30%' }}>
         <Handle type="target" position={Position.Left} id="video" className="handle-video" />
         <span className="handle-label">Video in</span>
@@ -968,6 +1533,7 @@ export const GrokNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}>
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Grok Imagine" />
       <div className="handle-wrapper handle-left" style={{ top: '30%' }}>
         <Handle type="target" position={Position.Left} id="video" className="handle-video" />
         <span className="handle-label">Video in</span>
@@ -1057,6 +1623,7 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}>
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana" />
       <div className="handle-wrapper handle-left !top-[25%]">
         <Handle type="target" position={Position.Left} id="image" className="handle-image" />
         <span className="handle-label">Image in</span>
@@ -1119,6 +1686,7 @@ export const MaskExtractionNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node mask-node ${status === 'running' ? 'node-glow-running' : ''}`}>
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Mask Extraction" />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="media" />
         <span className="handle-label">Media in</span>

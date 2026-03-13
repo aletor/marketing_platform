@@ -44,7 +44,26 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
     outputs: [
       { id: 'image', label: 'Image Out', type: 'image' }
     ],
-    dataSchema: {}
+    dataSchema: {
+      layersConfig: 'Record<handleId, { x: number, y: number, scale: number }>',
+      selectedLayerId: 'string (id of the active layer for interaction)'
+    }
+  },
+  urlImage: {
+    type: 'urlImage',
+    label: 'URL Image / Carousel',
+    description: 'Displays images from URLs. Supports multiple URLs in a carousel; the output is the selected image.',
+    inputs: [],
+    outputs: [
+      { id: 'image', label: 'Selected Image', type: 'image' }
+    ],
+    dataSchema: {
+      label: 'string (search query)',
+      urls: 'string[]',
+      selectedIndex: 'number',
+      value: 'string (the selected URL)',
+      count: 'number (limit of images to fetch - default 3)'
+    }
   },
   mediaInput: {
     type: 'mediaInput',
