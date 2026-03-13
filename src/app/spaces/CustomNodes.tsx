@@ -317,6 +317,9 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
       canvas.width = exportW;
       canvas.height = exportH;
 
+      // Clear canvas
+      ctx.clearRect(0, 0, exportW, exportH);
+
       if (layers.length > 0) {
         // Draw layers in order
         for (const layer of layers) {
@@ -328,20 +331,22 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
             img.crossOrigin = "anonymous";
             await new Promise((resolve, reject) => {
               img.onload = resolve;
-              img.onerror = reject;
-              img.src = layer.value!;
+              img.onerror = () => reject(new Error(`Failed to load layer: ${layer.value}`));
+              // Append cache-buster for CORS reliability
+              img.src = layer.value!.includes('?') ? `${layer.value}&t=${Date.now()}` : `${layer.value}?t=${Date.now()}`;
             });
             ctx.drawImage(img, 0, 0, exportW, exportH);
           }
         }
-      } else if (sourceNode?.data.value as string) {
+      } else if (sourceNode && sourceNode.data && sourceNode.data.value) {
         // Just a single image
         const img = new Image();
         img.crossOrigin = "anonymous";
+        const val = sourceNode.data.value as string;
         await new Promise((resolve, reject) => {
           img.onload = resolve;
-          img.onerror = reject;
-          img.src = sourceNode.data.value as string;
+          img.onerror = () => reject(new Error(`Failed to load source: ${val}`));
+          img.src = val.includes('?') ? `${val}&t=${Date.now()}` : `${val}?t=${Date.now()}`;
         });
         ctx.drawImage(img, 0, 0, exportW, exportH);
       }
@@ -354,9 +359,9 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
       link.click();
       
       setExportPreview(dataUrl);
-    } catch (error) {
-      console.error("Export error:", error);
-      alert("Error building composition. Check CORS policy or connections.");
+    } catch (error: any) {
+      console.error("Export error details:", error);
+      alert(`Export failed: ${error.message || "Unknown error"}. This usually happens due to CORS security blocking the image download.`);
     } finally {
       setIsExporting(false);
     }
@@ -386,7 +391,7 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
 
         <div className="relative w-full aspect-video bg-black/60 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
           {exportPreview || (sourceNode?.data.value && sourceNode.type !== 'imageComposer') ? (
-            <img src={exportPreview || sourceNode?.data.value} className="w-full h-full object-contain" alt="Export Preview" />
+            <img src={exportPreview || (sourceNode?.data.value as string)} className="w-full h-full object-contain" alt="Export Preview" />
           ) : sourceNode?.type === 'imageComposer' ? (
              <div className="flex flex-col items-center gap-2 text-rose-500/50">
                <Layers size={32} />
