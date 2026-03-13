@@ -272,7 +272,29 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
   );
 });
 
-// --- IMAGE EXPORT NODE ---
+  // --- IMAGE EXPORT NODE ---
+
+const loadCanvasImage = async (url: string): Promise<HTMLImageElement> => {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        // Clean up the object URL after it's loaded into the image
+        // URL.revokeObjectURL(objectUrl); // Optional: keep if you reuse
+        resolve(img);
+      };
+      img.onerror = () => reject(new Error("Failed to decode image data"));
+      img.src = objectUrl;
+    });
+  } catch (err: any) {
+    throw new Error(`Connection failed: ${err.message}. This is likely a CORS restriction from the source server.`);
+  }
+};
 
 export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
   const nodes = useNodes();
@@ -327,27 +349,13 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
             ctx.fillStyle = layer.color;
             ctx.fillRect(0, 0, exportW, exportH);
           } else if (layer.value) {
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            await new Promise((resolve, reject) => {
-              img.onload = resolve;
-              img.onerror = () => reject(new Error(`Failed to load layer: ${layer.value}`));
-              // Use original URL to avoid breaking S3 signatures
-              img.src = layer.value!;
-            });
+            const img = await loadCanvasImage(layer.value);
             ctx.drawImage(img, 0, 0, exportW, exportH);
           }
         }
       } else if (sourceNode && sourceNode.data && sourceNode.data.value) {
         // Just a single image
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        const val = sourceNode.data.value as string;
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = () => reject(new Error(`Failed to load source: ${val}`));
-          img.src = val;
-        });
+        const img = await loadCanvasImage(sourceNode.data.value as string);
         ctx.drawImage(img, 0, 0, exportW, exportH);
       }
 
