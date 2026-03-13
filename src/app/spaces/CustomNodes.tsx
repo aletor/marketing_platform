@@ -155,8 +155,8 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
         </div>
       </div>
       <div className="handle-wrapper handle-right">
-        <span className="handle-label">Canvas Layer</span>
-        <Handle type="source" position={Position.Right} id="mask" className="handle-mask" />
+        <span className="handle-label">Image out</span>
+        <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
     </div>
   );
