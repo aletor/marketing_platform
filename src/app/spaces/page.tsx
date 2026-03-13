@@ -32,6 +32,9 @@ import {
   ImageComposerNode,
   ImageExportNode,
   UrlImageNode,
+  SpaceNode,
+  SpaceInputNode,
+  SpaceOutputNode,
   ButtonEdge 
 } from './CustomNodes';
 import Sidebar from './Sidebar';
@@ -51,7 +54,9 @@ import {
   X,
   Edit2,
   Maximize,
-  LayoutGrid
+  LayoutGrid,
+  ChevronLeft,
+  Layers
 } from 'lucide-react';
 
 const initialNodes: Node[] = [
@@ -77,6 +82,9 @@ const nodeTypes: any = {
   imageComposer: ImageComposerNode,
   imageExport: ImageExportNode,
   urlImage: UrlImageNode,
+  space: SpaceNode,
+  spaceInput: SpaceInputNode,
+  spaceOutput: SpaceOutputNode,
 };
 
 const edgeTypes = {
@@ -97,68 +105,288 @@ const SpacesContent = () => {
   const { screenToFlowPosition, setViewport, fitView } = useReactFlow();
   
   // Persistence state
-  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [activeSpaceId, setActiveSpaceId] = useState<string | null>(null);
   const [currentName, setCurrentName] = useState<string>('');
-  const [savedSpaces, setSavedSpaces] = useState<any[]>([]);
+  const [savedProjects, setSavedProjects] = useState<any[]>([]);
+  const [spacesMap, setSpacesMap] = useState<Record<string, any>>({});
+  const [metadata, setMetadata] = useState<any>({});
+  
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [isGeneratingAssistant, setIsGeneratingAssistant] = useState(false);
-  const [spaceToDelete, setSpaceToDelete] = useState<any | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<any | null>(null);
+  const [navigationStack, setNavigationStack] = useState<string[]>([]);
 
-  // Fetch saved spaces on mount
+  // Helper to detect structure and data output from a space
+  const analyzeSpaceStructure = (nodes: any[], edges: any[]): { 
+    type: string, 
+    value: string | null, 
+    hasInput: boolean, 
+    hasOutput: boolean,
+    internalCategories: string[] 
+  } => {
+    const inputNode = nodes.find(n => n.type === 'spaceInput');
+    const outputNode = nodes.find(n => n.type === 'spaceOutput');
+    
+    // Extract internal categories for visualization
+    const categoriesSet = new Set<string>();
+    nodes.forEach(n => {
+      const type = (n.type || '').toLowerCase();
+      const nodeLabel = (n.data?.label || '').toLowerCase();
+
+      if (type.includes('grok') || type.includes('runway') || type.includes('assistant') || type.includes('enhancer')) {
+        categoriesSet.add('ai');
+      } else if (
+        (type.includes('image') || type.includes('media') || type.includes('background')) && 
+        type !== 'spaceinput' && type !== 'spaceoutput'
+      ) {
+        categoriesSet.add('image');
+      } else if (type.includes('prompt')) {
+        categoriesSet.add('prompt');
+      } else if (type.includes('composer') || type.includes('concatenator') || type.includes('batch')) {
+        categoriesSet.add('logic');
+      } else if (type.includes('video')) {
+        categoriesSet.add('video');
+      } else if (type.includes('mask') || type.includes('extraction')) {
+        categoriesSet.add('logic'); // Logic/Tool icon
+      }
+    });
+
+    const result = {
+      type: 'url',
+      value: null as string | null,
+      hasInput: !!inputNode,
+      hasOutput: !!outputNode,
+      internalCategories: Array.from(categoriesSet).slice(0, 4) // Show up to 4 icons
+    };
+
+    if (!outputNode) return result;
+
+    const incomingEdge = edges.find(e => e.target === outputNode.id && e.targetHandle === 'in');
+    if (!incomingEdge) return result;
+
+    const sourceNode = nodes.find(n => n.id === incomingEdge.source);
+    if (!sourceNode) return result;
+
+    result.value = sourceNode.data?.value || null;
+
+    // Try to guess type from source handle or node type or data.type
+    const sourceHandleId = (incomingEdge.sourceHandle || '').toLowerCase();
+    const nodeType = (sourceNode.type || '').toLowerCase();
+    const dataType = (sourceNode.data?.type || '').toLowerCase();
+
+    if (sourceHandleId.includes('image') || nodeType.includes('image') || dataType === 'image') result.type = 'image';
+    else if (sourceHandleId.includes('video') || nodeType.includes('video') || dataType === 'video') result.type = 'video';
+    else if (sourceHandleId.includes('prompt') || nodeType.includes('prompt')) result.type = 'prompt';
+    else if (sourceHandleId.includes('mask')) result.type = 'mask';
+    
+    return result;
+  };
+
+  // Navigation Logic
+  const handleEnterSpace = useCallback((e: any) => {
+    const { nodeId, spaceId } = e.detail;
+    const currentId = activeSpaceId || 'root';
+    
+    // 1. Prepare modern clones of current state
+    let targetSpaceId = spaceId;
+    let newFullSpacesMap = { ...spacesMap };
+    let finalNodesInCurrentSpace = [...nodes];
+    let finalEdgesInCurrentSpace = [...edges];
+
+    // 2. If creating NEW sub-space, register it in the current parent snapshot
+    if (!targetSpaceId) {
+      targetSpaceId = `space_${Date.now()}`;
+      
+      // Update the trigger node in the snapshot we are about to save
+      finalNodesInCurrentSpace = finalNodesInCurrentSpace.map(n => 
+        n.id === nodeId ? { ...n, data: { ...n.data, spaceId: targetSpaceId, hasInput: true, hasOutput: true } } : n
+      );
+
+      // Initialize the target space entry
+      newFullSpacesMap[targetSpaceId] = {
+        id: targetSpaceId,
+        name: `Nested Space ${Object.keys(spacesMap).length + 1}`,
+        nodes: [
+          { id: 'in', type: 'spaceInput', position: { x: 100, y: 200 }, data: { label: 'Input' } },
+          { id: 'out', type: 'spaceOutput', position: { x: 800, y: 200 }, data: { label: 'Output' } }
+        ],
+        edges: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+    }
+
+    // 3. Commit the CURRENT space state to the map (Atomic Save)
+    const structure = analyzeSpaceStructure(finalNodesInCurrentSpace, finalEdgesInCurrentSpace);
+    newFullSpacesMap[currentId] = {
+      ...(newFullSpacesMap[currentId] || {}),
+      id: currentId,
+      nodes: finalNodesInCurrentSpace,
+      edges: finalEdgesInCurrentSpace,
+      outputType: structure.type,
+      outputValue: structure.value,
+      hasInput: structure.hasInput,
+      hasOutput: structure.hasOutput,
+      internalCategories: structure.internalCategories,
+      updatedAt: new Date().toISOString()
+    };
+
+    // 4. Perform the transition
+    const targetSpace = newFullSpacesMap[targetSpaceId];
+    if (targetSpace) {
+      // Sync local UI state to parent first (for the trigger node update to be visible)
+      setNodes(finalNodesInCurrentSpace);
+      
+      // Then switch context
+      setNodes(targetSpace.nodes || []);
+      setEdges(targetSpace.edges || []);
+      
+      if (targetSpaceId !== activeSpaceId) {
+        setNavigationStack(prev => [...prev, currentId]);
+      }
+      
+      setActiveSpaceId(targetSpaceId);
+      setSpacesMap(newFullSpacesMap);
+      
+      setTimeout(() => fitView({ padding: 0.2, duration: 800 }), 100);
+    }
+  }, [activeSpaceId, nodes, edges, spacesMap, setNodes, setEdges, fitView]);
+
+  const handleGoBack = useCallback(() => {
+    if (navigationStack.length === 0) return;
+    
+    const newStack = [...navigationStack];
+    const parentSpaceId = newStack.pop();
+    const currentId = activeSpaceId || 'root';
+    const structure = analyzeSpaceStructure(nodes, edges);
+    
+    // Atomic Save of current sub-space before leaving
+    const updatedSpacesMap = {
+      ...spacesMap,
+      [currentId]: {
+        ...(spacesMap[currentId] || {}),
+        id: currentId,
+        nodes: [...nodes],
+        edges: [...edges],
+        outputType: structure.type,
+        outputValue: structure.value,
+        hasInput: structure.hasInput,
+        hasOutput: structure.hasOutput,
+        internalCategories: structure.internalCategories,
+        updatedAt: new Date().toISOString()
+      }
+    };
+
+    const parentSpace = updatedSpacesMap[parentSpaceId as string];
+    if (parentSpace) {
+      // Propagation: Update the SpaceNode in the parent graph with the detected type AND value
+      const updatedParentNodes = (parentSpace.nodes || []).map((n: any) => {
+        if (n.type === 'space' && n.data.spaceId === currentId) {
+          return { 
+            ...n, 
+            data: { 
+              ...n.data, 
+              outputType: structure.type, 
+              value: structure.value,
+              hasInput: structure.hasInput,
+              hasOutput: structure.hasOutput,
+              internalCategories: structure.internalCategories
+            } 
+          };
+        }
+        return n;
+      });
+
+      setNodes(updatedParentNodes);
+      setEdges(parentSpace.edges || []);
+      setActiveSpaceId(parentSpaceId === 'root' ? null : (parentSpaceId || null));
+      setNavigationStack(newStack);
+      setSpacesMap(updatedSpacesMap);
+      
+      setTimeout(() => fitView({ padding: 0.2, duration: 800 }), 100);
+    }
+  }, [activeSpaceId, nodes, edges, spacesMap, navigationStack, setNodes, setEdges, fitView]);
+
+  useEffect(() => {
+    window.addEventListener('enter-space', handleEnterSpace);
+    return () => window.removeEventListener('enter-space', handleEnterSpace);
+  }, [handleEnterSpace]);
+
+  // Fetch saved projects on mount
   useEffect(() => {
     fetch('/api/spaces').then(res => res.json()).then(data => {
-      if (Array.isArray(data)) setSavedSpaces(data);
+      if (Array.isArray(data)) setSavedProjects(data);
     }).catch(err => console.error('Fetch error:', err));
   }, []);
 
-  const saveSpace = async (nameToSave?: string) => {
+  const saveProject = async (nameToSave?: string) => {
     setIsSaving(true);
     try {
-      const spaceToSave = {
-        id: currentId,
-        name: nameToSave || currentName || 'Untitled Space',
-        nodes,
-        edges
+      // Synchronize current nodes/edges to the active space in the map
+      const updatedSpacesMap = {
+        ...spacesMap,
+        [activeSpaceId as string]: {
+          ...spacesMap[activeSpaceId as string],
+          nodes,
+          edges,
+          updatedAt: new Date().toISOString()
+        }
+      };
+
+      const projectToSave = {
+        id: activeProjectId,
+        name: nameToSave || currentName || 'Untitled Project',
+        rootSpaceId: activeProjectId || undefined, // Simple for now
+        spaces: updatedSpacesMap,
+        metadata: metadata
       };
 
       const res = await fetch('/api/spaces', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(spaceToSave)
+        body: JSON.stringify(projectToSave)
       });
       
       const updatedList = await res.json();
       
       if (Array.isArray(updatedList)) {
-        setSavedSpaces(updatedList);
+        setSavedProjects(updatedList);
         
-        // If we were saving a new space, we need the ID from the server
-        if (!currentId) {
-          const matched = updatedList.find((s: any) => s.name === spaceToSave.name);
-          if (matched) {
-            setCurrentId(matched.id);
-            setCurrentName(matched.name);
-          }
+        // If we were saving a new project, we need the active IDs from the server's last added project
+        if (!activeProjectId) {
+           const newest = updatedList[updatedList.length - 1];
+           setActiveProjectId(newest.id);
+           setActiveSpaceId(newest.rootSpaceId);
+           setCurrentName(newest.name);
+           setSpacesMap(newest.spaces);
+        } else {
+           setSpacesMap(updatedSpacesMap);
         }
       }
       setShowSaveModal(false);
     } catch (err) {
       console.error('Save error:', err);
-      alert('Error saving space. Check console for details.');
+      alert('Error saving project. Check console for details.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const loadSpace = (space: any) => {
-    setNodes(space.nodes || []);
-    setEdges(space.edges || []);
-    setCurrentId(space.id);
-    setCurrentName(space.name);
+  const loadProject = (project: any) => {
+    const rootSpace = project.spaces[project.rootSpaceId];
+    setNodes(rootSpace.nodes || []);
+    setEdges(rootSpace.edges || []);
+    setActiveProjectId(project.id);
+    setActiveSpaceId(project.rootSpaceId);
+    setCurrentName(project.name);
+    setSpacesMap(project.spaces);
+    setMetadata(project.metadata || {});
+    setNavigationStack([]); // Clear stack on new project load
     setShowLoadModal(false);
     
     // Smooth transition
@@ -167,27 +395,30 @@ const SpacesContent = () => {
     }, 100);
   };
 
-  const deleteSpace = async (idToDelete: string) => {
+  const deleteProject = async (idToDelete: string) => {
     try {
       const res = await fetch(`/api/spaces?id=${idToDelete}`, { method: 'DELETE' });
       const data = await res.json();
-      if (Array.isArray(data)) setSavedSpaces(data);
-      if (currentId === idToDelete) {
-        setCurrentId(null);
+      if (Array.isArray(data)) setSavedProjects(data);
+      if (activeProjectId === idToDelete) {
+        setActiveProjectId(null);
+        setActiveSpaceId(null);
         setCurrentName('');
+        setSpacesMap({});
       }
     } catch (err) {
       console.error('Delete error:', err);
     }
   };
 
-  const duplicateSpace = async (space: any) => {
+  const duplicateProject = async (project: any) => {
     setIsSaving(true);
     try {
       const copyToSave = {
-        name: `${space.name} (Copy)`,
-        nodes: space.nodes,
-        edges: space.edges
+        name: `${project.name} (Copy)`,
+        spaces: project.spaces,
+        rootSpaceId: project.rootSpaceId,
+        metadata: project.metadata
       };
 
       const res = await fetch('/api/spaces', {
@@ -197,7 +428,7 @@ const SpacesContent = () => {
       });
       
       const updatedList = await res.json();
-      if (Array.isArray(updatedList)) setSavedSpaces(updatedList);
+      if (Array.isArray(updatedList)) setSavedProjects(updatedList);
     } catch (err) {
       console.error('Duplicate error:', err);
     } finally {
@@ -205,23 +436,23 @@ const SpacesContent = () => {
     }
   };
 
-  const renameSpace = async (id: string, newName: string) => {
-    const spaceToUpdate = savedSpaces.find(s => s.id === id);
-    if (!spaceToUpdate) return;
+  const renameProject = async (id: string, newName: string) => {
+    const projectToUpdate = savedProjects.find(p => p.id === id);
+    if (!projectToUpdate) return;
 
     try {
       const res = await fetch('/api/spaces', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...spaceToUpdate,
+          ...projectToUpdate,
           name: newName
         })
       });
       const updatedList = await res.json();
       if (Array.isArray(updatedList)) {
-        setSavedSpaces(updatedList);
-        if (currentId === id) setCurrentName(newName);
+        setSavedProjects(updatedList);
+        if (activeProjectId === id) setCurrentName(newName);
       }
       setEditingId(null);
     } catch (err) {
@@ -315,7 +546,8 @@ const SpacesContent = () => {
 
         setNodes(validatedNodes);
         setEdges(data.edges);
-        setCurrentId(null);
+        setActiveProjectId(null);
+        setActiveSpaceId(null);
         setCurrentName('');
         
         // Smooth transition to center generated workflow
@@ -332,7 +564,7 @@ const SpacesContent = () => {
   };
 
   const onConnect: OnConnect = useCallback(
-    (params) => setEdges((eds) => addEdge({ ...params, type: 'button' }, eds)),
+    (params) => setEdges((eds) => addEdge({ ...params, type: 'buttonEdge' }, eds)),
     [setEdges]
   );
 
@@ -484,17 +716,36 @@ const SpacesContent = () => {
         >
           <Background color="#111" gap={40} size={1} />
           
-          {/* Header Internal HUD */}
-          <div key="header-hud" className="absolute top-6 left-6 z-50 pointer-events-none">
+          {/* Header Internal HUD / Breadcrumbs */}
+          <div key="header-hud" className="absolute top-6 left-6 z-50 flex items-center gap-2">
             <div className="px-4 py-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-3">
-              <div className={`w-2 h-2 rounded-full ${currentId ? 'bg-green-500' : 'bg-rose-500'}`} />
+              <div className={`w-2 h-2 rounded-full ${activeProjectId ? 'bg-green-500' : 'bg-rose-500'}`} />
               <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">
-                {currentId ? 'Synced' : 'Draft'}
+                {activeProjectId ? 'Synced' : 'Draft'}
               </span>
               <span className="text-xs font-bold text-white uppercase tracking-tight">
                 {currentName || 'Untitled Workflow'}
               </span>
             </div>
+            
+            {navigationStack.length > 0 && (
+              <>
+                <div className="w-6 h-[1px] bg-white/10" />
+                <button 
+                  onClick={handleGoBack}
+                  className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-2 text-white text-[10px] font-black uppercase tracking-widest transition-all group pointer-events-auto"
+                >
+                  <ChevronLeft size={14} className="text-cyan-400 group-hover:-translate-x-1 transition-transform" />
+                  Return
+                </button>
+                <div className="px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-xl flex items-center gap-2">
+                   <Layers size={12} className="text-cyan-400" />
+                   <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">
+                     {spacesMap[activeSpaceId as string]?.name || 'Sub-Space'}
+                   </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Action HUD */}
@@ -518,12 +769,12 @@ const SpacesContent = () => {
               <FolderOpen size={14} className="text-rose-400" /> My Spaces
             </button>
             <button 
-              onClick={() => currentId ? saveSpace() : setShowSaveModal(true)}
+              onClick={() => activeProjectId ? saveProject() : setShowSaveModal(true)}
               disabled={isSaving}
               className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white border border-rose-400/20 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105 shadow-xl shadow-rose-900/20 disabled:opacity-50"
             >
               {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} 
-              {currentId ? 'Save Changes' : 'Save Space'}
+              {activeProjectId ? 'Save Changes' : 'Save Project'}
             </button>
           </div>
 
@@ -591,12 +842,12 @@ const SpacesContent = () => {
                   className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-gray-600 focus:outline-none focus:border-rose-500/50 transition-colors"
                   value={currentName}
                   onChange={(e) => setCurrentName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && saveSpace()}
+                  onKeyDown={(e) => e.key === 'Enter' && saveProject()}
                 />
               </div>
 
               <button 
-                onClick={() => saveSpace()}
+                onClick={() => saveProject()}
                 className="w-full py-4 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all shadow-lg shadow-rose-600/20"
               >
                 CONFIRM AND SAVE
@@ -614,74 +865,74 @@ const SpacesContent = () => {
               >
                 <X size={20} />
               </button>
-              <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter">Your Saved Spaces</h2>
+              <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter">Your Projects</h2>
               <p className="text-gray-400 text-xs mb-8">Select a configuration to restore it to the canvas.</p>
               
               <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                {savedSpaces.length === 0 ? (
+                {savedProjects.length === 0 ? (
                   <div className="text-center py-20 border border-dashed border-white/10 rounded-3xl">
                     <FolderOpen className="mx-auto mb-4 text-gray-600" size={40} />
-                    <p className="text-gray-500 text-sm italic">No saved spaces found yet.</p>
+                    <p className="text-gray-500 text-sm italic">No saved projects found yet.</p>
                   </div>
                 ) : (
                   <div className="grid gap-4">
-                    {savedSpaces.map((space) => (
-                      <div key={space.id} className="group/item flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all">
+                    {savedProjects.map((project) => (
+                      <div key={project.id} className="group/item flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all">
                         <div className="w-12 h-12 bg-rose-500/20 rounded-xl flex items-center justify-center border border-rose-500/30">
                           <Workflow size={20} className="text-rose-500" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          {editingId === space.id ? (
+                          {editingId === project.id ? (
                             <input 
                               autoFocus
                               type="text"
                               className="bg-white/10 border border-rose-500/50 rounded-lg px-2 py-1 text-sm font-bold text-white w-full focus:outline-none"
                               value={editingName}
                               onChange={(e) => setEditingName(e.target.value)}
-                              onBlur={() => renameSpace(space.id, editingName)}
-                              onKeyDown={(e) => e.key === 'Enter' && renameSpace(space.id, editingName)}
+                              onBlur={() => renameProject(project.id, editingName)}
+                              onKeyDown={(e) => e.key === 'Enter' && renameProject(project.id, editingName)}
                             />
                           ) : (
                             <h4 
                               onClick={() => {
-                                setEditingId(space.id);
-                                setEditingName(space.name);
+                                setEditingId(project.id);
+                                setEditingName(project.name);
                               }}
                               className="text-sm font-bold text-white truncate uppercase tracking-tight cursor-pointer hover:text-rose-500 flex items-center gap-2 group/title"
                             >
-                              {space.name}
+                              {project.name}
                               <Edit2 size={12} className="opacity-0 group-hover/title:opacity-50 transition-opacity" />
                             </h4>
                           )}
                           <div className="flex items-center gap-3 mt-1">
                              <div className="flex items-center gap-1 text-[9px] text-gray-500 uppercase font-black tracking-widest">
-                               <Calendar size={10} /> {new Date(space.updatedAt).toLocaleDateString()}
+                               <Calendar size={10} /> {new Date(project.updatedAt).toLocaleDateString()}
                              </div>
                              <div className="flex items-center gap-1 text-[9px] text-gray-500 uppercase font-black tracking-widest">
-                               <Settings2 size={10} /> {space.nodes.length} Nodes
+                               <Settings2 size={10} /> {Object.keys(project.spaces || {}).length} Spaces
                              </div>
                           </div>
                         </div>
                         <div className="flex gap-2">
                           <button 
-                            onClick={() => duplicateSpace(space)}
-                            title="Duplicate Space"
+                            onClick={() => duplicateProject(project)}
+                            title="Duplicate Project"
                             className="p-2.5 text-gray-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all"
                           >
                             <Copy size={16} />
                           </button>
                           <button 
-                            onClick={() => setSpaceToDelete(space)}
-                            title="Delete Space"
+                            onClick={() => setProjectToDelete(project)}
+                            title="Delete Project"
                             className="p-2.5 text-gray-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
                           >
                             <Trash2 size={16} />
                           </button>
                           <button 
-                            onClick={() => loadSpace(space)}
+                            onClick={() => loadProject(project)}
                             className="px-4 py-2 bg-white/10 hover:bg-white text-gray-400 hover:text-black rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
                           >
-                            LOAD SPACE
+                            LOAD PROJECT
                           </button>
                         </div>
                       </div>
@@ -694,7 +945,7 @@ const SpacesContent = () => {
         )}
 
         {/* Delete Confirmation Modal */}
-        {spaceToDelete && (
+        {projectToDelete && (
           <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
             <div className="w-full max-w-md bg-[#0a0a0a] border border-rose-500/30 rounded-3xl p-8 shadow-[0_0_50px_rgba(244,63,94,0.2)] relative overflow-hidden group">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-rose-500 to-transparent" />
@@ -703,26 +954,26 @@ const SpacesContent = () => {
                 <Trash2 size={32} className="text-rose-500 mr-0" />
               </div>
 
-              <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter text-center">Delete Space?</h2>
+              <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter text-center">Delete Project?</h2>
               <p className="text-gray-400 text-xs mb-8 text-center px-4 leading-relaxed">
-                This will permanently remove <span className="text-white font-bold">"{spaceToDelete.name}"</span> and all its associated media assets from the server.
+                This will permanently remove <span className="text-white font-bold">"{projectToDelete.name}"</span> and all its associated media assets from the server.
               </p>
               
               <div className="flex gap-3">
                 <button 
-                  onClick={() => setSpaceToDelete(null)}
+                  onClick={() => setProjectToDelete(null)}
                   className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all"
                 >
                   CANCEL
                 </button>
                 <button 
                   onClick={() => {
-                    deleteSpace(spaceToDelete.id);
-                    setSpaceToDelete(null);
+                    deleteProject(projectToDelete.id);
+                    setProjectToDelete(null);
                   }}
-                  className="flex-2 py-4 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-lg shadow-rose-600/20"
+                  className="flex-1 py-4 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-lg shadow-rose-600/20"
                 >
-                  CONFIRM DELETE
+                  DELETE ALL
                 </button>
               </div>
             </div>

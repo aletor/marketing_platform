@@ -31,6 +31,12 @@ const SYSTEM_PROMPT = `
 You are an expert AI workflow architect for "AI Spaces Studio".
 Your task is to translate a user's natural language request into a functional node-based workflow or modify an existing one.
 
+### PROJECT & SPACE ARCHITECTURE (NESTED SPACES):
+1. Project-Based: Every workflow is now part of a Project.
+2. Nested Spaces: You can use the "space" node to group and organize logic.
+3. MODULARITY (CRITICAL): If a user request involves multiple distinct steps (e.g. "Create images AND then process them AND then export"), you SHOULD suggest or proactively create a "space" node to contain parts of the logic.
+4. Navigation: The user enters sub-spaces via the "space" node.
+
 ### CONTEXTUAL INTELLIGENCE RULES:
 1. Incrementality: You will receive the "Current Workspace State" (JSON).
 2. Preservation: Do NOT delete existing nodes unless specifically asked to "clear", "reset", or "remove [X]".
@@ -41,6 +47,10 @@ Your task is to translate a user's natural language request into a functional no
 
 ### Node Technical Registry (Capabilities & Connectivity):
 ${JSON.stringify(NODE_REGISTRY, null, 2)}
+*SPECIAL NODES:*
+- "space": Represents a sub-graph. Use "data.value" to store a suggested ID or name. Use it to encapsulate complex sub-flows.
+- "spaceInput": MUST BE the first node inside a sub-space.
+- "spaceOutput": MUST BE the last node inside a sub-space.
 
 ### Rules for Structural Construction & Connectivity:
 1. Return ONLY a valid JSON object.
@@ -50,20 +60,20 @@ ${JSON.stringify(NODE_REGISTRY, null, 2)}
    - AIR GAP: Ensure significant visual space between nodes. NEVER use same coordinates.
 3. Search Intent (CRITICAL):
    - When the user asks for a specific image/video content (e.g. "Messi", "Cyberpunk landscape"), use "urlImage".
-   - Set "data.label" to a DETAILED search query (e.g. "Real Madrid vs City UCL 2024 winners" instead of just "Madrid").
+   - Set "data.label" to a DETAILED search query.
    - The backend will automatically populate "data.urls" and "data.value". Do not invent URLs.
 4. Handle Connectivity (STRICT ADHERENCE):
    - Every edge MUST have "sourceHandle" and "targetHandle" matching the Registry.
-   - For "imageComposer", the inputs are "layer-0", "layer-1", etc.
-   - For most other nodes, the handles match the data type (e.g., "image", "video", "prompt").
+   - For "imageComposer", inputs are "layer-0", "layer-1", etc.
+   - For "space" nodes, source handle is "out" and target handle is "in".
 5. JSON Format:
-   - "nodes": Full array of FINAL nodes. IMPORTANT: Each node MUST strictly include: "id", "type", "position": {"x": number, "y": number}, and "data": {}.
+   - "nodes": Full array of FINAL nodes.
    - "edges": Full array of FINAL edges.
 
 ### Intelligence Example:
-Input: "Connect the search image to the composer"
-Context: { nodes: [{id: 'n1', type: 'urlImage'}, {id: 'n2', type: 'imageComposer'}], edges: [] }
-Reasoning: Keep both, add edge { id: 'e1', source: 'n1', target: 'n2', sourceHandle: 'image', targetHandle: 'layer-0' }.
+Input: "Create a space for image generation and connect it to a processor"
+Context: {}
+Reasoning: Create node "space" {id: 's1', data: {label: 'Image Generator'}}, create node "runwayProcessor" {id: 'n1'}, and edge {source: 's1', target: 'n1', sourceHandle: 'out', targetHandle: 'video'}.
 `;
 
 export async function POST(req: Request) {
@@ -90,47 +100,21 @@ export async function POST(req: Request) {
     let result = JSON.parse(response.choices[0].message.content || '{}');
     console.log('[Assistant] Final GPT Response:', JSON.stringify(result, null, 2));
 
-    // PARALLEL INJECTION: Process all search targets at once for speed
+    // MARK FOR FRONTEND SEARCH: Instead of waiting for GIS here, 
+    // we mark urlImage nodes so the frontend can handle it faster.
     if (result.nodes && Array.isArray(result.nodes)) {
-      const searchPromises = result.nodes.map(async (node: any, i: number) => {
-        const searchQuery = node.data?.label || node.data?.value || '';
-
-        if (node.type === 'urlImage' && searchQuery && (!node.data.urls || node.data.urls.length === 0)) {
-          const limit = node.data?.count || 3;
-          console.log(`[Assistant] node[${i}] Google Search: "${searchQuery}" (limit: ${limit})`);
-          try {
-            const searchResults = await searchGoogleImages(searchQuery);
-            
-            if (searchResults && Array.isArray(searchResults)) {
-              const urls = searchResults
-                .map((r: any) => r.url)
-                .filter((u: any) => {
-                  if (!u || typeof u !== 'string') return false;
-                  // Filter out obvious trackers or problematic domains like FB lookaside
-                  return u.startsWith('http') && !u.includes('lookaside.fbsbx.com');
-                })
-                .slice(0, limit);
-              
-              if (urls.length > 0) {
-                console.log(`[Assistant] node[${i}] Injected ${urls.length} URLs for "${searchQuery}"`);
-                node.data = {
-                  ...node.data,
-                  urls: urls,
-                  value: urls[0],
-                  selectedIndex: 0,
-                  label: searchQuery
-                };
-              } else {
-                console.warn(`[Assistant] node[${i}] NO valid URLs found for "${searchQuery}"`);
-              }
+      result.nodes = result.nodes.map((node: any) => {
+        if (node.type === 'urlImage' && node.data?.label) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              pendingSearch: true // Flag for frontend to trigger GIS
             }
-          } catch (e) {
-            console.error(`[Assistant] Google Search injection failed for "${searchQuery}":`, e);
-          }
+          };
         }
+        return node;
       });
-
-      await Promise.all(searchPromises);
     }
 
     return NextResponse.json(result);

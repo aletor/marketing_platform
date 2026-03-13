@@ -188,5 +188,39 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
       { id: 'prompt', label: 'Visual Prompt', type: 'prompt' }
     ],
     dataSchema: {}
+  },
+  space: {
+    type: 'space',
+    label: 'Nested Space',
+    description: 'A portal to a sub-graph for modular project organization.',
+    inputs: [
+      { id: 'in', label: 'Data In', type: 'url' }
+    ],
+    outputs: [
+      { id: 'out', label: 'Data Out', type: 'url' }
+    ],
+    dataSchema: {
+      value: 'string (target space ID)'
+    }
+  },
+  spaceInput: {
+    type: 'spaceInput',
+    label: 'Space Entry',
+    description: 'The starting point of a nested space.',
+    inputs: [],
+    outputs: [
+      { id: 'out', label: 'Entry Point', type: 'url' }
+    ],
+    dataSchema: {}
+  },
+  spaceOutput: {
+    type: 'spaceOutput',
+    label: 'Space Exit',
+    description: 'The final point of a nested space.',
+    inputs: [
+      { id: 'in', label: 'Exit Point', type: 'url' }
+    ],
+    outputs: [],
+    dataSchema: {}
   }
 };

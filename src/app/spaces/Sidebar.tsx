@@ -16,7 +16,9 @@ import {
   Eye,
   Paintbrush,
   Layers,
-  Download
+  Download,
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -129,6 +131,19 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
         </div>
         <div className="dndnode processor border-indigo-500/20 hover:border-indigo-500/50" onDragStart={(event) => onDragStart(event, 'mediaDescriber')} draggable>
           <Eye size={16} className="!text-indigo-500" /> Media Describer
+        </div>
+      </div>
+
+      <div className="sidebar-category">
+        <h3 className="sidebar-category-title">Spaces & Organization</h3>
+        <div className="dndnode processor border-cyan-500/20 hover:border-cyan-500/50" onDragStart={(event) => onDragStart(event, 'space')} draggable>
+          <Layers size={16} className="!text-cyan-500" /> Nested Space
+        </div>
+        <div className="dndnode tool border-emerald-500/20 hover:border-emerald-500/50" onDragStart={(event) => onDragStart(event, 'spaceInput')} draggable>
+          <ChevronRight size={16} className="!text-emerald-500" /> Space Input
+        </div>
+        <div className="dndnode tool border-rose-500/20 hover:border-rose-500/50" onDragStart={(event) => onDragStart(event, 'spaceOutput')} draggable>
+          <ChevronLeft size={16} className="!text-rose-500" /> Space Output
         </div>
       </div>
 

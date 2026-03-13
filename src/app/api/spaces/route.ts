@@ -24,48 +24,60 @@ function writeDB(data: any) {
 
 export async function GET() {
   try {
-    const spaces = readDB();
-    return NextResponse.json(spaces);
+    const projects = readDB();
+    return NextResponse.json(projects);
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to read spaces' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to read projects' }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const { id, name, nodes, edges } = await req.json();
-    const spaces = readDB();
+    const { id, name, rootSpaceId, spaces, metadata } = await req.json();
+    const projects = readDB();
 
     if (id) {
-      const index = spaces.findIndex((s: any) => s.id === id);
+      const index = projects.findIndex((p: any) => p.id === id);
       if (index !== -1) {
-        spaces[index] = { 
-          ...spaces[index], 
-          name: name || spaces[index].name, 
-          nodes, 
-          edges, 
+        projects[index] = { 
+          ...projects[index], 
+          name: name || projects[index].name, 
+          rootSpaceId: rootSpaceId || projects[index].rootSpaceId,
+          spaces: spaces || projects[index].spaces,
+          metadata: metadata || projects[index].metadata,
           updatedAt: new Date().toISOString() 
         };
       } else {
-        return NextResponse.json({ error: 'Space not found' }, { status: 404 });
+        return NextResponse.json({ error: 'Project not found' }, { status: 404 });
       }
     } else {
-      const newSpace = {
-        id: uuidv4(),
-        name: name || `New Space ${spaces.length + 1}`,
-        nodes,
-        edges,
+      const projectId = uuidv4();
+      const initialSpaceId = uuidv4();
+      const newProject = {
+        id: projectId,
+        name: name || `New Project ${projects.length + 1}`,
+        rootSpaceId: initialSpaceId,
+        spaces: spaces || {
+            [initialSpaceId]: {
+                id: initialSpaceId,
+                name: 'Main Space',
+                nodes: [],
+                edges: [],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }
+        },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      spaces.push(newSpace);
+      projects.push(newProject);
     }
 
-    writeDB(spaces);
-    return NextResponse.json(spaces);
+    writeDB(projects);
+    return NextResponse.json(projects);
   } catch (error) {
     console.error('Save error:', error);
-    return NextResponse.json({ error: 'Failed to save space' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to save project' }, { status: 500 });
   }
 }
 
@@ -75,19 +87,24 @@ export async function DELETE(req: Request) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
-    const spaces = readDB();
-    const spaceToDelele = spaces.find((s: any) => s.id === id);
+    const projects = readDB();
+    const projectToDelete = projects.find((p: any) => p.id === id);
     
-    if (spaceToDelele) {
-        console.log(`[Cleanup] Deleting space "${spaceToDelele.name}"...`);
+    if (projectToDelete) {
+        console.log(`[Cleanup] Deleting project "${projectToDelete.name}"...`);
         
-        // Find all S3 keys in nodes
-        const s3Keys = spaceToDelele.nodes
-            .map((n: any) => n.data?.s3Key)
-            .filter((key: string | undefined) => !!key);
+        // Find all S3 keys across all internal spaces
+        const s3Keys: string[] = [];
+        Object.values(projectToDelete.spaces || {}).forEach((space: any) => {
+            if (space.nodes) {
+                space.nodes.forEach((n: any) => {
+                    if (n.data?.s3Key) s3Keys.push(n.data.s3Key);
+                });
+            }
+        });
         
         if (s3Keys.length > 0) {
-            console.log(`[Cleanup] Found ${s3Keys.length} assets to remove from S3.`);
+            console.log(`[Cleanup] Found ${s3Keys.length} assets across all spaces to remove from S3.`);
             for (const key of s3Keys) {
                 try {
                     await deleteFromS3(key);
@@ -99,11 +116,11 @@ export async function DELETE(req: Request) {
         }
     }
 
-    const filtered = spaces.filter((s: any) => s.id !== id);
+    const filtered = projects.filter((p: any) => p.id !== id);
     writeDB(filtered);
     return NextResponse.json(filtered);
   } catch (error) {
     console.error('Delete error:', error);
-    return NextResponse.json({ error: 'Failed to delete space' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to delete project' }, { status: 500 });
   }
 }

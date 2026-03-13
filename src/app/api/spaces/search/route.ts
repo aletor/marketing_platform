@@ -1,29 +1,47 @@
-import { NextRequest, NextResponse } from 'next/server';
-const { image_search } = require('duckduckgo-images-api');
+import { NextResponse } from 'next/server';
+const gis = require('g-i-s');
 
-export async function GET(req: NextRequest) {
+const searchGoogleImages = (query: string): Promise<any[]> => {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      console.warn(`[Search API] Search timeout for: "${query}"`);
+      resolve([]);
+    }, 8000);
+
+    gis(query, (error: any, results: any[]) => {
+      clearTimeout(timer);
+      if (error) {
+        console.error(`[Search API] GIS Error for "${query}":`, error);
+        resolve([]);
+      } else {
+        resolve(results || []);
+      }
+    });
+  });
+};
+
+export async function POST(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const query = searchParams.get('q');
-    
-    if (!query) return NextResponse.json({ error: 'Query is required' }, { status: 400 });
+    const { query, limit = 5 } = await req.json();
 
-    console.log(`[Search API] Searching images for: ${query}...`);
-    
-    // Perform search (limit to 10 for speed and stability)
-    const results = await image_search({ query, moderate: true });
-    
-    // Filter and map to simple URLs
-    const urls = results
-      .slice(0, 10)
-      .map((r: any) => r.image)
-      .filter((u: string) => u && u.startsWith('http'));
+    if (!query) {
+      return NextResponse.json({ error: 'Query is required' }, { status: 400 });
+    }
 
-    console.log(`[Search API] Found ${urls.length} images.`);
+    console.log(`[Search API] Searching for: "${query}" (limit: ${limit})`);
+    const searchResults = await searchGoogleImages(query);
+    
+    const urls = searchResults
+      .map((r: any) => r.url)
+      .filter((u: any) => {
+        if (!u || typeof u !== 'string') return false;
+        return u.startsWith('http') && !u.includes('lookaside.fbsbx.com');
+      })
+      .slice(0, limit);
 
     return NextResponse.json({ urls });
   } catch (error: any) {
-    console.error('[Search API] Error:', error);
+    console.error('Search API Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -234,13 +234,60 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
 export const UrlImageNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { 
     urls?: string[], 
-    selectedIndex?: number 
+    selectedIndex?: number,
+    pendingSearch?: boolean
   };
   const { setNodes } = useReactFlow();
+  const [loading, setLoading] = useState(false);
   
   const urls = nodeData.urls || [];
   const selectedIndex = nodeData.selectedIndex ?? 0;
   const currentUrl = urls[selectedIndex] || nodeData.value || '';
+
+  // Reactive Search Trigger
+  useEffect(() => {
+    if (nodeData.pendingSearch && nodeData.label && !loading) {
+      const triggerSearch = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch('/api/spaces/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: nodeData.label, limit: 10 })
+          });
+          const json = await res.json();
+          if (json.urls && json.urls.length > 0) {
+            setNodes((nds: any) => nds.map((n: any) => n.id === id ? { 
+              ...n, 
+              data: { 
+                ...n.data, 
+                urls: json.urls, 
+                value: json.urls[0], 
+                selectedIndex: 0, 
+                pendingSearch: false 
+              } 
+            } : n));
+          } else {
+            // No results, clear flag
+            setNodes((nds: any) => nds.map((n: any) => n.id === id ? { 
+              ...n, 
+              data: { ...n.data, pendingSearch: false } 
+            } : n));
+          }
+        } catch (err) {
+          console.error("Search failed:", err);
+          setNodes((nds: any) => nds.map((n: any) => n.id === id ? { 
+            ...n, 
+            data: { ...n.data, pendingSearch: false } 
+          } : n));
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      triggerSearch();
+    }
+  }, [nodeData.pendingSearch, nodeData.label, id, setNodes, loading]);
 
   const updateData = (updates: any) => {
     setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, ...updates } } : n));
@@ -259,10 +306,10 @@ export const UrlImageNode = memo(({ id, data }: NodeProps<any>) => {
   };
 
   return (
-    <div className="custom-node url-image-node border-cyan-500/30">
+    <div className={`custom-node url-image-node border-cyan-500/30 ${loading ? 'node-glow-running' : ''}`}>
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Image Search" />
       <div className="node-header text-cyan-400">
-        <Globe size={16} /> CAROUSEL
+        <Globe size={16} /> CAROUSEL {loading && <Loader2 size={12} className="animate-spin ml-auto" />}
       </div>
       <div className="node-content">
         <div className="relative w-full aspect-video bg-black/60 rounded-xl overflow-hidden border border-white/10 group mb-3 shadow-inner">
@@ -431,20 +478,27 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
           try {
             const img = await loadCanvasImage(layer.value);
             const scale = layer.scale || 1;
-            const targetW = 1920 * 0.4 * scale;
-            const targetH = (targetW / img.naturalWidth) * img.naturalHeight;
             
-            // Draw at absolute 1920x1080 coordinates
+            // Smarter dimension handling
+            let targetW, targetH;
+            if (layer.color || (layers.indexOf(layer) === 0 && layer.scale === 1 && layer.x === 0 && layer.y === 0)) {
+               targetW = 1920;
+               targetH = 1080;
+            } else {
+               targetW = 1920 * 0.4 * scale;
+               targetH = (targetW / img.naturalWidth) * img.naturalHeight;
+            }
+            
             ctx.drawImage(img, layer.x, layer.y, targetW, targetH);
           } catch (e) {
-            console.warn("Failed to render layer for flattened output", layer.value);
+            console.warn("[Composer] Failed to load layer:", layer.value, e);
           }
         }
       }
 
-      const flattenedUrl = canvas.toDataURL('image/png');
-      // Only update if value changed to prevent loops
-      if (nodeData.value !== flattenedUrl) {
+      const flattenedUrl = canvas.toDataURL('image/png', 0.9);
+      // Only update if value changed significantly and canvas is not empty (black)
+      if (nodeData.value !== flattenedUrl && canvas.width > 0) {
          updateData({ value: flattenedUrl });
       }
     };
@@ -1760,6 +1814,148 @@ export const MaskExtractionNode = memo(({ id, data }: NodeProps<any>) => {
   );
 });
 
+export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
+  const nodeData = data as BaseNodeData & { 
+    outputType?: string, 
+    spaceId?: string,
+    hasInput?: boolean,
+    hasOutput?: boolean,
+    internalCategories?: string[]
+  };
+  const { setNodes } = useReactFlow();
+
+  const onEnterSpace = () => {
+    // This will be handled by the parent component via a custom event or callback
+    const targetId = nodeData.spaceId || nodeData.value;
+    const event = new CustomEvent('enter-space', { detail: { nodeId: id, spaceId: targetId } });
+    window.dispatchEvent(event);
+  };
+
+  // Dynamic Icon Mapping
+  const getIcon = () => {
+    switch (nodeData.outputType) {
+      case 'image': return <ImageIcon size={16} className="text-pink-400" />;
+      case 'video': return <Film size={16} className="text-rose-400" />;
+      case 'prompt': return <Type size={16} className="text-blue-400" />;
+      case 'mask': return <Scissors size={16} className="text-cyan-400" />;
+      default: return <Layers size={16} className="text-cyan-400" />;
+    }
+  };
+
+  const getHandleClass = () => {
+    switch (nodeData.outputType) {
+      case 'image': return 'handle-image';
+      case 'video': return 'handle-video';
+      case 'prompt': return 'handle-prompt';
+      case 'mask': return 'handle-mask';
+      default: return '';
+    }
+  };
+
+  const renderInternalIcon = (cat: string) => {
+    switch (cat) {
+      case 'ai': return <Zap size={14} key={cat} className="text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]" />;
+      case 'image': return <ImageIcon size={14} key={cat} className="text-pink-400 drop-shadow-[0_0_5px_rgba(244,63,94,0.5)]" />;
+      case 'prompt': return <Type size={14} key={cat} className="text-blue-400 drop-shadow-[0_0_5px_rgba(59,130,246,0.5)]" />;
+      case 'logic': return <RefreshCw size={14} key={cat} className="text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]" />;
+      case 'video': return <Film size={14} key={cat} className="text-rose-400 drop-shadow-[0_0_5px_rgba(251,113,133,0.5)]" />;
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="custom-node space-node border-cyan-500/30">
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Space" />
+      
+      {/* Input handle only if space has an internal InputNode */}
+      {nodeData.hasInput !== false && (
+        <div className="handle-wrapper handle-left">
+          <Handle type="target" position={Position.Left} id="in" />
+          <span className="handle-label">Data In</span>
+        </div>
+      )}
+      
+      <div className="node-header">
+        {getIcon()} <span className="uppercase">{nodeData.outputType ? `${nodeData.outputType} Space` : 'NESTED SPACE'}</span>
+      </div>
+      
+      <div className="node-content">
+        {/* Internal Blueprint Summary - MORE PROMINENT */}
+        <div className="flex flex-col gap-1.5 mb-5 p-2 bg-black/40 border border-white/5 rounded-xl shadow-inner">
+          <div className="flex justify-between items-center px-1">
+             <span className="text-[7.5px] font-black text-gray-500 uppercase tracking-widest">Internal Blueprint</span>
+             <Layers size={10} className="text-gray-700" />
+          </div>
+          <div className="flex items-center justify-center gap-3 py-1 min-h-[24px]">
+            {nodeData.internalCategories && nodeData.internalCategories.length > 0 ? (
+              nodeData.internalCategories.map(cat => renderInternalIcon(cat))
+            ) : (
+              <span className="text-[8px] text-gray-700 font-bold uppercase tracking-tighter">Initializing...</span>
+            )}
+          </div>
+        </div>
+        
+        <button 
+          onClick={onEnterSpace}
+          className="execute-btn w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 shadow-lg shadow-cyan-900/40 py-3 rounded-2xl text-[11px] font-black transition-all active:scale-95 group/btn"
+        >
+          <Maximize2 size={16} className="group-hover/btn:scale-110 transition-transform" /> ENTER SPACE
+        </button>
+      </div>
+
+      {/* Output handle only if space has an internal OutputNode */}
+      {nodeData.hasOutput !== false && (
+        <div className="handle-wrapper handle-right">
+          <span className="handle-label">Result Out</span>
+          <Handle type="source" position={Position.Right} id="out" className={getHandleClass()} />
+        </div>
+      )}
+    </div>
+  );
+});
+
+export const SpaceInputNode = memo(({ id, data }: NodeProps<any>) => {
+  const nodeData = data as BaseNodeData;
+  return (
+    <div className="custom-node space-io-node border-emerald-500/30">
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Input" />
+      <div className="node-header">
+        <ChevronRight size={16} className="text-emerald-400" /> SPACE INPUT
+      </div>
+      <div className="node-content text-center py-4">
+        <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20 mx-auto mb-2">
+          <ArrowRight size={24} className="text-emerald-500" />
+        </div>
+        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Entry Point</span>
+      </div>
+      <div className="handle-wrapper handle-right">
+        <Handle type="source" position={Position.Right} id="out" className="handle-emerald" />
+      </div>
+    </div>
+  );
+});
+
+export const SpaceOutputNode = memo(({ id, data }: NodeProps<any>) => {
+  const nodeData = data as BaseNodeData;
+  return (
+    <div className="custom-node space-io-node border-rose-500/30">
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Output" />
+      <div className="handle-wrapper handle-left">
+        <Handle type="target" position={Position.Left} id="in" className="handle-rose" />
+      </div>
+      <div className="node-header">
+        <ChevronLeft size={16} className="text-rose-400" /> SPACE OUTPUT
+      </div>
+      <div className="node-content text-center py-4">
+        <div className="w-12 h-12 bg-rose-500/10 rounded-full flex items-center justify-center border border-rose-500/20 mx-auto mb-2">
+          <CheckCircle size={24} className="text-rose-500" />
+        </div>
+        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Exit Point</span>
+      </div>
+    </div>
+  );
+});
+
 export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
   const nodes = useNodes();
@@ -1769,7 +1965,8 @@ export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
   const [description, setDescription] = useState<string | null>(null);
 
   const onRun = async () => {
-    const inputNode = nodes.find(n => n.id === edges.find(e => e.target === id && e.targetHandle === 'media')?.source);
+    const inputEdge = edges.find(e => e.target === id && e.targetHandle === 'media');
+    const inputNode = nodes.find(n => n.id === inputEdge?.source);
     const mediaUrl = inputNode?.data.value;
     const mediaType = inputNode?.data.type;
     
@@ -1791,7 +1988,7 @@ export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
       
       if (json.description) {
         setDescription(json.description);
-        setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, value: json.description } } : n)));
+        setNodes((nds: any) => nds.map((n: any) => (n.id === id ? { ...n, data: { ...n.data, value: json.description } } : n)));
         setStatus('success');
       } else {
         throw new Error(json.error || "Failed to analyze");
@@ -1841,4 +2038,3 @@ export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
     </div>
   );
 });
-;

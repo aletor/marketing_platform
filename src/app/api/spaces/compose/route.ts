@@ -55,18 +55,24 @@ export async function POST(req: NextRequest) {
         compositeInputs.push({ input: colorLayer, top: 0, left: 0 });
       } else if (layer.value) {
         try {
-          console.log(`[Layer ${idx}] Fetching URL: ${layer.value}`);
-          
-          // Use axios with a real-looking User-Agent to avoid blocks
-          const res = await axios.get(layer.value, { 
-            responseType: 'arraybuffer',
-            timeout: 10000,
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
-          });
-          
-          const imageBuffer = Buffer.from(res.data);
+          let imageBuffer: Buffer;
+
+          if (layer.value.startsWith('data:')) {
+            console.log(`[Layer ${idx}] Processing Base64 data...`);
+            const base64Data = layer.value.split(',')[1];
+            imageBuffer = Buffer.from(base64Data, 'base64');
+          } else {
+            console.log(`[Layer ${idx}] Fetching URL: ${layer.value}`);
+            // Use axios with a real-looking User-Agent to avoid blocks
+            const res = await axios.get(layer.value, { 
+              responseType: 'arraybuffer',
+              timeout: 10000,
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+              }
+            });
+            imageBuffer = Buffer.from(res.data);
+          }
           
           // Determine Target Width
           let targetWidth = width;

@@ -94,6 +94,9 @@
 .background-node .node-header { color: #f59e0b; }
 .composer-node .node-header { color: #06b6d4; }
 .export-node .node-header { color: #fb7185; }
+.space-node .node-header { color: #06b6d4; }
+.space-io-node .node-header { color: #10b981; }
+.space-io-node.border-rose-500\/30 .node-header { color: #f43f5e; }
 
 /* Handle styling */
 .handle-wrapper {
@@ -154,6 +157,8 @@
 .handle-pdf { border-color: #f97316 !important; }
 .handle-txt { border-color: #f59e0b !important; }
 .handle-url { border-color: #10b981 !important; }
+.handle-rose { border-color: #f43f5e !important; }
+.handle-emerald { border-color: #10b981 !important; }
 
 .react-flow__handle:hover {
   transform: scale(1.5);
