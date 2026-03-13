@@ -22,18 +22,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Image data is required' }, { status: 400 });
     }
 
-    // Extract the actual base64 data (strip the prefix)
-    const base64Data = base64.split(',')[1];
-    const buffer = Buffer.from(base64Data, 'base64');
+    // Extract the actual base64 data (strip the prefix if exists)
+    const base64Parts = base64.split(',');
+    const base64Content = base64Parts.length > 1 ? base64Parts[1] : base64Parts[0];
+    const buffer = Buffer.from(base64Content, 'base64');
     
     const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
-    const finalFilename = filename || `AI_Composition_${Date.now()}.${format === 'jpeg' ? 'jpg' : 'png'}`;
+    const extension = format === 'jpeg' ? 'jpg' : 'png';
+    
+    // Sanitize filename to be ultra-safe
+    const safeFilename = (filename || `AI_Download_${Date.now()}.${extension}`)
+      .replace(/[^a-z0-9.]/gi, '_');
 
-    return new Response(buffer, {
+    console.log(`[Download API] Serving file: ${safeFilename} (${Math.round(buffer.length / 1024)} KB)`);
+
+    return new NextResponse(buffer, {
+      status: 200,
       headers: {
         'Content-Type': mimeType,
-        'Content-Disposition': `attachment; filename="${finalFilename}"`,
-        'Cache-Control': 'no-cache',
+        'Content-Disposition': `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(safeFilename)}`,
+        'Content-Length': buffer.length.toString(),
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
   } catch (error: any) {

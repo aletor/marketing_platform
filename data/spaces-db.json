@@ -537,9 +537,44 @@
         },
         "measured": {
           "width": 450,
-          "height": 375
+          "height": 432
         },
         "selected": false
+      },
+      {
+        "id": "node_1773396167528_541",
+        "type": "grokProcessor",
+        "position": {
+          "x": 2445.432568649044,
+          "y": -221.24567583399806
+        },
+        "data": {
+          "value": "",
+          "label": "grokProcessor node"
+        },
+        "measured": {
+          "width": 320,
+          "height": 173
+        },
+        "selected": false
+      },
+      {
+        "id": "node_1773396190100_566",
+        "type": "promptInput",
+        "position": {
+          "x": 1644.4189585398378,
+          "y": -294.065094934835
+        },
+        "data": {
+          "value": "que el hombre baje los brazos mientras sonrie",
+          "label": "promptInput node"
+        },
+        "measured": {
+          "width": 320,
+          "height": 167
+        },
+        "selected": false,
+        "dragging": false
       }
     ],
     "edges": [
@@ -568,9 +603,27 @@
         "target": "node_1773395146273_56",
         "targetHandle": "image",
         "id": "xy-edge__node_1773395132139_922image-node_1773395146273_56image"
+      },
+      {
+        "type": "buttonEdge",
+        "animated": true,
+        "source": "node_1773395132139_922",
+        "sourceHandle": "image",
+        "target": "node_1773396167528_541",
+        "targetHandle": "video",
+        "id": "xy-edge__node_1773395132139_922image-node_1773396167528_541video"
+      },
+      {
+        "type": "buttonEdge",
+        "animated": true,
+        "source": "node_1773396190100_566",
+        "sourceHandle": "prompt",
+        "target": "node_1773396167528_541",
+        "targetHandle": "prompt",
+        "id": "xy-edge__node_1773396190100_566prompt-node_1773396167528_541prompt"
       }
     ],
     "createdAt": "2026-03-13T09:47:18.478Z",
-    "updatedAt": "2026-03-13T09:54:54.732Z"
+    "updatedAt": "2026-03-13T10:04:08.535Z"
   }
 ]

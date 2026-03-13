@@ -275,6 +275,19 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
   // --- IMAGE EXPORT NODE ---
 
 const loadCanvasImage = async (url: string): Promise<HTMLImageElement> => {
+  if (!url) throw new Error("Empty image URL");
+  
+  // If it's already a data URL, load it directly
+  if (url.startsWith('data:')) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Failed to load DataURL image"));
+      img.src = url;
+    });
+  }
+
   try {
     // Force requests through our local proxy to bypass CORS/S3 Signatures issues in the browser
     const proxyUrl = `/api/spaces/proxy?url=${encodeURIComponent(url)}`;
@@ -285,16 +298,16 @@ const loadCanvasImage = async (url: string): Promise<HTMLImageElement> => {
     
     return new Promise((resolve, reject) => {
       const img = new Image();
+      img.crossOrigin = "anonymous";
       img.onload = () => {
-        // Clean up the object URL after it's loaded into the image
-        // URL.revokeObjectURL(objectUrl); // Optional: keep if you reuse
+        URL.revokeObjectURL(objectUrl);
         resolve(img);
       };
       img.onerror = () => reject(new Error("Failed to decode image data"));
       img.src = objectUrl;
     });
   } catch (err: any) {
-    throw new Error(`Connection failed: ${err.message}. This is likely a CORS restriction from the source server.`);
+    throw new Error(`Connection failed: ${err.message}. Check CORS settings on source.`);
   }
 };
 
@@ -350,13 +363,25 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
     return composerEdges.map(edge => {
       const node = nodes.find(n => n.id === edge.source);
       return {
+        type: node?.type,
         value: node?.data.value as string | undefined,
         color: node?.data.color as string | undefined,
-        width: (node?.data.width || 1920) as number,
-        height: (node?.data.height || 1080) as number
+        width: node?.data.width as number || 0,
+        height: node?.data.height as number || 0
       };
     }).filter(l => (l.value as string) || (l.color as string));
   }, [sourceNode, edges, nodes]);
+
+  // Determine export dimensions intelligently
+  const getDimensions = () => {
+    // 1. Try to find a background node in the layers
+    const bgLayer = layers.find(l => l.type === 'background');
+    if (bgLayer && bgLayer.width && bgLayer.height) {
+      return { w: bgLayer.width, h: bgLayer.height };
+    }
+    // 2. Default to 1920x1080 or the first layer's dimension
+    return { w: 1920, h: 1080 };
+  };
 
   const handleExport = async () => {
     if (!sourceNode && !exportPreview) return alert("Connect an image first!");
@@ -368,20 +393,19 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Determine dimensions (from first layer or default)
-      const exportW = layers[0]?.width || 1920;
-      const exportH = layers[0]?.height || 1080;
+      // Determine dimensions
+      const { w: exportW, h: exportH } = getDimensions();
       canvas.width = exportW;
       canvas.height = exportH;
 
-      console.log(`[Export] Canvas initialized: ${exportW}x${exportH}`);
+      console.log(`[Export] Starting composition at ${exportW}x${exportH}...`);
 
-      // Clear canvas
+      // Clear canvas with transparent or checkerboard? Lets stick to transparent
       ctx.clearRect(0, 0, exportW, exportH);
 
       if (layers.length > 0) {
-        // Draw layers in order
-        for (const layer of layers) {
+        for (const [idx, layer] of layers.entries()) {
+          console.log(`[Export] Drawing layer ${idx+1}...`);
           if (layer.color) {
             ctx.fillStyle = layer.color;
             ctx.fillRect(0, 0, exportW, exportH);
@@ -391,37 +415,27 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
           }
         }
       } else if (sourceNode && sourceNode.data && sourceNode.data.value) {
-        // Just a single image
         const img = await loadCanvasImage(sourceNode.data.value as string);
         drawImageContain(ctx, img, exportW, exportH);
       }
 
-      // 1. Generate High-Quality DataURL for both Preview and Download
-      // DataURLs are often more reliable than Blobs for local filename preservation in Chrome
+      // Generate the image data
       const mime = format === 'png' ? 'image/png' : 'image/jpeg';
-      const quality = format === 'jpeg' ? 0.92 : 1.0;
-      const dataUrl = canvas.toDataURL(mime, quality);
-      
-      // Update preview immediately
+      const extension = format === 'jpeg' ? 'jpg' : 'png';
+      const dataUrl = canvas.toDataURL(mime, format === 'jpeg' ? 0.92 : 1.0);
       setExportPreview(dataUrl);
 
-      // 2. Guaranteed Form-Post Download
-      // This forces the browser to handle the response as a direct file download
-      const extension = format === 'jpeg' ? 'jpg' : 'png';
-      const timestamp = new Date().getTime();
-      const filename = `AI_Space_Result_${timestamp}.${extension}`;
-
-      console.log(`[Export] Launching form-post download for: ${filename}`);
+      // Final attempt at guaranteed download: Multiple fallback strategies
+      const filename = `AI_Output_${new Date().getTime()}.${extension}`;
       
-      setDownloadFormData({
-        base64: dataUrl,
-        filename: filename,
-        format: format
-      });
+      // 1. Update form and submit (Server-side forced headers)
+      setDownloadFormData({ base64: dataUrl, filename, format });
+
+      console.log(`[Export] Build complete. Size: ${Math.round(dataUrl.length / 1024)} KB`);
 
     } catch (error: any) {
       console.error("Export error details:", error);
-      alert(`Export failed: ${error.message || "Unknown error"}.`);
+      alert(`Export failed: ${error.message || "Unknown error"}`);
     } finally {
       setIsExporting(false);
     }
