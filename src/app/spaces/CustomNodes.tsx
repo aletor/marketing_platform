@@ -271,6 +271,138 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
   );
 });
 
+// --- IMAGE EXPORT NODE ---
+
+export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
+  const nodes = useNodes();
+  const edges = useEdges();
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportPreview, setExportPreview] = useState<string | null>(null);
+
+  // Find the single source connected to this node
+  const sourceEdge = edges.find(e => e.target === id);
+  const sourceNode = sourceEdge ? nodes.find(n => n.id === sourceEdge.source) : null;
+
+  // If source is a composer, get all its inputs
+  const layers = useMemo(() => {
+    if (!sourceNode || sourceNode.type !== 'imageComposer') return [];
+    const composerEdges = edges.filter(e => e.target === sourceNode.id)
+      .sort((a: any, b: any) => (a.targetHandle || '').localeCompare(b.targetHandle || ''));
+    
+    return composerEdges.map(edge => {
+      const node = nodes.find(n => n.id === edge.source);
+      return {
+        value: node?.data.value as string | undefined,
+        color: node?.data.color as string | undefined,
+        width: (node?.data.width || 1920) as number,
+        height: (node?.data.height || 1080) as number
+      };
+    }).filter(l => l.value || l.color);
+  }, [sourceNode, edges, nodes]);
+
+  const handleExport = async () => {
+    if (!sourceNode && !exportPreview) return alert("Connect an image first!");
+    
+    setIsExporting(true);
+    try {
+      // Create a virtual canvas
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Determine dimensions (from first layer or default)
+      const exportW = layers[0]?.width || 1920;
+      const exportH = layers[0]?.height || 1080;
+      canvas.width = exportW;
+      canvas.height = exportH;
+
+      if (layers.length > 0) {
+        // Draw layers in order
+        for (const layer of layers) {
+          if (layer.color) {
+            ctx.fillStyle = layer.color;
+            ctx.fillRect(0, 0, exportW, exportH);
+          } else if (layer.value) {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = layer.value!;
+            });
+            ctx.drawImage(img, 0, 0, exportW, exportH);
+          }
+        }
+      } else if (sourceNode?.data.value) {
+        // Just a single image
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = sourceNode.data.value;
+        });
+        ctx.drawImage(img, 0, 0, exportW, exportH);
+      }
+
+      // Export as PNG
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `composition_${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+      
+      setExportPreview(dataUrl);
+    } catch (error) {
+      console.error("Export error:", error);
+      alert("Error building composition. Check CORS policy or connections.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  return (
+    <div className="custom-node export-node border-rose-500/30">
+      <div className="handle-wrapper handle-left">
+        <Handle type="target" position={Position.Left} id="image" className="handle-image" />
+        <span className="handle-label">Image Input</span>
+      </div>
+      <div className="node-header text-rose-400">
+        <Download size={16} /> IMAGE EXPORT
+      </div>
+      <div className="node-content">
+        <button 
+          className={`execute-btn w-full justify-center mb-4 ${isExporting ? 'opacity-50' : 'bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30'}`}
+          onClick={handleExport}
+          disabled={isExporting}
+        >
+          {isExporting ? (
+            <><Loader2 size={14} className="animate-spin" /> BUILDING...</>
+          ) : (
+            <><Download size={14} /> EXPORT PNG</>
+          )}
+        </button>
+
+        <div className="relative w-full aspect-video bg-black/60 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
+          {exportPreview || (sourceNode?.data.value && sourceNode.type !== 'imageComposer') ? (
+            <img src={exportPreview || sourceNode?.data.value} className="w-full h-full object-contain" alt="Export Preview" />
+          ) : sourceNode?.type === 'imageComposer' ? (
+             <div className="flex flex-col items-center gap-2 text-rose-500/50">
+               <Layers size={32} />
+               <span className="text-[9px] font-black uppercase">Click Export to build {layers.length} layers</span>
+             </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 text-gray-700">
+              <ImageIcon size={32} />
+              <span className="text-[9px] font-black uppercase">No source connected</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
 // --- UNIVERSAL MEDIA INPUT NODE ---
 
 export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {

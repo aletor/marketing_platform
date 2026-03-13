@@ -30,6 +30,7 @@ import {
   MediaDescriberNode,
   BackgroundNode,
   ImageComposerNode,
+  ImageExportNode,
   ButtonEdge 
 } from './CustomNodes';
 import Sidebar from './Sidebar';
@@ -70,6 +71,7 @@ const nodeTypes: any = {
   mediaDescriber: MediaDescriberNode,
   background: BackgroundNode,
   imageComposer: ImageComposerNode,
+  imageExport: ImageExportNode,
 };
 
 const edgeTypes = {

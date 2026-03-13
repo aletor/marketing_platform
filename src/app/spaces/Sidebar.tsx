@@ -91,6 +91,9 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
         <div className="dndnode prompt border-cyan-500/20 hover:border-cyan-500/50" onDragStart={(event) => onDragStart(event, 'imageComposer')} draggable>
           <Layers size={16} className="!text-cyan-500" /> Image Composer
         </div>
+        <div className="dndnode prompt border-rose-500/20 hover:border-rose-500/50" onDragStart={(event) => onDragStart(event, 'imageExport')} draggable>
+          <Download size={16} className="!text-rose-500" /> Image Export
+        </div>
       </div>
 
       <div className="sidebar-category">
