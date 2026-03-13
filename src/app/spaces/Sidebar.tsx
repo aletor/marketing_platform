@@ -109,6 +109,9 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
         <div className="dndnode processor border-cyan-500/20 hover:border-cyan-500/50" onDragStart={(event) => onDragStart(event, 'maskExtraction')} draggable>
           <Scissors size={16} className="!text-cyan-500" /> Mask Extractor
         </div>
+        <div className="dndnode processor border-indigo-500/20 hover:border-indigo-500/50" onDragStart={(event) => onDragStart(event, 'mediaDescriber')} draggable>
+          <Eye size={16} className="!text-indigo-500" /> Media Describer
+        </div>
       </div>
 
       <div className="mt-auto p-4 bg-white/5 rounded-xl border border-white/5 text-[10px] text-gray-500 leading-relaxed">

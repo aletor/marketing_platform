@@ -756,19 +756,30 @@ export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
 
     setStatus('running');
     
-    // Simulated AI Perception
-    setTimeout(() => {
-      let mockDesc = "";
-      if (mediaType === 'video') mockDesc = "A cinematic wide shot of a futuristic city at sunset with flying vehicles and neon skyscraper lights.";
-      else if (mediaType === 'image') mockDesc = "A high-quality portrait of a cybernetic character with glowing implants and metallic skin.";
-      else if (mediaType === 'audio') mockDesc = "An upbeat electronic synthwave track with a heavy bassline and retro-futuristic vibes.";
-      else if (mediaType === 'pdf' || mediaType === 'txt') mockDesc = "A technical document outlining the specifications for an advanced AI neural network architecture.";
-      else mockDesc = "A digital asset containing rich details and complex structural patterns.";
-
-      setDescription(mockDesc);
-      setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, value: mockDesc } } : n)));
-      setStatus('success');
-    }, 2500);
+    try {
+      const res = await fetch('/api/spaces/describe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          url: mediaUrl, 
+          type: mediaType,
+          metadata: inputNode?.data.metadata
+        })
+      });
+      const json = await res.json();
+      
+      if (json.description) {
+        setDescription(json.description);
+        setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, value: json.description } } : n)));
+        setStatus('success');
+      } else {
+        throw new Error(json.error || "Failed to analyze");
+      }
+    } catch (err) {
+      console.error("Describe error:", err);
+      setStatus('error');
+      alert("Error analyzing media: " + (err as Error).message);
+    }
   };
 
   return (
