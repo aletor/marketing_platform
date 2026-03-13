@@ -327,7 +327,7 @@ export const PromptNode = memo(({ id, data }: NodeProps<any>) => {
       </div>
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Prompt out</span>
-        <Handle type="source" position={Position.Right} className="handle-prompt" />
+        <Handle type="source" position={Position.Right} id="prompt" className="handle-prompt" />
       </div>
     </div>
   );
@@ -629,11 +629,11 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}>
-      <div className="handle-wrapper handle-left">
+      <div className="handle-wrapper handle-left !top-[25%]">
         <Handle type="target" position={Position.Left} id="image" className="handle-image" />
         <span className="handle-label">Image in</span>
       </div>
-      <div className="handle-wrapper handle-left !top-[60%]">
+      <div className="handle-wrapper handle-left !top-[75%]">
         <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
         <span className="handle-label">Prompt in</span>
       </div>
