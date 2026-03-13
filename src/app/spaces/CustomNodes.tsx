@@ -384,75 +384,57 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
   };
 
   const handleExport = async () => {
-    if (!sourceNode && !exportPreview) return alert("Connect an image first!");
+    if (!sourceNode) return alert("Connect an image first!");
     
     setIsExporting(true);
     try {
-      // Create a virtual canvas
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Determine dimensions
-      const { w: exportW, h: exportH } = getDimensions();
-      canvas.width = exportW;
-      canvas.height = exportH;
-
-      console.log(`[Export] Starting composition at ${exportW}x${exportH}...`);
-
-      // Clear canvas with transparent or checkerboard? Lets stick to transparent
-      ctx.clearRect(0, 0, exportW, exportH);
-
-      if (layers.length > 0) {
-        for (const [idx, layer] of layers.entries()) {
-          console.log(`[Export] Drawing layer ${idx+1}...`);
-          if (layer.color) {
-            ctx.fillStyle = layer.color;
-            ctx.fillRect(0, 0, exportW, exportH);
-          } else if (layer.value) {
-            const img = await loadCanvasImage(layer.value);
-            drawImageContain(ctx, img, exportW, exportH);
-          }
-        }
-      } else if (sourceNode && sourceNode.data && sourceNode.data.value) {
-        const img = await loadCanvasImage(sourceNode.data.value as string);
-        drawImageContain(ctx, img, exportW, exportH);
-      }
-
-      // Generate the image data
-      const mime = format === 'png' ? 'image/png' : 'image/jpeg';
+      const { w, h } = getDimensions();
       const extension = format === 'jpeg' ? 'jpg' : 'png';
-      const dataUrl = canvas.toDataURL(mime, format === 'jpeg' ? 0.92 : 1.0);
-      setExportPreview(dataUrl);
+      const filename = `AI_Space_Output_${new Date().getTime()}.${extension}`;
 
-      // Final attempt at guaranteed download: Multiple fallback strategies
-      const filename = `AI_Output_${new Date().getTime()}.${extension}`;
-      
-      // 1. Update form and submit (Server-side forced headers)
-      setDownloadFormData({ base64: dataUrl, filename, format });
+      console.log(`[Export] Triggering server-side composition for ${filename}...`);
 
-      console.log(`[Export] Build complete. Size: ${Math.round(dataUrl.length / 1024)} KB`);
+      // We use a hidden form to send layers and receive the file download directly
+      // This is the most robust way to trigger a "Save As" dialog with the correct name.
+      if (downloadFormRef.current) {
+        const layersInput = downloadFormRef.current.querySelector('input[name="layers"]') as HTMLInputElement;
+        const filenameInput = downloadFormRef.current.querySelector('input[name="filename"]') as HTMLInputElement;
+        const formatInput = downloadFormRef.current.querySelector('input[name="format"]') as HTMLInputElement;
+        const widthInput = downloadFormRef.current.querySelector('input[name="width"]') as HTMLInputElement;
+        const heightInput = downloadFormRef.current.querySelector('input[name="height"]') as HTMLInputElement;
+
+        if (layersInput) layersInput.value = JSON.stringify(layers);
+        if (filenameInput) filenameInput.value = filename;
+        if (formatInput) formatInput.value = format;
+        if (widthInput) widthInput.value = w.toString();
+        if (heightInput) heightInput.value = h.toString();
+
+        downloadFormRef.current.submit();
+      }
 
     } catch (error: any) {
       console.error("Export error details:", error);
       alert(`Export failed: ${error.message || "Unknown error"}`);
     } finally {
-      setIsExporting(false);
+      // Small timeout to show the "Building" state briefly
+      setTimeout(() => setIsExporting(false), 1500);
     }
   };
 
   return (
     <div className="custom-node export-node border-rose-500/30">
-      {/* Hidden form for server-side forced download */}
+      {/* Hidden form for server-side Lambda-style Composition & Download */}
       <form 
         ref={downloadFormRef} 
-        action="/api/spaces/download" 
+        action="/api/spaces/compose" 
         method="POST" 
         style={{ display: 'none' }}
       >
-        <input type="hidden" name="base64" value={downloadFormData.base64} />
-        <input type="hidden" name="filename" value={downloadFormData.filename} />
-        <input type="hidden" name="format" value={downloadFormData.format} />
+        <input type="hidden" name="layers" />
+        <input type="hidden" name="filename" />
+        <input type="hidden" name="format" />
+        <input type="hidden" name="width" />
+        <input type="hidden" name="height" />
       </form>
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="image" className="handle-image" />
