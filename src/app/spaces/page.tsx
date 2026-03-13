@@ -41,7 +41,8 @@ import {
   Copy,
   Workflow,
   Loader2,
-  X 
+  X,
+  Edit2
 } from 'lucide-react';
 
 const initialNodes: Node[] = [
@@ -87,6 +88,8 @@ const SpacesContent = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   // Fetch saved spaces on mount
   useEffect(() => {
@@ -182,6 +185,30 @@ const SpacesContent = () => {
       console.error('Duplicate error:', err);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const renameSpace = async (id: string, newName: string) => {
+    const spaceToUpdate = savedSpaces.find(s => s.id === id);
+    if (!spaceToUpdate) return;
+
+    try {
+      const res = await fetch('/api/spaces', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...spaceToUpdate,
+          name: newName
+        })
+      });
+      const updatedList = await res.json();
+      if (Array.isArray(updatedList)) {
+        setSavedSpaces(updatedList);
+        if (currentId === id) setCurrentName(newName);
+      }
+      setEditingId(null);
+    } catch (err) {
+      console.error('Rename error:', err);
     }
   };
 
@@ -355,7 +382,28 @@ const SpacesContent = () => {
                           <Workflow size={20} className="text-rose-500" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-bold text-white truncate uppercase tracking-tight">{space.name}</h4>
+                          {editingId === space.id ? (
+                            <input 
+                              autoFocus
+                              type="text"
+                              className="bg-white/10 border border-rose-500/50 rounded-lg px-2 py-1 text-sm font-bold text-white w-full focus:outline-none"
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onBlur={() => renameSpace(space.id, editingName)}
+                              onKeyDown={(e) => e.key === 'Enter' && renameSpace(space.id, editingName)}
+                            />
+                          ) : (
+                            <h4 
+                              onClick={() => {
+                                setEditingId(space.id);
+                                setEditingName(space.name);
+                              }}
+                              className="text-sm font-bold text-white truncate uppercase tracking-tight cursor-pointer hover:text-rose-500 flex items-center gap-2 group/title"
+                            >
+                              {space.name}
+                              <Edit2 size={12} className="opacity-0 group-hover/title:opacity-50 transition-opacity" />
+                            </h4>
+                          )}
                           <div className="flex items-center gap-3 mt-1">
                              <div className="flex items-center gap-1 text-[9px] text-gray-500 uppercase font-black tracking-widest">
                                <Calendar size={10} /> {new Date(space.updatedAt).toLocaleDateString()}

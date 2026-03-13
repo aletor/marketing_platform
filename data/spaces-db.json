@@ -193,8 +193,8 @@
         "id": "node_1773366431549_796",
         "type": "runwayProcessor",
         "position": {
-          "x": 1062.8975605744577,
-          "y": 423.0059226331833
+          "x": 405.9816129273291,
+          "y": 435.1992580883504
         },
         "data": {
           "value": "",
@@ -203,14 +203,16 @@
         "measured": {
           "width": 320,
           "height": 173
-        }
+        },
+        "selected": true,
+        "dragging": false
       },
       {
         "id": "node_1773366433199_415",
         "type": "nanoBanana",
         "position": {
-          "x": 1154.727516233342,
-          "y": -226.2479743936659
+          "x": 494.76323472242166,
+          "y": -287.2146516695015
         },
         "data": {
           "value": "",
@@ -222,6 +224,22 @@
         },
         "selected": false,
         "dragging": false
+      },
+      {
+        "id": "node_1773366658851_508",
+        "type": "grokProcessor",
+        "position": {
+          "x": 1276.4756765205332,
+          "y": -90.82614547808268
+        },
+        "data": {
+          "value": "",
+          "label": "grokProcessor node"
+        },
+        "measured": {
+          "width": 320,
+          "height": 173
+        }
       }
     ],
     "edges": [
@@ -243,6 +261,6 @@
       }
     ],
     "createdAt": "2026-03-13T01:50:49.103Z",
-    "updatedAt": "2026-03-13T01:50:49.103Z"
+    "updatedAt": "2026-03-13T01:51:00.468Z"
   }
 ]
