@@ -41,6 +41,7 @@ interface BaseNodeData {
   resolution?: string;
   aspect_ratio?: string;
   label?: string;
+  loading?: boolean;
 }
 
 export const ButtonEdge = ({
@@ -297,7 +298,7 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
         width: (node?.data.width || 1920) as number,
         height: (node?.data.height || 1080) as number
       };
-    }).filter(l => l.value || l.color);
+    }).filter(l => (l.value as string) || (l.color as string));
   }, [sourceNode, edges, nodes]);
 
   const handleExport = async () => {
@@ -333,14 +334,14 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
             ctx.drawImage(img, 0, 0, exportW, exportH);
           }
         }
-      } else if (sourceNode?.data.value) {
+      } else if (sourceNode?.data.value as string) {
         // Just a single image
         const img = new Image();
         img.crossOrigin = "anonymous";
         await new Promise((resolve, reject) => {
           img.onload = resolve;
           img.onerror = reject;
-          img.src = sourceNode.data.value;
+          img.src = sourceNode.data.value as string;
         });
         ctx.drawImage(img, 0, 0, exportW, exportH);
       }

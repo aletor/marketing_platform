@@ -15,7 +15,8 @@ import {
   FilePlus,
   Eye,
   Paintbrush,
-  Layers
+  Layers,
+  Download
 } from 'lucide-react';
 
 interface SidebarProps {
