@@ -1,6 +1,7 @@
+```
 "use client";
 
-import React, { memo, useState, useEffect, useMemo } from 'react';
+import React, { memo, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Handle, Position, NodeProps, BaseEdge, EdgeLabelRenderer, getBezierPath, EdgeProps, useReactFlow, useNodes, useEdges } from '@xyflow/react';
 import { 
   Video, 
@@ -305,6 +306,18 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
   const [exportPreview, setExportPreview] = useState<string | null>(null);
   const [format, setFormat] = useState<'png' | 'jpeg'>('png');
 
+  // Create a hidden form for downloads (guarantees filename preservation)
+  const downloadFormRef = useRef<HTMLFormElement>(null);
+  const [downloadFormData, setDownloadFormData] = useState({ base64: '', filename: '', format: '' });
+
+  useEffect(() => {
+    if (downloadFormData.base64 && downloadFormRef.current) {
+      downloadFormRef.current.submit();
+      // Clear after submit to prevent re-submission
+      setDownloadFormData({ base64: '', filename: '', format: '' });
+    }
+  }, [downloadFormData]);
+
   // Helper for "contain" logic
   const drawImageContain = (ctx: CanvasRenderingContext2D, img: HTMLImageElement, w: number, h: number) => {
     const imgAspect = img.width / img.height;
@@ -393,40 +406,23 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
       // Update preview immediately
       setExportPreview(dataUrl);
 
-      // 2. Professional Server-Side Download Trigger
-      // This is the ONLY way to 100% guarantee filenames and extensions in many browsers
+      // 2. Guaranteed Form-Post Download
+      // This forces the browser to handle the response as a direct file download
       const extension = format === 'jpeg' ? 'jpg' : 'png';
       const timestamp = new Date().getTime();
-      const filename = `AI_Composition_${timestamp}.${extension}`;
+      const filename = `AI_Space_Result_${timestamp}.${extension}`;
 
-      console.log(`[Export] Requesting server-side download for: ${filename}`);
+      console.log(`[Export] Launching form-post download for: ${filename}`);
       
-      const downloadRes = await fetch('/api/spaces/download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64: dataUrl, filename, format })
+      setDownloadFormData({
+        base64: dataUrl,
+        filename: filename,
+        format: format
       });
-
-      if (!downloadRes.ok) throw new Error("Server failed to generate download file");
-
-      const blob = await downloadRes.blob();
-      const downloadUrl = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      
-      // Final Cleanup
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(downloadUrl);
-      }, 1000);
 
     } catch (error: any) {
       console.error("Export error details:", error);
-      alert(`Export failed: ${error.message || "Unknown error"}. This usually happens due to CORS security blocking the image download.`);
+      alert(`Export failed: ${error.message || "Unknown error"}.`);
     } finally {
       setIsExporting(false);
     }
@@ -434,6 +430,17 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className="custom-node export-node border-rose-500/30">
+      {/* Hidden form for server-side forced download */}
+      <form 
+        ref={downloadFormRef} 
+        action="/api/spaces/download" 
+        method="POST" 
+        style={{ display: 'none' }}
+      >
+        <input type="hidden" name="base64" value={downloadFormData.base64} />
+        <input type="hidden" name="filename" value={downloadFormData.filename} />
+        <input type="hidden" name="format" value={downloadFormData.format} />
+      </form>
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="image" className="handle-image" />
         <span className="handle-label">Image Input</span>
