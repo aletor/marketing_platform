@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useState, useEffect } from 'react';
+import React, { memo, useState, useEffect, useMemo } from 'react';
 import { Handle, Position, NodeProps, BaseEdge, EdgeLabelRenderer, getBezierPath, EdgeProps, useReactFlow, useNodes, useEdges } from '@xyflow/react';
 import { 
   Video, 
@@ -155,39 +155,52 @@ export const ConcatenatorNode = memo(({ id, data }: NodeProps<any>) => {
   const edges = useEdges();
   const { setNodes } = useReactFlow();
 
+  // Find all edges connected TO this node
+  const connectedInputs = useMemo(() => 
+    edges.filter((e: any) => e.target === id).sort((a: any, b: any) => (a.targetHandle || '').localeCompare(b.targetHandle || '')),
+    [edges, id]
+  );
+
+  // Dynamic logic: result is concatenation of all connected prompt values
   useEffect(() => {
-    const connectedEdges = edges.filter((e) => e.target === id);
-    let p1 = '';
-    let p2 = '';
-    connectedEdges.forEach((edge) => {
-      const source = nodes.find((n) => n.id === edge.source);
-      if (source) {
-        if (edge.targetHandle === 'p1') p1 = (source.data.value as string) || '';
-        if (edge.targetHandle === 'p2') p2 = (source.data.value as string) || '';
-      }
+    const values = connectedInputs.map((edge: any) => {
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      return sourceNode?.data.value || '';
     });
-    const result = `${p1} ${p2}`.trim();
+    
+    const result = values.filter((v: any) => v).join(' ').trim();
     if (result !== (nodeData.value || '')) {
       setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, value: result } } : n));
     }
-  }, [edges, nodes, id, nodeData.value, setNodes]);
+  }, [connectedInputs, nodes, id, nodeData.value, setNodes]);
+
+  // Handle generation: connected ones + 1 empty one at the end
+  const handleIds = useMemo(() => {
+    const ids = connectedInputs.map((e: any) => e.targetHandle || 'p0');
+    // Ensure we always have at least one empty handle, or one extra after the last connected one
+    const lastNum = ids.length > 0 ? parseInt(ids[ids.length - 1].replace('p', '')) : -1;
+    return [...new Set([...ids, `p${lastNum + 1}`])];
+  }, [connectedInputs]);
 
   return (
-    <div className="custom-node tool-node">
-      <div className="handle-wrapper handle-left" style={{ top: '30%' }}>
-        <Handle type="target" position={Position.Left} id="p1" className="handle-prompt" />
-        <span className="handle-label">Prompt A</span>
-      </div>
-      <div className="handle-wrapper handle-left" style={{ top: '70%' }}>
-        <Handle type="target" position={Position.Left} id="p2" className="handle-prompt" />
-        <span className="handle-label">Prompt B</span>
-      </div>
+    <div className="custom-node tool-node min-w-[180px]">
+      {handleIds.map((hId: any, index: number) => (
+        <div key={hId} className="handle-wrapper handle-left" style={{ top: `${(index + 1) * (100 / (handleIds.length + 1))}%` }}>
+          <Handle type="target" position={Position.Left} id={hId} className="handle-prompt" />
+          <span className="handle-label">In {index + 1}</span>
+        </div>
+      ))}
+      
       <div className="node-header"><PlusSquare size={16} /> CONCATENATOR</div>
       <div className="node-content">
-        <div className="p-3 bg-black/40 rounded-lg text-[11px] text-gray-400 font-mono italic min-h-[60px]">
-          {nodeData.value || 'Connect two prompts to combine them...'}
+        <div className="p-3 bg-black/40 rounded-lg text-[10px] text-gray-400 font-mono italic min-h-[50px] max-h-[150px] overflow-y-auto">
+          {nodeData.value || 'Connect prompts to combine them...'}
+        </div>
+        <div className="mt-2 text-[8px] text-gray-600 uppercase font-bold tracking-tighter">
+          {connectedInputs.length} Inputs active
         </div>
       </div>
+      
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Result</span>
         <Handle type="source" position={Position.Right} className="handle-prompt" />
