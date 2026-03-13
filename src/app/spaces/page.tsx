@@ -27,6 +27,7 @@ import {
   EnhancerNode, 
   NanoBananaNode,
   MaskExtractionNode,
+  MediaDescriberNode,
   ButtonEdge 
 } from './CustomNodes';
 import Sidebar from './Sidebar';
@@ -64,6 +65,7 @@ const nodeTypes: any = {
   enhancer: EnhancerNode,
   nanoBanana: NanoBananaNode,
   maskExtraction: MaskExtractionNode,
+  mediaDescriber: MediaDescriberNode,
 };
 
 const edgeTypes = {

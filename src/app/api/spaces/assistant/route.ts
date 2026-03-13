@@ -33,6 +33,7 @@ Your task is to translate a user's natural language request into a node-based wo
    - enhancer: input is "prompt", output is "prompt"
    - nanoBanana: inputs are "image", "prompt", output is "image"
    - maskExtraction: input is "media", output is "mask"
+   - mediaDescriber: input is "media", output is "prompt". Use it to analyze any media content.
 4. Layout: Space nodes reasonably (e.g., 400px apart).
 5. Connections: Ensure connections match the handle types.
 

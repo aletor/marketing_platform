@@ -28,7 +28,8 @@ import {
   FileText,
   Music,
   Info,
-  Globe
+  Globe,
+  Eye
 } from 'lucide-react';
 import './spaces.css';
 
@@ -733,6 +734,77 @@ export const MaskExtractionNode = memo(({ id, data }: NodeProps<any>) => {
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Mask Asset</span>
         <Handle type="source" position={Position.Right} id="mask" className="handle-mask" />
+      </div>
+    </div>
+  );
+});
+
+export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
+  const nodeData = data as BaseNodeData;
+  const nodes = useNodes();
+  const edges = useEdges();
+  const { setNodes } = useReactFlow();
+  const [status, setStatus] = useState('idle');
+  const [description, setDescription] = useState<string | null>(null);
+
+  const onRun = async () => {
+    const inputNode = nodes.find(n => n.id === edges.find(e => e.target === id && e.targetHandle === 'media')?.source);
+    const mediaUrl = inputNode?.data.value;
+    const mediaType = inputNode?.data.type;
+    
+    if (!mediaUrl) return alert("Need media input to describe!");
+
+    setStatus('running');
+    
+    // Simulated AI Perception
+    setTimeout(() => {
+      let mockDesc = "";
+      if (mediaType === 'video') mockDesc = "A cinematic wide shot of a futuristic city at sunset with flying vehicles and neon skyscraper lights.";
+      else if (mediaType === 'image') mockDesc = "A high-quality portrait of a cybernetic character with glowing implants and metallic skin.";
+      else if (mediaType === 'audio') mockDesc = "An upbeat electronic synthwave track with a heavy bassline and retro-futuristic vibes.";
+      else if (mediaType === 'pdf' || mediaType === 'txt') mockDesc = "A technical document outlining the specifications for an advanced AI neural network architecture.";
+      else mockDesc = "A digital asset containing rich details and complex structural patterns.";
+
+      setDescription(mockDesc);
+      setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, value: mockDesc } } : n)));
+      setStatus('success');
+    }, 2500);
+  };
+
+  return (
+    <div className={`custom-node describer-node ${status === 'running' ? 'node-glow-running' : ''}`}>
+      <div className="handle-wrapper handle-left">
+        <Handle type="target" position={Position.Left} id="media" />
+        <span className="handle-label">Media in</span>
+      </div>
+      
+      <div className="node-header">
+        <Eye size={16} /> MEDIA DESCRIBER
+        {status === 'running' && <Loader2 size={12} className="animate-spin ml-auto" />}
+      </div>
+      
+      <div className="node-content">
+        <p className="text-[10px] text-gray-500 mb-3 italic">Analyze any media and generate a detailed prompt description.</p>
+        
+        <button className="execute-btn w-full justify-center mb-4" onClick={onRun} disabled={status === 'running'}>
+          {status === 'running' ? 'ANALYZING...' : 'GENERATE DESCRIPTION'}
+        </button>
+
+        <div className="p-3 bg-black/40 rounded-xl border border-white/5 min-h-[80px]">
+          {description ? (
+            <div className="text-[10px] text-gray-300 leading-relaxed font-mono">{description}</div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center opacity-20 py-4">
+              <Zap size={24} className="mb-2" />
+              <span className="text-[8px] font-bold uppercase">Awaiting analysis</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="handle-wrapper handle-right">
+        <span className="handle-label">Description (Prompt)</span>
+        <Handle type="source" position={Position.Right} id="prompt" className="handle-prompt" />
       </div>
     </div>
   );

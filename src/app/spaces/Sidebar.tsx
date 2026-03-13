@@ -12,7 +12,8 @@ import {
   Sparkles,
   Loader2,
   Scissors,
-  FilePlus
+  FilePlus,
+  Eye
 } from 'lucide-react';
 
 interface SidebarProps {
