@@ -235,6 +235,26 @@ const SpacesContent = () => {
               {currentId ? 'Save Changes' : 'Save Space'}
             </button>
           </div>
+
+          {/* Legend HUD */}
+          <div className="absolute bottom-6 left-6 flex gap-6 px-5 py-3 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl z-50 pointer-events-none shadow-2xl">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Prompt Logic</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Video Stream</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.6)]" />
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Image Output</span>
+            </div>
+            <div className="border-l border-white/10 ml-2 pl-4 flex items-center gap-2">
+              <div className="w-4 h-4 bg-red-500/20 rounded-full flex items-center justify-center border border-red-500/40 text-[8px] font-black text-red-500">X</div>
+              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Click wire to disconnect</span>
+            </div>
+          </div>
         </ReactFlow>
 
         {/* Modals */}
