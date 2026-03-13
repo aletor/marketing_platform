@@ -164,17 +164,25 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
 
 // --- IMAGE COMPOSER NODE ---
 
+// --- IMAGE COMPOSER NODE ---
+
 export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
   const nodes = useNodes();
   const edges = useEdges();
   
-  // Find all sources connected to this node
+  // Find all edges connected TO this node, sorted by handle ID (layer-0, layer-1...)
+  const connectedInputs = useMemo(() => 
+    edges.filter((e: any) => e.target === id).sort((a: any, b: any) => (a.targetHandle || '').localeCompare(b.targetHandle || '')),
+    [edges, id]
+  );
+
+  // Map handles to actual layer data
   const layers = useMemo(() => {
-    const connectedEdges = edges.filter(e => e.target === id);
-    return connectedEdges.map(edge => {
+    return connectedInputs.map(edge => {
       const sourceNode = nodes.find(n => n.id === edge.source);
       return {
         id: sourceNode?.id,
+        handleId: edge.targetHandle,
         type: sourceNode?.data.type,
         value: sourceNode?.data.value as string | undefined,
         color: sourceNode?.data.color as string | undefined,
@@ -182,14 +190,24 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
         height: sourceNode?.data.height as number | undefined
       };
     }).filter(l => l.value || l.color);
-  }, [nodes, edges, id]);
+  }, [connectedInputs, nodes]);
+
+  // Dynamic Handle IDs: used ones + 1 extra
+  const handleIds = useMemo(() => {
+    const ids = connectedInputs.map((e: any) => e.targetHandle || 'layer-0');
+    const lastNum = ids.length > 0 ? parseInt(ids[ids.length - 1].replace('layer-', '')) : -1;
+    return [...new Set([...ids, `layer-${lastNum + 1}`])];
+  }, [connectedInputs]);
 
   return (
-    <div className="custom-node composer-node">
-      <div className="handle-wrapper handle-left">
-        <Handle type="target" position={Position.Left} id="layers" className="handle-image" />
-        <span className="handle-label">Add Layers</span>
-      </div>
+    <div className="custom-node composer-node min-w-[300px]">
+      {handleIds.map((hId: any, index: number) => (
+        <div key={hId} className="handle-wrapper handle-left" style={{ top: `${(index + 1) * (100 / (handleIds.length + 1))}%` }}>
+          <Handle type="target" position={Position.Left} id={hId} className="handle-image" />
+          <span className="handle-label">Layer {index + 1}</span>
+        </div>
+      ))}
+
       <div className="node-header">
         <Layers size={16} /> IMAGE COMPOSER
       </div>
@@ -199,8 +217,10 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
           <span className="bg-white/10 px-2 py-0.5 rounded-full text-white">{layers.length}</span>
         </div>
         
-        {/* Composition Preview Stack */}
-        <div className="relative w-full aspect-video bg-black/40 rounded-xl overflow-hidden border border-white/10 group">
+        {/* Composition Preview Stack with Checkerboard Background */}
+        <div className="relative w-full aspect-video bg-black/60 rounded-xl overflow-hidden border border-white/10 group shadow-inner" 
+             style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '10px 10px', backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0px' }}>
+          
           {layers.length === 0 ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-700 gap-2">
               <Layers size={32} />
@@ -209,8 +229,8 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
           ) : (
             layers.map((layer, idx) => (
               <div 
-                key={layer.id || idx} 
-                className="absolute inset-0 transition-all duration-500"
+                key={layer.handleId || idx} 
+                className="absolute inset-0 transition-all duration-500 animate-in fade-in zoom-in-95"
                 style={{ zIndex: idx }}
               >
                 {/* If it's a background node (has color) */}
@@ -226,25 +246,25 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
           {/* Overlay Info on Hover */}
           <div className="absolute bottom-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
              <div className="bg-black/80 backdrop-blur-md px-2 py-1 rounded text-[8px] font-mono text-cyan-400 border border-cyan-500/30">
-               STACK MODE: OVERLAY
+               MULTILAYER COMPOSITE
              </div>
           </div>
         </div>
 
-        <div className="mt-4 space-y-1">
+        <div className="mt-4 space-y-1 max-h-[120px] overflow-y-auto pr-1 custom-scrollbar">
           {layers.map((l, i) => (
-            <div key={i} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg border border-white/[0.02] text-[9px]">
+            <div key={i} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg border border-white/[0.02] text-[9px] hover:bg-white/10 transition-colors">
               <div className="w-4 h-4 rounded text-[8px] flex items-center justify-center bg-white/10 text-gray-400 font-bold">{i+1}</div>
               <span className="flex-1 truncate font-medium text-gray-400 uppercase tracking-tighter">
                 {l.color ? `Canvas: ${l.color}` : `Image: Layer Asset`}
               </span>
-              <div className={`w-1.5 h-1.5 rounded-full ${l.color ? 'bg-amber-500' : 'bg-pink-500'}`}></div>
+              <div className={`w-1.5 h-1.5 rounded-full ${l.color ? 'bg-amber-500 shadow-[0_0_5px_#f59e0b]' : 'bg-pink-500 shadow-[0_0_5px_#ec4899]'}`}></div>
             </div>
           ))}
         </div>
       </div>
       <div className="handle-wrapper handle-right">
-        <span className="handle-label">Composite out</span>
+        <span className="handle-label">Image out</span>
         <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
     </div>
