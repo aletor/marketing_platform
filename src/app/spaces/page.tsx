@@ -94,29 +94,37 @@ const SpacesContent = () => {
   const saveSpace = async (nameToSave?: string) => {
     setIsSaving(true);
     try {
+      const spaceToSave = {
+        id: currentId,
+        name: nameToSave || currentName || 'Untitled Space',
+        nodes,
+        edges
+      };
+
       const res = await fetch('/api/spaces', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: currentId,
-          name: nameToSave || currentName || 'Untitled Space',
-          nodes,
-          edges
-        })
+        body: JSON.stringify(spaceToSave)
       });
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setSavedSpaces(data);
+      
+      const updatedList = await res.json();
+      
+      if (Array.isArray(updatedList)) {
+        setSavedSpaces(updatedList);
+        
+        // If we were saving a new space, we need the ID from the server
         if (!currentId) {
-          // If it was a new save, find it in the list to set currentId
-          const last = data[data.length - 1];
-          setCurrentId(last.id);
-          setCurrentName(last.name);
+          const matched = updatedList.find((s: any) => s.name === spaceToSave.name);
+          if (matched) {
+            setCurrentId(matched.id);
+            setCurrentName(matched.name);
+          }
         }
       }
       setShowSaveModal(false);
     } catch (err) {
       console.error('Save error:', err);
+      alert('Error saving space. Check console for details.');
     } finally {
       setIsSaving(false);
     }

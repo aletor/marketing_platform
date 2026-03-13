@@ -53,6 +53,40 @@
           "width": 548,
           "height": 161
         }
+      },
+      {
+        "id": "node_1773366431549_796",
+        "type": "runwayProcessor",
+        "position": {
+          "x": 1062.8975605744577,
+          "y": 423.0059226331833
+        },
+        "data": {
+          "value": "",
+          "label": "runwayProcessor node"
+        },
+        "measured": {
+          "width": 320,
+          "height": 173
+        }
+      },
+      {
+        "id": "node_1773366433199_415",
+        "type": "nanoBanana",
+        "position": {
+          "x": 1154.727516233342,
+          "y": -226.2479743936659
+        },
+        "data": {
+          "value": "",
+          "label": "nanoBanana node"
+        },
+        "measured": {
+          "width": 320,
+          "height": 291
+        },
+        "selected": false,
+        "dragging": false
       }
     ],
     "edges": [
@@ -74,6 +108,6 @@
       }
     ],
     "createdAt": "2026-03-13T01:45:55.683Z",
-    "updatedAt": "2026-03-13T01:45:55.683Z"
+    "updatedAt": "2026-03-13T01:47:30.252Z"
   }
 ]
