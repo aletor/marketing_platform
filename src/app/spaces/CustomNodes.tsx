@@ -332,8 +332,8 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
             await new Promise((resolve, reject) => {
               img.onload = resolve;
               img.onerror = () => reject(new Error(`Failed to load layer: ${layer.value}`));
-              // Append cache-buster for CORS reliability
-              img.src = layer.value!.includes('?') ? `${layer.value}&t=${Date.now()}` : `${layer.value}?t=${Date.now()}`;
+              // Use original URL to avoid breaking S3 signatures
+              img.src = layer.value!;
             });
             ctx.drawImage(img, 0, 0, exportW, exportH);
           }
@@ -346,7 +346,7 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
         await new Promise((resolve, reject) => {
           img.onload = resolve;
           img.onerror = () => reject(new Error(`Failed to load source: ${val}`));
-          img.src = val.includes('?') ? `${val}&t=${Date.now()}` : `${val}?t=${Date.now()}`;
+          img.src = val;
         });
         ctx.drawImage(img, 0, 0, exportW, exportH);
       }
