@@ -591,11 +591,14 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
   const nodes = useNodes();
   const edges = useEdges();
+  const { setNodes } = useReactFlow();
   const [status, setStatus] = useState('idle');
   const [result, setResult] = useState<string | null>(null);
 
   const onRun = async () => {
     const prompt = nodes.find(n => n.id === edges.find(e => e.target === id && e.targetHandle === 'prompt')?.source)?.data.value;
+    const image = nodes.find(n => n.id === edges.find(e => e.target === id && e.targetHandle === 'image')?.source)?.data.value;
+    
     if (!prompt) return alert("Need prompt!");
 
     setStatus('running');
@@ -605,26 +608,39 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           model: 'lucataco/flux-dev-nano-banana',
-          input: { prompt }
+          input: { 
+            prompt,
+            image: image || undefined // Use image if provided for img2img
+          }
         })
       });
       const json = await res.json();
       if (json.output) {
-        setResult(typeof json.output === 'string' ? json.output : json.output[0]);
+        const outUrl = typeof json.output === 'string' ? json.output : json.output[0];
+        setResult(outUrl);
+        setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, value: outUrl, type: 'image' } } : n)));
         setStatus('success');
       }
-    } catch (e) { setStatus('error'); }
+    } catch (e) { 
+      console.error(e);
+      setStatus('error'); 
+    }
   };
 
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}>
       <div className="handle-wrapper handle-left">
+        <Handle type="target" position={Position.Left} id="image" className="handle-image" />
+        <span className="handle-label">Image in</span>
+      </div>
+      <div className="handle-wrapper handle-left !top-[60%]">
         <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
         <span className="handle-label">Prompt in</span>
       </div>
+
       <div className="node-header"><ImageIcon size={16} /> NANO BANANA 2</div>
       <div className="node-content">
-        <button className="execute-btn w-full justify-center mb-4" onClick={onRun}>
+        <button className="execute-btn w-full justify-center mb-4" onClick={onRun} disabled={status === 'running'}>
           {status === 'running' ? 'GENERATE...' : 'GENERATE IMAGE'}
         </button>
         <div className="drop-zone overflow-hidden bg-black/60 min-h-[160px]">
@@ -634,7 +650,7 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
       </div>
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Image out</span>
-        <Handle type="source" position={Position.Right} className="handle-image" />
+        <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
     </div>
   );
