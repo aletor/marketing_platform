@@ -167,10 +167,10 @@
 
 /* Sidebar Styling */
 .spaces-sidebar {
-  width: 280px;
+  width: 200px;
   background: #0a0a0a;
   border-right: 1px solid #1a1a1a;
-  padding: 24px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -208,29 +208,86 @@
 }
 
 .dndnode {
-  padding: 12px 16px;
+  padding: 6px 2px;
   background: #111;
-  border: 1px solid #222;
+  border: 1px solid #1a1a1a;
   border-radius: 12px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  gap: 3px;
   cursor: grab;
-  transition: all 0.2s;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #ccc;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #555;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  aspect-ratio: 1/1;
 }
 
 .dndnode:hover {
   background: #161616;
-  border-color: #333;
+  border-color: rgba(255, 255, 255, 0.1);
   color: #fff;
-  transform: translateX(4px);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.5);
 }
 
 .dndnode svg {
   color: #666;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+}
+
+.type-indicator-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+  padding: 0 8px;
+  position: absolute;
+  bottom: 8px;
+  opacity: 0;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.dndnode:hover .type-indicator-container {
+  opacity: 1;
+}
+
+.type-group {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  max-width: 45%;
+}
+
+.type-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #222;
+  box-shadow: 0 0 6px rgba(0,0,0,0.5);
+  transition: all 0.3s;
+}
+
+.type-dot.active {
+  box-shadow: 0 0 10px currentColor;
+}
+
+.type-dot.image, .type-dot.video { background: #f43f5e; color: #f43f5e; }
+.type-dot.prompt { background: #3b82f6; color: #3b82f6; }
+.type-dot.url { background: #10b981; color: #10b981; }
+.type-dot.mask { background: #06b6d4; color: #06b6d4; }
+.type-dot.audio { background: #a855f7; color: #a855f7; }
+.type-dot.pdf, .type-dot.txt { background: #f97316; color: #f97316; }
+.type-dot.json { background: #f59e0b; color: #f59e0b; }
+
+.dndnode:hover .type-dot.active {
+  transform: scale(1.4);
 }
 
 /* Overlay for DnD */
@@ -324,4 +381,62 @@
   transform: scale(1.5);
   background: #06b6d4;
   border-color: white;
+}
+/* Context Menu Styling */
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  background: rgba(18, 18, 20, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 6px;
+  min-width: 200px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  animation: contextMenuFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes contextMenuFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.context-menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.context-menu-item.danger:hover {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+}
+
+.context-menu-item.primary {
+  color: #06b6d4;
+}
+
+.context-menu-item.primary:hover {
+  background: rgba(6, 182, 212, 0.15);
+  color: #22d3ee;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  margin: 4px 6px;
 }

@@ -1,4 +1,4 @@
-export type HandleType = 'image' | 'video' | 'audio' | 'prompt' | 'mask' | 'pdf' | 'txt' | 'url';
+export type HandleType = 'image' | 'video' | 'audio' | 'prompt' | 'mask' | 'pdf' | 'txt' | 'url' | 'json';
 
 export interface NodeMetadata {
   type: string;
@@ -90,7 +90,7 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
       format: 'png | jpeg'
     }
   },
-  prompt: {
+  promptInput: {
     type: 'promptInput',
     label: 'Prompt',
     description: 'Input text to guide generative models.',
@@ -132,8 +132,7 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
     label: 'Prompt Concatenator',
     description: 'Combines multiple text strings into a single large prompt.',
     inputs: [
-      { id: 'p1', label: 'Part 1', type: 'prompt' },
-      { id: 'p2', label: 'Part 2', type: 'prompt' }
+      { id: 'p-n', label: 'Prompt Part', type: 'prompt' }
     ],
     outputs: [
       { id: 'prompt', label: 'Combined Prompt', type: 'prompt' }
@@ -165,17 +164,23 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
     ],
     dataSchema: {}
   },
-  maskExtraction: {
-    type: 'maskExtraction',
-    label: 'Mask Extraction',
-    description: 'Extracts backgrounds or specific subjects (matte/mask) from media.',
+  backgroundRemover: {
+    type: 'backgroundRemover',
+    label: 'Background Remover',
+    description: 'Professional human matting and background removal using 851-labs.',
     inputs: [
-      { id: 'media', label: 'Target Media', type: 'image' }
+      { id: 'media', label: 'Image', type: 'image' }
     ],
     outputs: [
-      { id: 'mask', label: 'Extracted Mask', type: 'mask' }
+      { id: 'mask', label: 'Mask', type: 'mask' },
+      { id: 'rgba', label: 'Cutout', type: 'image' },
+      { id: 'bbox', label: 'BBox', type: 'json' }
     ],
-    dataSchema: {}
+    dataSchema: {
+      threshold: 0.9,
+      expansion: 0,
+      feather: 0.6
+    }
   },
   mediaDescriber: {
     type: 'mediaDescriber',
@@ -210,6 +215,20 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
     inputs: [],
     outputs: [
       { id: 'out', label: 'Entry Point', type: 'url' }
+    ],
+    dataSchema: {}
+  },
+  videoBackgroundRemoval: {
+    type: 'videoBackgroundRemoval',
+    label: 'Video BG Removal',
+    description: 'Professional video background removal and matting using RVM.',
+    inputs: [
+      { id: 'video', label: 'Source Video', type: 'url' }
+    ],
+    outputs: [
+      { id: 'mask', label: 'Mask', type: 'mask' },
+      { id: 'rgba', label: 'Cutout Video', type: 'url' },
+      { id: 'green', label: 'Green Screen', type: 'url' }
     ],
     dataSchema: {}
   },

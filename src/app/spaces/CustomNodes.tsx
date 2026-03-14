@@ -196,6 +196,7 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
               className="node-input" 
               value={w}
               onChange={(e) => updateData('width', parseInt(e.target.value))}
+              onContextMenu={(e) => e.stopPropagation()}
             />
           </div>
           <div>
@@ -205,6 +206,7 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
               className="node-input" 
               value={h}
               onChange={(e) => updateData('height', parseInt(e.target.value))}
+              onContextMenu={(e) => e.stopPropagation()}
             />
           </div>
         </div>
@@ -217,12 +219,14 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
               className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-none"
               value={color}
               onChange={(e) => updateData('color', e.target.value)}
+              onContextMenu={(e) => e.stopPropagation()}
             />
             <input 
               type="text" 
               className="flex-1 bg-transparent border-none text-[10px] font-mono text-gray-300 uppercase focus:outline-none"
               value={color}
               onChange={(e) => updateData('color', e.target.value)}
+              onContextMenu={(e) => e.stopPropagation()}
             />
           </div>
         </div>
@@ -411,7 +415,7 @@ export const UrlImageNode = memo(({ id, data }: NodeProps<any>) => {
 
 // --- IMAGE COMPOSER NODE ---
 
-export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
+export const ImageComposerNode = ({ id, data }: NodeProps<any>) => {
   const nodes = useNodes();
   const edges = useEdges();
   const { setNodes } = useReactFlow();
@@ -450,12 +454,18 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
       const hId = edge.targetHandle || 'layer-0';
       const config = layersConfig[hId] || { x: 0, y: 0, scale: 1 };
       
+      const sourceHandle = (edge as any).sourceHandle;
+      // Robust value extraction: prioritize current handle, then common keys, then generic value
+      const value = sourceHandle 
+        ? (sourceNode?.data[sourceHandle] || sourceNode?.data[`result_${sourceHandle}`] || sourceNode?.data.value) 
+        : sourceNode?.data.value;
+      
       return {
         id: sourceNode?.id,
         edgeId: edge.id,
         handleId: hId,
         type: sourceNode?.data.type,
-        value: sourceNode?.data.value as string | undefined,
+        value: value as string | undefined,
         color: sourceNode?.data.color as string | undefined,
         width: sourceNode?.data.width as number || 1920,
         height: sourceNode?.data.height as number || 1080,
@@ -582,9 +592,20 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
                 >
                   <div className="relative group/layer w-full h-full">
                     {layer.color ? (
-                      <div className="w-full h-full min-h-[40px] rounded" style={{ backgroundColor: layer.color }}></div>
+                      <div className="w-full h-full rounded" style={{ backgroundColor: layer.color }}></div>
                     ) : (
-                      <img src={layer.value} className="w-full h-full object-contain pointer-events-none" alt={`Layer ${idx}`} />
+                      <img 
+                        src={layer.value} 
+                        className="w-full h-auto block pointer-events-none" 
+                        onLoad={(e) => {
+                          // Ensure image is loaded before claiming success
+                          (e.target as any).classList.add('opacity-100');
+                        }}
+                        onError={(e) => {
+                          console.error("Layer Image Failed:", layer.id);
+                        }}
+                        alt={`Layer ${idx}`} 
+                      />
                     )}
                     
                     {isSelected && (
@@ -622,7 +643,7 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
                       {l.color ? `Canvas Layer` : `Source Asset`}
                     </div>
                     <div className="text-[7px] text-gray-600 font-mono truncate">
-                       X: {Math.round(l.x)} | S: {l.scale.toFixed(2)}
+                       X: {Math.round(l.x)} | S: {l.scale.toFixed(2)} {l.value ? `| ${Math.round(l.value.length / 1024)}KB` : ''}
                     </div>
                   </div>
                   <div className={`w-2 h-2 rounded-full ${l.color ? 'bg-amber-500' : 'bg-cyan-500'} ${isSelected ? 'animate-pulse' : 'opacity-40'}`}></div>
@@ -652,7 +673,7 @@ export const ImageComposerNode = memo(({ id, data }: NodeProps<any>) => {
       )}
     </div>
   );
-});
+};
 
 // --- COMPOSER STUDIO MODAL ---
 
@@ -799,7 +820,7 @@ const ComposerStudio = ({ layers, layersConfig: initialConfig, onSave, onClose }
                   {l.color ? (
                     <div className="w-full h-full min-h-[40px] rounded shadow-lg" style={{ backgroundColor: l.color }}></div>
                   ) : (
-                    <img src={l.value} className="w-full h-full object-contain pointer-events-none drop-shadow-2xl" alt="" />
+                    <img src={l.value} className="w-full h-auto block pointer-events-none drop-shadow-2xl" alt="" />
                   )}
 
                   {isSel && (
@@ -1342,7 +1363,7 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
 
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Media Asset</span>
-        <Handle type="source" position={Position.Right} className={handleClass} />
+        <Handle type="source" position={Position.Right} id="media" className={handleClass} />
       </div>
     </div>
   );
@@ -1363,6 +1384,7 @@ export const PromptNode = memo(({ id, data }: NodeProps<any>) => {
           placeholder="Describe your vision..."
           value={nodeData.value || ''}
           onChange={(e) => setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, value: e.target.value } } : n))}
+          onContextMenu={(e) => e.stopPropagation()}
         />
       </div>
       <div className="handle-wrapper handle-right">
@@ -1403,13 +1425,23 @@ export const ConcatenatorNode = memo(({ id, data }: NodeProps<any>) => {
   // Handle generation: connected ones + 1 empty one at the end
   const handleIds = useMemo(() => {
     const ids = connectedInputs.map((e: any) => e.targetHandle || 'p0');
-    // Ensure we always have at least one empty handle, or one extra after the last connected one
-    const lastNum = ids.length > 0 ? parseInt(ids[ids.length - 1].replace('p', '')) : -1;
+    
+    // Sort logically to avoid alphabetical jumping (e.g., p10 before p2)
+    const sortedConnected = [...ids].sort((a, b) => {
+      const nA = parseInt(a.replace(/[^\d]/g, '')) || 0;
+      const nB = parseInt(b.replace(/[^\d]/g, '')) || 0;
+      return nA - nB;
+    });
+
+    const lastId = sortedConnected[sortedConnected.length - 1] || 'p-1';
+    const lastNum = parseInt(lastId.replace(/[^\d]/g, '')) ?? -1;
+    
+    // Return all connected + one new spare handle
     return [...new Set([...ids, `p${lastNum + 1}`])];
   }, [connectedInputs]);
 
   return (
-    <div className="custom-node tool-node min-w-[180px]">
+    <div className="custom-node tool-node min-w-[220px]">
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Concatenator" />
       {handleIds.map((hId: any, index: number) => (
         <div key={hId} className="handle-wrapper handle-left" style={{ top: `${(index + 1) * (100 / (handleIds.length + 1))}%` }}>
@@ -1430,7 +1462,7 @@ export const ConcatenatorNode = memo(({ id, data }: NodeProps<any>) => {
       
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Result</span>
-        <Handle type="source" position={Position.Right} className="handle-prompt" />
+        <Handle type="source" position={Position.Right} id="prompt" className="handle-prompt" />
       </div>
     </div>
   );
@@ -1467,7 +1499,7 @@ export const EnhancerNode = memo(({ id, data }: NodeProps<any>) => {
     <div className="custom-node tool-node">
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Enhancer" />
       <div className="handle-wrapper handle-left">
-        <Handle type="target" position={Position.Left} className="handle-prompt" />
+        <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
         <span className="handle-label">Prompt in</span>
       </div>
       <div className="node-header">
@@ -1484,7 +1516,7 @@ export const EnhancerNode = memo(({ id, data }: NodeProps<any>) => {
       </div>
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Enhanced</span>
-        <Handle type="source" position={Position.Right} className="handle-prompt" />
+        <Handle type="source" position={Position.Right} id="prompt" className="handle-prompt" />
       </div>
     </div>
   );
@@ -1550,7 +1582,7 @@ export const RunwayNode = memo(({ id, data }: NodeProps<any>) => {
       </div>
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Video out</span>
-        <Handle type="source" position={Position.Right} className="handle-video" />
+        <Handle type="source" position={Position.Right} id="video" className="handle-video" />
       </div>
     </div>
   );
@@ -1625,7 +1657,7 @@ export const GrokNode = memo(({ id, data }: NodeProps<any>) => {
       </div>
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Video out</span>
-        <Handle type="source" position={Position.Right} className="handle-video" />
+        <Handle type="source" position={Position.Right} id="video" className="handle-video" />
       </div>
     </div>
   );
@@ -1719,29 +1751,32 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
         </div>
       </div>
       <div className="handle-wrapper handle-right">
-        <span className="handle-label">Image out</span>
-        <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
     </div>
   );
 });
 
-export const MaskExtractionNode = memo(({ id, data }: NodeProps<any>) => {
+export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { 
-    mask_type?: string, 
-    expansion?: number, 
+    expansion?: number,
     feather?: number,
-    edgeSmooth?: number,
-    confidence?: number,
-    customPrompt?: string,
+    threshold?: number,
     result_rgba?: string,
-    result_mask?: string
+    result_mask?: string,
+    bbox?: number[]
   };
   const nodes = useNodes();
   const edges = useEdges();
   const { setNodes } = useReactFlow();
   const [status, setStatus] = useState('idle');
-  const [previewMode, setPreviewMode] = useState<'original' | 'mask' | 'cutout' | 'overlay'>('cutout');
+  const [previewMode, setPreviewMode] = useState<'original' | 'mask' | 'cutout'>('cutout');
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
+
+  useEffect(() => {
+    if (nodeData.threshold === undefined) {
+      updateNestedData('threshold', 0.9);
+    }
+  }, []);
 
   const updateNestedData = (key: string, val: any) => {
     setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
@@ -1761,12 +1796,9 @@ export const MaskExtractionNode = memo(({ id, data }: NodeProps<any>) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           image: media,
-          target: nodeData.mask_type || 'person',
-          customPrompt: nodeData.customPrompt || '',
           expansion: nodeData.expansion ?? 0,
-          feather: nodeData.feather ?? 5,
-          edgeSmooth: nodeData.edgeSmooth ?? 2,
-          confidence: nodeData.confidence ?? 0.5
+          feather: nodeData.feather ?? 0.6,
+          threshold: nodeData.threshold ?? 0.9
         })
       });
 
@@ -1777,17 +1809,20 @@ export const MaskExtractionNode = memo(({ id, data }: NodeProps<any>) => {
         ...n, 
         data: { 
           ...n.data, 
-          result_rgba: json.rgba_image, 
+          rgba: json.rgba_image,
+          mask: json.mask,
+          bbox: json.bbox,
+          result_rgba: json.rgba_image,
           result_mask: json.mask,
-          value: json.rgba_image, // Primary output is the RGBA image
-          metadata: json.metadata
+          value: json.rgba_image,
+          metadata: json.metadata,
+          type: 'image'
         } 
       } : n));
       
       setStatus('success');
     } catch (err: any) {
       console.error(err);
-      alert(`Matte Error: ${err.message}`);
       setStatus('idle');
     }
   };
@@ -1801,173 +1836,301 @@ export const MaskExtractionNode = memo(({ id, data }: NodeProps<any>) => {
       case 'original': return original;
       case 'mask': return nodeData.result_mask;
       case 'cutout': return nodeData.result_rgba;
-      case 'overlay': return original; 
       default: return original;
     }
   };
 
   return (
-    <div className={`custom-node mask-node w-[400px] ${status === 'running' ? 'node-glow-running' : ''}`}>
-      <NodeLabel id={id} label={nodeData.label} defaultLabel="Matte Mask" />
+    <div className={`custom-node mask-node w-[360px] ${status === 'running' ? 'node-glow-running' : ''}`}>
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Background Remover" />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="media" className="handle-image" />
-        <span className="handle-label">Source</span>
+        <span className="handle-label">Media Input</span>
       </div>
       
       <div className="node-header">
-        <Scissors size={16} /> AI MATTE EXTRACTION
-        {status === 'running' && <Loader2 size={12} className="animate-spin ml-auto" />}
+        <Scissors size={16} className="text-cyan-400" /> 
+        <span>Remove Background</span>
+        <button 
+          onClick={() => setIsStudioOpen(true)}
+          className="ml-auto bg-white/5 border border-white/10 px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-1.5"
+        >
+          <Maximize2 size={10} className="text-cyan-400" /> Studio
+        </button>
       </div>
       
       <div className="flex flex-col">
-        {/* TOP: PREVIEW AREA */}
-        <div className="relative group/preview overflow-hidden bg-black/80 h-[220px] flex items-center justify-center border-b border-white/5">
-           <div className="absolute top-2 left-2 z-10 flex gap-1">
+          {/* PREVIEW AREA */}
+          <div className="relative group/preview overflow-hidden bg-black/80 h-[220px] flex items-center justify-center border-b border-white/5">
+             <div className="absolute top-2 left-2 z-10 flex gap-1 bg-black/40 p-1 rounded-lg backdrop-blur-md border border-white/5">
+                {(['original', 'mask', 'cutout'] as const).map(mode => (
+                  <button 
+                    key={mode}
+                    onClick={() => setPreviewMode(mode)}
+                    className={`px-2 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${previewMode === mode ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+             </div>
+
+            {getPreviewImage() ? (
+              <img 
+                src={getPreviewImage()} 
+                className={`w-full h-full object-contain ${previewMode === 'mask' ? 'invert brightness-150' : ''}`} 
+                alt="Remover Preview" 
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-2 opacity-20">
+                 <Scissors size={40} className="text-cyan-400" />
+                 <span className="text-[10px] font-bold uppercase tracking-widest">Awaiting Output</span>
+              </div>
+            )}
+
+            {status === 'running' && (
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+                 <Loader2 size={24} className="animate-spin text-cyan-400 mb-2" />
+                 <span className="text-[9px] font-black text-white uppercase tracking-widest">Processing Alpha...</span>
+              </div>
+            )}
+          </div>
+
+          {/* CONTROLS */}
+          <div className="p-4 space-y-5">
+            <button 
+              onClick={onRun}
+              disabled={status === 'running'}
+              className={`w-full py-3 justify-center group/btn relative overflow-hidden flex items-center gap-2 rounded-xl text-[11px] font-black uppercase tracking-[3px] transition-all transform active:scale-[0.98] ${status === 'running' ? 'bg-white/5 opacity-50' : 'bg-gradient-to-br from-cyan-500 to-blue-600 hover:shadow-2xl hover:shadow-cyan-500/30 text-white'}`}
+            >
+              {status === 'running' ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} className="group-hover/btn:animate-pulse" />}
+              {status === 'running' ? 'REMOVING...' : 'REMOVE BACKGROUND'}
+            </button>
+
+            <div className="space-y-4 pt-2 border-t border-white/5">
+               <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                     <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Threshold (Precision)</span>
+                     <span className="text-[10px] font-mono text-pink-500 font-black bg-pink-500/10 px-2 py-0.5 rounded">{(nodeData.threshold ?? 0.9).toFixed(2)}</span>
+                  </div>
+                  <input 
+                    type="range" min="0" max="1" step="0.01"
+                    value={nodeData.threshold ?? 0.9}
+                    onChange={(e) => updateNestedData('threshold', parseFloat(e.target.value))}
+                    className="node-slider accent-pink-500"
+                  />
+               </div>
+
+               <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                     <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Expansion</span>
+                     <span className="text-[10px] font-mono text-cyan-400 font-black bg-cyan-400/10 px-2 py-0.5 rounded">{nodeData.expansion ?? 0}px</span>
+                  </div>
+                  <input 
+                    type="range" min="-10" max="10" step="1"
+                    value={nodeData.expansion ?? 0}
+                    onChange={(e) => updateNestedData('expansion', parseInt(e.target.value))}
+                    className="node-slider accent-cyan-500"
+                  />
+               </div>
+
+               <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                     <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Borders (Feather)</span>
+                     <span className="text-[10px] font-mono text-blue-400 font-black bg-blue-400/10 px-2 py-0.5 rounded">{(nodeData.feather ?? 0.6).toFixed(1)}px</span>
+                  </div>
+                  <input 
+                    type="range" min="0" max="2" step="0.1"
+                    value={nodeData.feather ?? 0.6}
+                    onChange={(e) => updateNestedData('feather', parseFloat(e.target.value))}
+                    className="node-slider accent-blue-400"
+                  />
+               </div>
+            </div>
+          </div>
+      </div>
+
+      <div className="flex flex-col gap-2 absolute right-[-14px] top-[40px] nodrag">
+          <div className="relative group/h mb-4">
+             <Handle type="source" position={Position.Right} id="mask" className="handle-mask !right-0 shadow-[0_0_10px_rgba(34,211,238,0.5)] cursor-crosshair" />
+             <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[7px] font-black uppercase text-cyan-400 bg-black/90 px-1 border border-cyan-400/20 rounded opacity-0 group-hover/h:opacity-100 transition-opacity whitespace-nowrap">MASK</span>
+          </div>
+          <div className="relative group/h mb-4">
+             <Handle type="source" position={Position.Right} id="rgba" className="handle-image !right-0 shadow-[0_0_10px_rgba(236,72,153,0.5)] cursor-crosshair" />
+             <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[7px] font-black uppercase text-pink-500 bg-black/90 px-1 border border-pink-500/20 rounded opacity-0 group-hover/h:opacity-100 transition-opacity whitespace-nowrap">CUTOUT</span>
+          </div>
+          <div className="relative group/h">
+             <Handle type="source" position={Position.Right} id="bbox" className="handle-txt !right-0 shadow-[0_0_10px_rgba(245,158,11,0.5)] cursor-crosshair" />
+             <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[7px] font-black uppercase text-amber-500 bg-black/80 px-1 border border-amber-500/20 rounded opacity-0 group-hover/h:opacity-100 transition-opacity whitespace-nowrap">BBOX</span>
+          </div>
+      </div>
+
+      {isStudioOpen && createPortal(
+        <MatteStudioOverlay 
+          nodeData={nodeData}
+          previewMode={previewMode}
+          setPreviewMode={setPreviewMode}
+          onRun={onRun}
+          status={status}
+          updateNestedData={updateNestedData}
+          onClose={() => setIsStudioOpen(false)}
+          getPreviewImage={getPreviewImage}
+        />,
+        document.body
+      )}
+    </div>
+  );
+});
+
+interface MatteStudioOverlayProps {
+  nodeData: any;
+  previewMode: string;
+  setPreviewMode: (mode: any) => void;
+  onRun: () => void;
+  status: string;
+  updateNestedData: (key: string, val: any) => void;
+  onClose: () => void;
+  getPreviewImage: () => string | undefined;
+}
+
+const MatteStudioOverlay = ({ 
+  nodeData, 
+  previewMode, 
+  setPreviewMode, 
+  onRun, 
+  status, 
+  updateNestedData, 
+  onClose,
+  getPreviewImage 
+}: MatteStudioOverlayProps) => {
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex flex-col studio-overlay nodrag nopan">
+      <div className="h-16 border-b border-white/5 bg-black/40 flex items-center px-8 gap-6 backdrop-blur-md">
+        <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors cursor-pointer"><X size={20} /></button>
+        <div className="h-6 w-px bg-white/10" />
+        <div className="flex items-center gap-3">
+          <Scissors className="text-cyan-500" size={18} />
+          <span className="text-[11px] font-black uppercase tracking-[3px] text-white">Background Remover <span className="text-cyan-500/50">Studio</span></span>
+        </div>
+        <div className="ml-auto flex items-center gap-4">
+          <button 
+            onClick={onRun}
+            disabled={status === 'running'}
+            className="group relative bg-cyan-500 hover:bg-cyan-400 text-black px-10 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[2px] transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] flex items-center gap-2"
+          >
+            {status === 'running' ? <Loader2 size={12} className="animate-spin" /> : <Play size={10} />}
+            {status === 'running' ? 'Computing...' : 'Run Extraction'}
+            <div className="absolute inset-0 rounded-full group-hover:animate-ping bg-cyan-500/20 pointer-events-none"></div>
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 bg-black/40 relative flex items-center justify-center p-12">
+           <div className="absolute top-8 left-8 z-10 flex gap-2">
               {(['original', 'mask', 'cutout'] as const).map(mode => (
                 <button 
                   key={mode}
                   onClick={() => setPreviewMode(mode)}
-                  className={`px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-widest transition-all ${previewMode === mode ? 'bg-cyan-500 text-black' : 'bg-white/10 text-white/50 hover:bg-white/20'}`}
+                  className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${previewMode === mode ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
                 >
                   {mode}
                 </button>
               ))}
            </div>
 
-           {getPreviewImage() ? (
-             <img 
-               src={getPreviewImage()} 
-               className={`w-full h-full object-contain ${previewMode === 'mask' ? 'invert brightness-150' : ''}`} 
-               alt="Matte Preview" 
-             />
-           ) : (
-             <div className="flex flex-col items-center gap-2 opacity-20">
-                <ImageIcon size={40} />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Connect Image</span>
-             </div>
-           )}
-
-           {status === 'running' && (
-             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20">
-                <div className="w-12 h-1 h-32 bg-cyan-500/20 rounded-full overflow-hidden mb-3">
-                   <div className="h-full bg-cyan-500 animate-pulse width-full" style={{ width: '100%' }} />
+           <div className="w-full h-full relative group/canvas flex items-center justify-center">
+              {getPreviewImage() ? (
+                <img 
+                  src={getPreviewImage()} 
+                  className={`max-w-full max-h-full object-contain rounded-2xl shadow-[0_40px_100px_rgba(0,0,0,0.8)] border border-white/5 ${previewMode === 'mask' ? 'invert brightness-125' : ''}`} 
+                  alt="Studio Preview" 
+                />
+              ) : (
+                <div className="text-gray-800 flex flex-col items-center gap-4">
+                  <ImageIcon size={64} opacity={0.2} />
+                  <span className="text-sm font-black uppercase tracking-widest opacity-20">Waiting for media</span>
                 </div>
-                <span className="text-[10px] font-black text-cyan-400 uppercase animate-pulse">Computing Matte...</span>
-             </div>
-           )}
+              )}
+
+              {status === 'running' && (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-2xl">
+                   <div className="w-48 h-1 bg-cyan-500/10 rounded-full overflow-hidden mb-4">
+                      <div className="h-full bg-cyan-500 animate-pulse w-full" />
+                   </div>
+                   <span className="text-xs font-black text-cyan-400 uppercase tracking-[4px] animate-pulse">Neural Processing...</span>
+                </div>
+              )}
+           </div>
         </div>
 
-        {/* BOTTOM: SETTINGS AREA */}
-        <div className="node-content space-y-4 p-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="node-label">Detection Target</label>
-              <select 
-                className="node-input"
-                value={nodeData.mask_type || 'person'}
-                onChange={(e) => updateNestedData('mask_type', e.target.value)}
-              >
-                <option value="person">Person (Matting)</option>
-                <option value="hair">Focus Hair</option>
-                <option value="face">Face Det.</option>
-                <option value="object">General Object</option>
-                <option value="clothes">Clothing</option>
-                <option value="background">Background</option>
-                <option value="custom">Custom Prompt</option>
-              </select>
-            </div>
-            {nodeData.mask_type === 'custom' && (
-              <div>
-                <label className="node-label">Custom Target</label>
-                <input 
-                  type="text"
-                  placeholder="e.g. car, dog..."
-                  className="node-input text-[10px]"
-                  value={nodeData.customPrompt || ''}
-                  onChange={(e) => updateNestedData('customPrompt', e.target.value)}
-                />
+        <div className="w-[380px] border-l border-white/5 bg-black/40 backdrop-blur-xl p-8 overflow-y-auto flex flex-col gap-8">
+           <section className="space-y-4">
+              <div className="flex items-center gap-2 text-cyan-400">
+                 <Zap size={14} />
+                 <h3 className="text-[10px] font-black uppercase tracking-widest">Configuration</h3>
               </div>
-            )}
-            <div>
-              <label className="node-label">Confidence</label>
-              <input 
-                type="range" min="0.1" max="1" step="0.05"
-                value={nodeData.confidence ?? 0.5}
-                onChange={(e) => updateNestedData('confidence', parseFloat(e.target.value))}
-                className="w-full h-1 accent-cyan-500 rounded-lg appearance-none bg-white/10"
-              />
-              <div className="text-[8px] text-gray-500 mt-1 font-bold">MIN CONF: {(nodeData.confidence ?? 0.5).toFixed(2)}</div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-3">
+              <div className="space-y-4 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
                 <div>
-                   <label className="node-label flex justify-between uppercase">Expansion <span className="text-cyan-400">{nodeData.expansion ?? 0}px</span></label>
-                   <input 
-                    type="range" min="-100" max="100" step="1"
+                  <label className="node-label flex justify-between mb-2">Threshold <span className="text-cyan-500">{(nodeData.threshold ?? 0.9).toFixed(2)}</span></label>
+                  <input 
+                    type="range" min="0" max="1" step="0.01"
+                    value={nodeData.threshold ?? 0.9}
+                    onChange={(e) => updateNestedData('threshold', parseFloat(e.target.value))}
+                    className="w-full h-1.5 accent-cyan-500 bg-white/5 rounded-full appearance-none"
+                  />
+                </div>
+              </div>
+           </section>
+
+           <section className="space-y-4">
+              <div className="flex items-center gap-2 text-pink-500">
+                 <Paintbrush size={14} />
+                 <h3 className="text-[10px] font-black uppercase tracking-widest">Refinement</h3>
+              </div>
+              <div className="space-y-6 bg-white/[0.02] p-6 rounded-2xl border border-white/5">
+                <div>
+                  <label className="node-label flex justify-between mb-3 uppercase tracking-tighter">Expansion <span className="text-cyan-400 font-mono">{nodeData.expansion ?? 0}px</span></label>
+                  <input 
+                    type="range" min="-10" max="10" step="1"
                     value={nodeData.expansion ?? 0}
                     onChange={(e) => updateNestedData('expansion', parseInt(e.target.value))}
-                    className="w-full h-1 accent-cyan-500 rounded-lg appearance-none bg-white/10"
-                   />
+                    className="w-full h-1.5 accent-cyan-500 bg-white/5 rounded-full appearance-none"
+                  />
                 </div>
-                <div>
-                   <label className="node-label flex justify-between uppercase">Feather <span className="text-pink-500">{nodeData.feather ?? 5}px</span></label>
-                   <input 
-                    type="range" min="0" max="50" step="0.5"
-                    value={nodeData.feather ?? 5}
-                    onChange={(e) => updateNestedData('feather', parseFloat(e.target.value))}
-                    className="w-full h-1 accent-pink-500 rounded-lg appearance-none bg-white/10"
-                   />
-                </div>
-             </div>
-             <div className="space-y-3">
-                <div>
-                   <label className="node-label flex justify-between uppercase">Edge Smooth <span className="text-purple-400">{nodeData.edgeSmooth ?? 2}px</span></label>
-                   <input 
-                    type="range" min="0" max="10" step="0.2"
-                    value={nodeData.edgeSmooth ?? 2}
-                    onChange={(e) => updateNestedData('edgeSmooth', parseFloat(e.target.value))}
-                    className="w-full h-1 accent-purple-500 rounded-lg appearance-none bg-white/10"
-                   />
-                </div>
-                <div className="flex items-end h-full">
-                   <button 
-                    onClick={onRun}
-                    disabled={status === 'running'}
-                    className={`execute-btn w-full justify-center group/btn relative overflow-hidden ${status === 'running' ? 'opacity-50' : 'bg-gradient-to-r from-cyan-600 to-blue-600'}`}
-                   >
-                     {status === 'running' ? <Loader2 size={12} className="animate-spin" /> : <Play size={10} className="mr-2" />}
-                     {status === 'running' ? 'PROCESSING' : 'RUN EXTRACTOR'}
-                   </button>
-                </div>
-             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* MULTI OUTPUTS */}
-      <div className="flex flex-col gap-2 absolute right-[-45px] top-[40px]">
-          <div className="relative group/h">
-             <Handle type="source" position={Position.Right} id="rgba" className="handle-image !right-0" />
-             <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[7px] font-black uppercase text-pink-500 bg-black/80 px-1 border border-pink-500/20 rounded opacity-0 group-hover/h:opacity-100 transition-opacity">RGBA</span>
-          </div>
-          <div className="relative mt-8 group/h">
-             <Handle type="source" position={Position.Right} id="mask" className="handle-mask !right-0" />
-             <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[7px] font-black uppercase text-cyan-400 bg-black/80 px-1 border border-cyan-400/20 rounded opacity-0 group-hover/h:opacity-100 transition-opacity whitespace-nowrap">MASK ONLY</span>
-          </div>
-          <div className="relative mt-8 group/h">
-             <Handle type="source" position={Position.Right} id="meta" className="handle-txt !right-0" />
-             <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[7px] font-black uppercase text-amber-500 bg-black/80 px-1 border border-amber-500/20 rounded opacity-0 group-hover/h:opacity-100 transition-opacity">META</span>
-          </div>
+                <div>
+                  <label className="node-label flex justify-between mb-3 uppercase tracking-tighter">Feather <span className="text-pink-500 font-mono">{(nodeData.feather ?? 0.6).toFixed(1)}px</span></label>
+                  <input 
+                    type="range" min="0" max="2" step="0.1"
+                    value={nodeData.feather ?? 0.6}
+                    onChange={(e) => updateNestedData('feather', parseFloat(e.target.value))}
+                    className="w-full h-1.5 accent-pink-500 bg-white/5 rounded-full appearance-none"
+                  />
+                </div>
+              </div>
+           </section>
+
+           <div className="mt-auto space-y-4 px-2">
+              <div className="flex items-center gap-3 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl">
+                 <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500"><Info size={16} /></div>
+                 <div className="flex-1">
+                    <p className="text-[9px] font-bold text-amber-500 uppercase">GPU Acceleration Active</p>
+                    <p className="text-[8px] text-gray-500">851-labs Professional Engine</p>
+                 </div>
+              </div>
+           </div>
+        </div>
       </div>
     </div>
   );
-});
+};
+
+
 
 export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { 
     outputType?: string, 
+    inputType?: string,
     spaceId?: string,
     hasInput?: boolean,
     hasOutput?: boolean,
@@ -1989,6 +2152,8 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
       case 'video': return <Film size={16} className="text-rose-400" />;
       case 'prompt': return <Type size={16} className="text-blue-400" />;
       case 'mask': return <Scissors size={16} className="text-cyan-400" />;
+      case 'url': return <Globe size={16} className="text-emerald-400" />;
+      case 'json': return <Zap size={16} className="text-purple-400" />;
       default: return <Layers size={16} className="text-cyan-400" />;
     }
   };
@@ -1999,6 +2164,20 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
       case 'video': return 'handle-video';
       case 'prompt': return 'handle-prompt';
       case 'mask': return 'handle-mask';
+      case 'url': return 'handle-emerald';
+      case 'json': return 'handle-sound';
+      default: return '';
+    }
+  };
+
+  const getInputHandleClass = () => {
+    switch (nodeData.inputType) {
+      case 'image': return 'handle-image';
+      case 'video': return 'handle-video';
+      case 'prompt': return 'handle-prompt';
+      case 'mask': return 'handle-mask';
+      case 'url': return 'handle-emerald';
+      case 'json': return 'handle-sound';
       default: return '';
     }
   };
@@ -2023,7 +2202,7 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
       {/* Input handle only if space has an internal InputNode */}
       {nodeData.hasInput !== false && (
         <div className="handle-wrapper handle-left">
-          <Handle type="target" position={Position.Left} id="in" />
+          <Handle type="target" position={Position.Left} id="in" className={getInputHandleClass()} />
           <span className="handle-label">Data In</span>
         </div>
       )}
@@ -2068,40 +2247,88 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
 });
 
 export const SpaceInputNode = memo(({ id, data }: NodeProps<any>) => {
-  const nodeData = data as BaseNodeData;
+  const nodeData = data as BaseNodeData & { inputType?: string };
+  
+  const getHandleClass = () => {
+    switch (nodeData.inputType) {
+      case 'image': return 'handle-image';
+      case 'video': return 'handle-video';
+      case 'prompt': return 'handle-prompt';
+      case 'mask': return 'handle-mask';
+      case 'url': return 'handle-emerald';
+      case 'json': return 'handle-sound';
+      default: return 'handle-emerald';
+    }
+  };
+
+  const getThemeColors = () => {
+    switch (nodeData.inputType) {
+      case 'prompt': return { border: 'border-blue-500/30', text: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20', icon: 'text-blue-500' };
+      case 'image': return { border: 'border-pink-500/30', text: 'text-pink-400', bg: 'bg-pink-500/10 border-pink-500/20', icon: 'text-pink-500' };
+      case 'video': return { border: 'border-rose-500/30', text: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20', icon: 'text-rose-500' };
+      default: return { border: 'border-emerald-500/30', text: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', icon: 'text-emerald-500' };
+    }
+  };
+
+  const theme = getThemeColors();
+
   return (
-    <div className="custom-node space-io-node border-emerald-500/30">
+    <div className={`custom-node space-io-node ${theme.border}`}>
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Input" />
       <div className="node-header">
-        <ChevronRight size={16} className="text-emerald-400" /> SPACE INPUT
+        <ChevronRight size={16} className={theme.text} /> SPACE INPUT
       </div>
       <div className="node-content text-center py-4">
-        <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20 mx-auto mb-2">
-          <ArrowRight size={24} className="text-emerald-500" />
+        <div className={`w-12 h-12 ${theme.bg} rounded-full flex items-center justify-center border mx-auto mb-2`}>
+          <ArrowRight size={24} className={theme.icon} />
         </div>
         <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Entry Point</span>
       </div>
       <div className="handle-wrapper handle-right">
-        <Handle type="source" position={Position.Right} id="out" className="handle-emerald" />
+        <Handle type="source" position={Position.Right} id="out" className={getHandleClass()} />
       </div>
     </div>
   );
 });
 
 export const SpaceOutputNode = memo(({ id, data }: NodeProps<any>) => {
-  const nodeData = data as BaseNodeData;
+  const nodeData = data as BaseNodeData & { outputType?: string };
+  
+  const getHandleClass = () => {
+    switch (nodeData.outputType) {
+      case 'image': return 'handle-image';
+      case 'video': return 'handle-video';
+      case 'prompt': return 'handle-prompt';
+      case 'mask': return 'handle-mask';
+      case 'url': return 'handle-emerald';
+      case 'json': return 'handle-sound';
+      default: return 'handle-rose';
+    }
+  };
+
+  const getThemeColors = () => {
+    switch (nodeData.outputType) {
+      case 'prompt': return { border: 'border-blue-500/30', text: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20', icon: 'text-blue-500' };
+      case 'image': return { border: 'border-pink-500/30', text: 'text-pink-400', bg: 'bg-pink-500/10 border-pink-500/20', icon: 'text-pink-500' };
+      case 'video': return { border: 'border-rose-500/30', text: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20', icon: 'text-rose-500' };
+      default: return { border: 'border-rose-500/30', text: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20', icon: 'text-rose-500' };
+    }
+  };
+
+  const theme = getThemeColors();
+
   return (
-    <div className="custom-node space-io-node border-rose-500/30">
+    <div className={`custom-node space-io-node ${theme.border}`}>
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Output" />
       <div className="handle-wrapper handle-left">
-        <Handle type="target" position={Position.Left} id="in" className="handle-rose" />
+        <Handle type="target" position={Position.Left} id="in" className={getHandleClass()} />
       </div>
       <div className="node-header">
-        <ChevronLeft size={16} className="text-rose-400" /> SPACE OUTPUT
+        <ChevronLeft size={16} className={theme.text} /> SPACE OUTPUT
       </div>
       <div className="node-content text-center py-4">
-        <div className="w-12 h-12 bg-rose-500/10 rounded-full flex items-center justify-center border border-rose-500/20 mx-auto mb-2">
-          <CheckCircle size={24} className="text-rose-500" />
+        <div className={`w-12 h-12 ${theme.bg} rounded-full flex items-center justify-center border mx-auto mb-2`}>
+          <CheckCircle size={24} className={theme.icon} />
         </div>
         <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Exit Point</span>
       </div>
@@ -2187,6 +2414,84 @@ export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Description (Prompt)</span>
         <Handle type="source" position={Position.Right} id="prompt" className="handle-prompt" />
+      </div>
+    </div>
+  );
+});
+export const VideoBackgroundRemovalNode = memo(({ id, data }: NodeProps<any>) => {
+  const nodeData = data as any;
+  const { setNodes } = useReactFlow();
+  const [status, setStatus] = useState('idle');
+
+  const onRun = async () => {
+    const sourceEdge = (window as any).edges?.find((e: any) => e.target === id && e.targetHandle === 'video');
+    const sourceNode = (window as any).nodes?.find((n: any) => n.id === sourceEdge?.source);
+    const video = sourceNode?.data.value;
+
+    if (!video) return alert("Need video input!");
+
+    setStatus('running');
+    try {
+      const res = await fetch('/api/spaces/video-matte', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ video })
+      });
+
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+
+      setNodes((nds: any) => nds.map((n: any) => n.id === id ? { 
+        ...n, 
+        data: { 
+          ...n.data, 
+          mask: json.mask_url,
+          rgba: json.rgba_url,
+          green: json.green_url,
+          value: json.rgba_url,
+          type: 'video'
+        } 
+      } : n));
+      setStatus('done');
+    } catch (err) {
+      console.error(err);
+      setStatus('error');
+    }
+  };
+
+  return (
+    <div className="custom-node video-removal-node">
+      <div className="node-header bg-gradient-to-r from-purple-600 to-indigo-600">
+        <Video size={16} className="text-white" />
+        <div className="node-title text-white">Quick Matte Mask</div>
+        <div className="node-type-tag bg-white/20 text-white/80">851-labs / SAM2</div>
+      </div>
+
+      <div className="p-4 space-y-4">
+        <div className="handle-wrapper handle-left">
+          <Handle type="target" position={Position.Left} id="video" className="handle-video" />
+          <span className="handle-label text-purple-400">Video In</span>
+        </div>
+
+        <button 
+          onClick={onRun}
+          disabled={status === 'running'}
+          className="run-button w-full py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-[10px] font-black uppercase tracking-widest text-white transition-all flex items-center justify-center gap-2"
+        >
+          {status === 'running' ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
+          {status === 'running' ? 'Processing...' : 'Remove Background'}
+        </button>
+
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="handle-wrapper handle-right">
+            <span className="handle-label text-emerald-400">Mask</span>
+            <Handle type="source" position={Position.Right} id="mask" className="handle-mask" />
+          </div>
+          <div className="handle-wrapper handle-right">
+            <span className="handle-label text-purple-400">RGBA</span>
+            <Handle type="source" position={Position.Right} id="rgba" className="handle-video" />
+          </div>
+        </div>
       </div>
     </div>
   );

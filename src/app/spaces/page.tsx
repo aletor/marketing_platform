@@ -26,7 +26,7 @@ import {
   ConcatenatorNode, 
   EnhancerNode, 
   NanoBananaNode,
-  MaskExtractionNode,
+  BackgroundRemoverNode,
   MediaDescriberNode,
   BackgroundNode,
   ImageComposerNode,
@@ -35,6 +35,7 @@ import {
   SpaceNode,
   SpaceInputNode,
   SpaceOutputNode,
+  VideoBackgroundRemovalNode,
   ButtonEdge 
 } from './CustomNodes';
 import Sidebar from './Sidebar';
@@ -54,9 +55,15 @@ import {
   X,
   Edit2,
   Maximize,
+  Maximize2,
   LayoutGrid,
   ChevronLeft,
-  Layers
+  Layers,
+  PlusSquare,
+  Scissors,
+  Cloud,
+  Sparkles,
+  Zap
 } from 'lucide-react';
 
 const initialNodes: Node[] = [
@@ -76,7 +83,7 @@ const nodeTypes: any = {
   concatenator: ConcatenatorNode,
   enhancer: EnhancerNode,
   nanoBanana: NanoBananaNode,
-  maskExtraction: MaskExtractionNode,
+  backgroundRemover: BackgroundRemoverNode,
   mediaDescriber: MediaDescriberNode,
   background: BackgroundNode,
   imageComposer: ImageComposerNode,
@@ -85,6 +92,7 @@ const nodeTypes: any = {
   space: SpaceNode,
   spaceInput: SpaceInputNode,
   spaceOutput: SpaceOutputNode,
+  videoBackgroundRemoval: VideoBackgroundRemovalNode,
 };
 
 const edgeTypes = {
@@ -107,7 +115,7 @@ const SpacesContent = () => {
   
   // Persistence state
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const [activeSpaceId, setActiveSpaceId] = useState<string | null>(null);
+  const [activeSpaceId, setActiveSpaceId] = useState<string>('root');
   const [currentName, setCurrentName] = useState<string>('');
   const [savedProjects, setSavedProjects] = useState<any[]>([]);
   const [spacesMap, setSpacesMap] = useState<Record<string, any>>({});
@@ -121,10 +129,12 @@ const SpacesContent = () => {
   const [isGeneratingAssistant, setIsGeneratingAssistant] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<any | null>(null);
   const [navigationStack, setNavigationStack] = useState<string[]>([]);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, nodeId?: string } | null>(null);
 
   // Helper to detect structure and data output from a space
   const analyzeSpaceStructure = (nodes: any[], edges: any[]): { 
     type: string, 
+    label: string,
     value: string | null, 
     hasInput: boolean, 
     hasOutput: boolean,
@@ -138,156 +148,129 @@ const SpacesContent = () => {
     nodes.forEach(n => {
       const type = (n.type || '').toLowerCase();
       
-      // AI Category (Grok, Runway, Assistants)
-      if (type.includes('grok') || type.includes('runway') || type.includes('assistant') || type.includes('processor')) {
+      // AI / Intelligence Category
+      if (type.includes('grok') || type.includes('runway') || type.includes('assistant') || type.includes('processor') || type.includes('banana') || type.includes('remover') || type.includes('describer')) {
         categoriesSet.add('ai');
       } 
       
-      // Logic/Composition Category (Composers, Concatenators, Batch)
-      if (type.includes('composer') || type.includes('concatenator') || type.includes('batch')) {
+      // Logic / Utility Category
+      if (type.includes('composer') || type.includes('concatenator') || type.includes('batch') || (type === 'space' && n.id !== 'in' && n.id !== 'out')) {
         categoriesSet.add('logic');
       }
 
       // Prompt Category
-      if (type.includes('prompt')) {
+      if (type.includes('prompt') || type.includes('describer') || type.includes('enhancer')) {
         categoriesSet.add('prompt');
       }
 
-      // Media Categories (Video, Image)
-      if (type.includes('video')) {
-        categoriesSet.add('video');
-      } else if ((type.includes('image') || type.includes('media')) && !type.includes('composer') && type !== 'spaceinput' && type !== 'spaceoutput') {
+      // Media / Image Category
+      if (type.includes('image') || type.includes('media') || type.includes('matted')) {
         categoriesSet.add('image');
       }
+      
+      // Video Category
+      if (type.includes('video')) {
+        categoriesSet.add('video');
+      }
 
-      // Canvas Category (Backgrounds)
-      if (type.includes('background')) {
+      // Canvas / Composition Category
+      if (type.includes('background') || type.includes('layer') || type.includes('export')) {
         categoriesSet.add('canvas');
       }
 
-      // Tool Category (Masking, Extraction, Describing)
-      if (type.includes('mask') || type.includes('extraction') || type.includes('describer')) {
+      // Tool Category
+      if (type.includes('mask') || type.includes('tool') || type.includes('scissors') || type.includes('vision') || type.includes('describer')) {
         categoriesSet.add('tool');
       }
     });
 
     const result = {
       type: 'url',
+      label: 'Space',
       value: null as string | null,
       hasInput: !!inputNode,
       hasOutput: !!outputNode,
-      internalCategories: Array.from(categoriesSet).slice(0, 5) // Show up to 5 icons now
+      internalCategories: Array.from(categoriesSet).slice(0, 5) 
     };
 
     if (!outputNode) return result;
 
-    const incomingEdge = edges.find(e => e.target === outputNode.id && e.targetHandle === 'in');
+    // FIND THE EDGE: Be lenient with handle IDs
+    const incomingEdge = edges.find(e => e.target === outputNode.id);
     if (!incomingEdge) return result;
 
     const sourceNode = nodes.find(n => n.id === incomingEdge.source);
     if (!sourceNode) return result;
 
-    result.value = sourceNode.data?.value || null;
-
-    // Try to guess type from source handle or node type or data.type
-    const sourceHandleId = (incomingEdge.sourceHandle || '').toLowerCase();
-    const nodeType = (sourceNode.type || '').toLowerCase();
-    const dataType = (sourceNode.data?.type || '').toLowerCase();
-
-    if (sourceHandleId.includes('image') || nodeType.includes('image') || dataType === 'image') result.type = 'image';
-    else if (sourceHandleId.includes('video') || nodeType.includes('video') || dataType === 'video') result.type = 'video';
-    else if (sourceHandleId.includes('prompt') || nodeType.includes('prompt')) result.type = 'prompt';
-    else if (sourceHandleId.includes('mask')) result.type = 'mask';
+    // Registry-Based Type Detection (Fail-safe)
+    const sourceMetadata = NODE_REGISTRY[sourceNode.type];
+    // Find matching output type by checking all handles of the source node if specific handle not found
+    let sourceHandleType = sourceMetadata?.outputs.find(o => o.id === incomingEdge.sourceHandle)?.type;
+    if (!sourceHandleType && sourceMetadata?.outputs.length === 1) {
+        sourceHandleType = sourceMetadata.outputs[0].type;
+    }
     
+    // Check propagated type if it's reaching from a sub-space
+    const propagatedType = (sourceNode.data?.outputType || sourceNode.data?.type || '').toLowerCase();
+
+    // Final mapping to visual result types
+    if (sourceHandleType === 'image' || propagatedType === 'image') {
+        result.type = 'image';
+        result.label = 'Image Space';
+    }
+    else if (sourceHandleType === 'video' || propagatedType === 'video') {
+        result.type = 'video';
+        result.label = 'Video Space';
+    }
+    else if (sourceHandleType === 'prompt' || propagatedType === 'prompt') {
+        result.type = 'prompt';
+        result.label = 'Prompt Space';
+    }
+    else if (sourceHandleType === 'mask' || propagatedType === 'mask') {
+        result.type = 'mask';
+        result.label = 'Mask Space';
+    }
+    else if (sourceHandleType === 'url' || propagatedType === 'url') {
+        result.type = 'url';
+        result.label = 'URL Space';
+    }
+    else if (sourceHandleType === 'json' || propagatedType === 'json') {
+        result.type = 'json';
+        result.label = 'Data Space';
+    }
+    
+    result.value = sourceNode.data?.value || null;
     return result;
   };
 
-  // Navigation Logic
-  const handleEnterSpace = useCallback((e: any) => {
-    const { nodeId, spaceId } = e.detail;
-    const currentId = activeSpaceId || 'root';
+  // Helper to commit current state AND propagate up
+  const syncCurrentSpaceState = useCallback((currentNodes: any[], currentEdges: any[], currentSpacesMap: Record<string, any>, currentId: string) => {
+    const structure = analyzeSpaceStructure(currentNodes, currentEdges);
     
-    // 1. Prepare modern clones of current state
-    let targetSpaceId = spaceId;
-    let newFullSpacesMap = { ...spacesMap };
-    let finalNodesInCurrentSpace = [...nodes];
-    let finalEdgesInCurrentSpace = [...edges];
-
-    // 2. If creating NEW sub-space, register it in the current parent snapshot
-    if (!targetSpaceId) {
-      targetSpaceId = `space_${Date.now()}`;
-      
-      // Update the trigger node in the snapshot we are about to save
-      finalNodesInCurrentSpace = finalNodesInCurrentSpace.map(n => 
-        n.id === nodeId ? { ...n, data: { ...n.data, spaceId: targetSpaceId, hasInput: true, hasOutput: true } } : n
-      );
-
-      // Initialize the target space entry
-      newFullSpacesMap[targetSpaceId] = {
-        id: targetSpaceId,
-        name: `Nested Space ${Object.keys(spacesMap).length + 1}`,
-        nodes: [
-          { id: 'in', type: 'spaceInput', position: { x: 100, y: 200 }, data: { label: 'Input' } },
-          { id: 'out', type: 'spaceOutput', position: { x: 800, y: 200 }, data: { label: 'Output' } }
-        ],
-        edges: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-    }
-
-    // 3. Commit the CURRENT space state to the map (Atomic Save)
-    const structure = analyzeSpaceStructure(finalNodesInCurrentSpace, finalEdgesInCurrentSpace);
-    newFullSpacesMap[currentId] = {
-      ...(newFullSpacesMap[currentId] || {}),
-      id: currentId,
-      nodes: finalNodesInCurrentSpace,
-      edges: finalEdgesInCurrentSpace,
-      outputType: structure.type,
-      outputValue: structure.value,
-      hasInput: structure.hasInput,
-      hasOutput: structure.hasOutput,
-      internalCategories: structure.internalCategories,
-      updatedAt: new Date().toISOString()
-    };
-
-    // 4. Perform the transition
-    const targetSpace = newFullSpacesMap[targetSpaceId];
-    if (targetSpace) {
-      // Sync local UI state to parent first (for the trigger node update to be visible)
-      setNodes(finalNodesInCurrentSpace);
-      
-      // Then switch context
-      setNodes(targetSpace.nodes || []);
-      setEdges(targetSpace.edges || []);
-      
-      if (targetSpaceId !== activeSpaceId) {
-        setNavigationStack(prev => [...prev, currentId]);
+    // 1. Detect INCOMING type from parent to this space
+    let incomingType = 'url';
+    Object.values(currentSpacesMap).forEach((space: any) => {
+      const spaceNode = space.nodes?.find((n: any) => n.type === 'space' && n.data.spaceId === currentId);
+      if (spaceNode) {
+        const edge = space.edges?.find((e: any) => e.target === spaceNode.id && e.targetHandle === 'in');
+        if (edge) {
+          const srcNode = space.nodes?.find((n: any) => n.id === edge.source);
+          if (srcNode) {
+            const hType = NODE_REGISTRY[srcNode.type]?.outputs.find(o => o.id === edge.sourceHandle)?.type || srcNode.data.outputType;
+            if (hType) incomingType = hType;
+          }
+        }
       }
-      
-      setActiveSpaceId(targetSpaceId);
-      setSpacesMap(newFullSpacesMap);
-      
-      setTimeout(() => fitView({ padding: 0.2, duration: 800 }), 100);
-    }
-  }, [activeSpaceId, nodes, edges, spacesMap, setNodes, setEdges, fitView]);
+    });
 
-  const handleGoBack = useCallback(() => {
-    if (navigationStack.length === 0) return;
-    
-    const newStack = [...navigationStack];
-    const parentSpaceId = newStack.pop();
-    const currentId = activeSpaceId || 'root';
-    const structure = analyzeSpaceStructure(nodes, edges);
-    
-    // Atomic Save of current sub-space before leaving
-    const updatedSpacesMap = {
-      ...spacesMap,
+    // 2. Update THIS space entry
+    const newMap = {
+      ...currentSpacesMap,
       [currentId]: {
-        ...(spacesMap[currentId] || {}),
+        ...(currentSpacesMap[currentId] || {}),
         id: currentId,
-        nodes: [...nodes],
-        edges: [...edges],
+        nodes: currentNodes.map(n => n.type === 'spaceInput' ? { ...n, data: { ...n.data, inputType: incomingType } } : n),
+        edges: [...currentEdges],
         outputType: structure.type,
         outputValue: structure.value,
         hasInput: structure.hasInput,
@@ -297,40 +280,152 @@ const SpacesContent = () => {
       }
     };
 
-    const parentSpace = updatedSpacesMap[parentSpaceId as string];
-    if (parentSpace) {
-      // Propagation: Update the SpaceNode in the parent graph with the detected type AND value
-      const updatedParentNodes = (parentSpace.nodes || []).map((n: any) => {
-        if (n.type === 'space' && n.data.spaceId === currentId) {
-          return { 
-            ...n, 
-            data: { 
-              ...n.data, 
-              outputType: structure.type, 
-              value: structure.value,
-              hasInput: structure.hasInput,
-              hasOutput: structure.hasOutput,
-              internalCategories: structure.internalCategories
-            } 
-          };
+    // 3. Propagate to ALL potential parents in the stack (Deep Propagation)
+    // Update every parent space node in the map that points to this space (Upward)
+    Object.keys(newMap).forEach(key => {
+        if (newMap[key].nodes) {
+            newMap[key].nodes = newMap[key].nodes.map((n: any) => {
+                if (n.type === 'space' && n.data.spaceId === currentId) {
+                    return { 
+                        ...n, 
+                        data: { 
+                            ...n.data, 
+                            label: structure.label,
+                            outputType: structure.type, 
+                            inputType: incomingType,
+                            value: structure.value,
+                            hasInput: structure.hasInput,
+                            hasOutput: structure.hasOutput,
+                            internalCategories: [...structure.internalCategories]
+                        } 
+                    };
+                }
+                return n;
+            });
         }
-        return n;
-      });
+    });
 
-      setNodes(updatedParentNodes);
-      setEdges(parentSpace.edges || []);
-      setActiveSpaceId(parentSpaceId === 'root' ? null : (parentSpaceId || null));
-      setNavigationStack(newStack);
-      setSpacesMap(updatedSpacesMap);
+    // 4. DOWNWARD PROPAGATION: Find all spaces mentioned in CURRENT nodes and update their inputs
+    currentNodes.filter(n => n.type === 'space' && n.data.spaceId).forEach(spaceNode => {
+        const sId = spaceNode.data.spaceId;
+        if (newMap[sId]) {
+            // Find connection to this space node in currentEdges
+            const edge = currentEdges.find(e => e.target === spaceNode.id && e.targetHandle === 'in');
+            let sIncomingType = 'url';
+            if (edge) {
+                const srcNode = currentNodes.find(n => n.id === edge.source);
+                if (srcNode) {
+                    sIncomingType = NODE_REGISTRY[srcNode.type]?.outputs.find(o => o.id === edge.sourceHandle)?.type || srcNode.data.outputType || 'url';
+                }
+            }
+            // Update the internal spaceInput of that child space
+            newMap[sId].nodes = newMap[sId].nodes?.map((n: any) => 
+                n.type === 'spaceInput' ? { ...n, data: { ...n.data, inputType: sIncomingType } } : n
+            );
+        }
+    });
+
+    // 4.5 INTERNAL OUTPUT SYNC: Ensure the internal spaceOutput node reflects the structure type
+    newMap[currentId].nodes = newMap[currentId].nodes.map((n: any) => 
+        n.type === 'spaceOutput' ? { ...n, data: { ...n.data, outputType: structure.type } } : n
+    );
+
+    // 5. COMMIT CHANGES TO STATE
+    setSpacesMap(newMap);
+
+    // 6. IF WE UPDATED THE CURRENT VIEW (activeSpaceId), update local states
+    if (newMap[currentId]) {
+        // Only update if nodes/edges were changed by propagation (like spaceInput type)
+        // We check if the stringified nodes changed to avoid unnecessary renders
+        if (JSON.stringify(newMap[currentId].nodes) !== JSON.stringify(currentNodes)) {
+            setNodes(newMap[currentId].nodes);
+        }
+    }
+
+    return { newMap, structure };
+  }, [analyzeSpaceStructure, setNodes, setSpacesMap]);
+
+  // Navigation Logic
+  const handleEnterSpace = useCallback((e: any) => {
+    const { nodeId, spaceId } = e.detail;
+    const currentId = activeSpaceId;
+    
+    // Sync current state first
+    const { newMap: updatedSpacesMap } = syncCurrentSpaceState(nodes, edges, spacesMap, currentId);
+
+    let targetSpaceId = spaceId;
+    if (!targetSpaceId) {
+      targetSpaceId = `space_${Date.now()}`;
+      // Initialize if new
+      updatedSpacesMap[targetSpaceId] = {
+        id: targetSpaceId,
+        name: `Nested Space`,
+        nodes: [
+          { id: 'in', type: 'spaceInput', position: { x: 100, y: 200 }, data: { label: 'Input' } },
+          { id: 'out', type: 'spaceOutput', position: { x: 800, y: 200 }, data: { label: 'Output' } }
+        ],
+        edges: [],
+        createdAt: new Date().toISOString()
+      };
       
+      // Update parent trigger node in EVERYTHING (in case of deep linking)
+      Object.keys(updatedSpacesMap).forEach(key => {
+        if (updatedSpacesMap[key].nodes) {
+          updatedSpacesMap[key].nodes = updatedSpacesMap[key].nodes.map((n: any) => 
+            n.id === nodeId ? { ...n, data: { ...n.data, spaceId: targetSpaceId, hasInput: true, hasOutput: true } } : n
+          );
+        }
+      });
+    }
+
+    const targetSpace = updatedSpacesMap[targetSpaceId];
+    if (targetSpace && targetSpace.nodes) {
+      setSpacesMap(updatedSpacesMap);
+      setNodes([...targetSpace.nodes]);
+      setEdges([...(targetSpace.edges || [])]);
+      setNavigationStack(prev => [...prev, currentId]);
+      setActiveSpaceId(targetSpaceId);
       setTimeout(() => fitView({ padding: 0.2, duration: 800 }), 100);
     }
-  }, [activeSpaceId, nodes, edges, spacesMap, navigationStack, setNodes, setEdges, fitView]);
+  }, [activeSpaceId, nodes, edges, spacesMap, setNodes, setEdges, fitView, syncCurrentSpaceState]);
+
+  const handleGoBack = useCallback(() => {
+    if (navigationStack.length === 0) return;
+    
+    const newStack = [...navigationStack];
+    const parentSpaceId = newStack.pop() as string;
+    const currentId = activeSpaceId;
+    
+    // 1. Sync current state AND propagate up
+    const { newMap: updatedSpacesMap } = syncCurrentSpaceState(nodes, edges, spacesMap, currentId);
+
+    // 2. Switch to parent
+    const parentSpace = updatedSpacesMap[parentSpaceId];
+    if (parentSpace) {
+      setSpacesMap(updatedSpacesMap);
+      setNodes([...parentSpace.nodes]);
+      setEdges([...(parentSpace.edges || [])]);
+      setActiveSpaceId(parentSpaceId);
+      setNavigationStack(newStack);
+      setTimeout(() => fitView({ padding: 0.2, duration: 800 }), 100);
+    }
+  }, [activeSpaceId, nodes, edges, spacesMap, navigationStack, setNodes, setEdges, fitView, syncCurrentSpaceState]);
 
   useEffect(() => {
     window.addEventListener('enter-space', handleEnterSpace);
     return () => window.removeEventListener('enter-space', handleEnterSpace);
   }, [handleEnterSpace]);
+
+  // Reactive Propagation Bridge: Sync current space structure to map and parents on change
+  useEffect(() => {
+    if (!activeSpaceId) return;
+    
+    const timer = setTimeout(() => {
+      // Pass the current states to ensure we sync the actual reflected view
+      syncCurrentSpaceState(nodes, edges, spacesMap, activeSpaceId);
+    }, 800); 
+    return () => clearTimeout(timer);
+  }, [nodes, edges, activeSpaceId, spacesMap, syncCurrentSpaceState]); 
 
   // Fetch saved projects on mount
   useEffect(() => {
@@ -343,12 +438,19 @@ const SpacesContent = () => {
     setIsSaving(true);
     try {
       // Synchronize current nodes/edges to the active space in the map
+      const structure = analyzeSpaceStructure(nodes, edges);
       const updatedSpacesMap = {
         ...spacesMap,
-        [activeSpaceId as string]: {
-          ...spacesMap[activeSpaceId as string],
-          nodes,
-          edges,
+        [activeSpaceId]: {
+          ...(spacesMap[activeSpaceId] || {}),
+          id: activeSpaceId,
+          nodes: [...nodes],
+          edges: [...edges],
+          outputType: structure.type,
+          outputValue: structure.value,
+          hasInput: structure.hasInput,
+          hasOutput: structure.hasOutput,
+          internalCategories: structure.internalCategories,
           updatedAt: new Date().toISOString()
         }
       };
@@ -356,7 +458,7 @@ const SpacesContent = () => {
       const projectToSave = {
         id: activeProjectId,
         name: nameToSave || currentName || 'Untitled Project',
-        rootSpaceId: activeProjectId || undefined, // Simple for now
+        rootSpaceId: 'root', // Always 'root' now
         spaces: updatedSpacesMap,
         metadata: metadata
       };
@@ -376,7 +478,7 @@ const SpacesContent = () => {
         if (!activeProjectId) {
            const newest = updatedList[updatedList.length - 1];
            setActiveProjectId(newest.id);
-           setActiveSpaceId(newest.rootSpaceId);
+           setActiveSpaceId('root');
            setCurrentName(newest.name);
            setSpacesMap(newest.spaces);
         } else {
@@ -393,11 +495,20 @@ const SpacesContent = () => {
   };
 
   const loadProject = (project: any) => {
-    const rootSpace = project.spaces[project.rootSpaceId];
-    setNodes(rootSpace.nodes || []);
-    setEdges(rootSpace.edges || []);
+    // Migration/Normalization: Use project.rootSpaceId or default to 'root'
+    const rootSpaceId = project.rootSpaceId || 'root';
+    const rootSpace = project.spaces?.[rootSpaceId] || project.spaces?.['root'];
+    
+    if (!rootSpace) {
+      console.error("Root space not found for project:", project.id);
+      alert("Error: could not find the main space for this project.");
+      return;
+    }
+
+    setNodes([...(rootSpace.nodes || [])]);
+    setEdges([...(rootSpace.edges || [])]);
     setActiveProjectId(project.id);
-    setActiveSpaceId(project.rootSpaceId);
+    setActiveSpaceId(rootSpaceId);
     setCurrentName(project.name);
     setSpacesMap(project.spaces);
     setMetadata(project.metadata || {});
@@ -417,7 +528,7 @@ const SpacesContent = () => {
       if (Array.isArray(data)) setSavedProjects(data);
       if (activeProjectId === idToDelete) {
         setActiveProjectId(null);
-        setActiveSpaceId(null);
+        setActiveSpaceId('root');
         setCurrentName('');
         setSpacesMap({});
       }
@@ -585,6 +696,114 @@ const SpacesContent = () => {
     [setEdges]
   );
 
+  const onPaneContextMenu = useCallback((event: any) => {
+    event.preventDefault();
+    setContextMenu({ x: event.clientX, y: event.clientY });
+  }, []);
+
+  const onNodeContextMenu = useCallback((event: any, node: any) => {
+    event.preventDefault();
+    setContextMenu({ x: event.clientX, y: event.clientY, nodeId: node.id });
+  }, []);
+
+  const deleteNode = useCallback((id: string) => {
+    setNodes((nds) => nds.filter((node) => node.id !== id));
+    setEdges((eds) => eds.filter((edge) => edge.source !== id && edge.target !== id));
+    setContextMenu(null);
+  }, [setNodes, setEdges]);
+
+  const duplicateNode = useCallback((id: string) => {
+    const node = nodes.find((n) => n.id === id);
+    if (!node) return;
+
+    const newNode = {
+      ...node,
+      id: `${node.type}_${Date.now()}`,
+      position: { x: node.position.x + 20, y: node.position.y + 20 },
+      selected: false,
+    };
+
+    setNodes((nds) => [...nds, newNode]);
+    setContextMenu(null);
+  }, [nodes, setNodes]);
+
+  const groupSelectedToSpace = useCallback(() => {
+    const selectedNodes = nodes.filter(n => n.selected);
+    if (selectedNodes.length === 0) {
+      setContextMenu(null);
+      return;
+    }
+
+    const selectedIds = new Set(selectedNodes.map(n => n.id));
+    const internalEdges = edges.filter(e => selectedIds.has(e.source) && selectedIds.has(e.target));
+    
+    const spaceId = `space_group_${Date.now()}`;
+    const minX = Math.min(...selectedNodes.map(n => n.position.x));
+    const minY = Math.min(...selectedNodes.map(n => n.position.y));
+    const maxX = Math.max(...selectedNodes.map(n => n.position.x));
+    const maxY = Math.max(...selectedNodes.map(n => n.position.y));
+    const avgX = (minX + maxX) / 2;
+    const avgY = (minY + maxY) / 2;
+
+    // Create the new space
+    const newSpacesMap = { ...spacesMap };
+    
+    // Offset nodes to be centered in the new space
+    const nestedNodes = selectedNodes.map(n => ({
+      ...n,
+      position: { x: n.position.x - minX + 200, y: n.position.y - minY + 200 },
+      selected: false
+    }));
+
+    // For initial structure analysis, we include a virtual 'out' node to help identify the output type
+    const virtualOutNode = { id: 'out', type: 'spaceOutput' };
+    const structure = analyzeSpaceStructure([...nestedNodes, virtualOutNode], internalEdges);
+
+    newSpacesMap[spaceId] = {
+      id: spaceId,
+      name: `Grouped Space`,
+      nodes: [
+        { id: 'in', type: 'spaceInput', position: { x: 50, y: 250 }, data: { label: 'Input' } },
+        { id: 'out', type: 'spaceOutput', position: { x: 800, y: 250 }, data: { label: 'Output' } },
+        ...nestedNodes
+      ],
+      edges: internalEdges.map(e => ({
+        ...e,
+        id: `nested_${e.id}`
+      })),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      outputType: structure.type,
+      outputValue: structure.value,
+      hasInput: structure.hasInput,
+      hasOutput: structure.hasOutput,
+      internalCategories: structure.internalCategories
+    };
+
+    // Replace grouped nodes with a single space node
+    const newNode = {
+      id: `node_space_${Date.now()}`,
+      type: 'space',
+      position: { x: avgX, y: avgY },
+      data: { 
+        spaceId, 
+        label: 'Nested Group',
+        hasInput: true,
+        hasOutput: true,
+        outputType: structure.type,
+        internalCategories: structure.internalCategories
+      },
+    };
+
+    const remainingNodes = nodes.filter(n => !selectedIds.has(n.id));
+    const remainingEdges = edges.filter(e => !selectedIds.has(e.source) && !selectedIds.has(e.target));
+
+    setNodes([...remainingNodes, newNode]);
+    setEdges(remainingEdges);
+    setSpacesMap(newSpacesMap);
+    setContextMenu(null);
+  }, [nodes, edges, spacesMap, setNodes, setEdges]);
+
   const isValidConnection = useCallback((connection: any) => {
     const sourceNode = nodes.find((n) => n.id === connection.source);
     const targetNode = nodes.find((n) => n.id === connection.target);
@@ -593,28 +812,44 @@ const SpacesContent = () => {
 
     // Get source handle type
     const sourceMetadata = NODE_REGISTRY[sourceNode.type];
-    const sourceHandleType = sourceMetadata?.outputs.find(o => o.id === connection.sourceHandle)?.type;
+    let sourceHandleType = sourceMetadata?.outputs.find(o => o.id === connection.sourceHandle)?.type;
+
+    // IF SPACE NODE: Override sourceHandleType with the dynamic outputType from internal structure
+    if (sourceNode.type === 'space' && sourceNode.data?.outputType) {
+      sourceHandleType = sourceNode.data.outputType;
+    }
 
     // Get target handle type
     const targetMetadata = NODE_REGISTRY[targetNode.type];
     let targetHandleType = targetMetadata?.inputs.find(i => i.id === connection.targetHandle)?.type;
+
+    // IF TARGET IS SPACE: Override targetHandleType with internal inputType
+    if (targetNode.type === 'space' && targetNode.data?.inputType) {
+        targetHandleType = targetNode.data.inputType;
+    }
+
+    // Fallback for missing/mismatched handle IDs: Use first handle type from registry
+    if (!sourceHandleType && sourceMetadata?.outputs?.[0]) sourceHandleType = sourceMetadata.outputs[0].type;
+    if (!targetHandleType && targetMetadata?.inputs?.[0]) targetHandleType = targetMetadata.inputs[0].type;
 
     // Handle "layer-n" inputs for composer (they are always images)
     if (connection.targetHandle?.startsWith('layer-')) {
       targetHandleType = 'image';
     }
 
+    // Handle "p-n" inputs for concatenator (they are always prompts)
+    if (targetNode.type === 'concatenator' && connection.targetHandle?.startsWith('p')) {
+      targetHandleType = 'prompt';
+    }
+
     // Special cases for generic mediaInput
     if (sourceNode.type === 'mediaInput') {
-       // mediaInput identifies as 'url' in registry, but we can be more specific if its data.type matches target
-       const actualType = (sourceNode.data as any)?.type; // image, video, audio
+       const actualType = (sourceNode.data as any)?.type; 
        if (actualType === targetHandleType) return true;
     }
 
-    // If source or target is explicitly 'url', allow it (most flexible)
+    // Match exact types or allow flexible 'url'
     if (sourceHandleType === 'url' || targetHandleType === 'url') return true;
-
-    // Match exact types
     return sourceHandleType === targetHandleType;
   }, [nodes]);
 
@@ -713,7 +948,7 @@ const SpacesContent = () => {
   return (
     <div className="flex w-full h-full" ref={reactFlowWrapper}>
       <Sidebar onGenerate={onGenerateAssistant} isGenerating={isGeneratingAssistant} />
-      <div className="flex-1 relative">
+      <div className="flex-1 relative" onContextMenu={(e) => e.preventDefault()}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -721,8 +956,10 @@ const SpacesContent = () => {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           isValidConnection={isValidConnection}
-          onDrop={onDrop}
+           onDrop={onDrop}
           onDragOver={onDragOver}
+          onPaneContextMenu={onPaneContextMenu}
+          onNodeContextMenu={onNodeContextMenu}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={defaultEdgeOptions}
@@ -734,38 +971,138 @@ const SpacesContent = () => {
           <Background color="#111" gap={40} size={1} />
           <Controls />
         </ReactFlow>
-        
-        {/* Header Internal HUD / Breadcrumbs */}
-        <div key="header-hud" className="absolute top-6 left-6 z-50 flex items-center gap-2">
-            <div className="px-4 py-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-3">
-              <div className={`w-2 h-2 rounded-full ${activeProjectId ? 'bg-green-500' : 'bg-rose-500'}`} />
-              <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">
-                {activeProjectId ? 'Synced' : 'Draft'}
-              </span>
-              <span className="text-xs font-bold text-white uppercase tracking-tight">
-                {currentName || 'Untitled Workflow'}
-              </span>
+
+        {/* Context Menu */}
+        {contextMenu && (
+          <div 
+            className="context-menu"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onMouseLeave={() => setContextMenu(null)}
+          >
+            <div className="px-3 py-2 text-[8px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 mb-1">
+              Actions
             </div>
             
-            {navigationStack.length > 0 && (
+            {contextMenu.nodeId ? (
               <>
-                <div key="sep" className="w-6 h-[1px] bg-white/10" />
-                <button 
-                  key="back-btn"
-                  onClick={handleGoBack}
-                  className="px-4 py-2 bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 rounded-xl flex items-center gap-2 text-white text-[10px] font-black uppercase tracking-widest transition-all group pointer-events-auto"
+                <div 
+                  className="context-menu-item"
+                  onClick={() => duplicateNode(contextMenu.nodeId!)}
                 >
-                  <ChevronLeft size={14} className="text-cyan-400 group-hover:-translate-x-1 transition-transform" />
-                  Return
-                </button>
-                <div key="current-space" className="px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-xl flex items-center gap-2">
-                   <Layers size={12} className="text-cyan-400" />
-                   <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">
-                     {spacesMap[activeSpaceId as string]?.name || 'Sub-Space'}
-                   </span>
+                  <Copy size={14} className="text-blue-400" /> Duplicate Node
+                </div>
+                <div 
+                  className="context-menu-item danger"
+                  onClick={() => deleteNode(contextMenu.nodeId!)}
+                >
+                  <Trash2 size={14} className="text-rose-500" /> Delete Node
+                </div>
+              </>
+            ) : (
+              <>
+                <div 
+                  className="context-menu-item primary"
+                  onClick={groupSelectedToSpace}
+                >
+                  <PlusSquare size={14} /> Group into Nested Space
+                </div>
+                <div className="context-menu-separator" />
+                <div 
+                  className="context-menu-item"
+                  onClick={() => {
+                    setNodes([]);
+                    setEdges([]);
+                    setContextMenu(null);
+                  }}
+                >
+                  <Trash2 size={14} /> Clear Canvas
                 </div>
               </>
             )}
+          </div>
+        )}
+        
+        {/* Header Internal HUD / Breadcrumbs */}
+        <div key="header-hud" className="absolute top-6 left-6 z-50 flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/5 p-1 rounded-xl shadow-2xl">
+            <button 
+              onClick={handleGoBack}
+              disabled={navigationStack.length === 0}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-all disabled:opacity-20"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <div className="flex items-center gap-2 px-2">
+              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[2px]">
+            <span 
+              onClick={() => {
+                if (activeSpaceId !== 'root') {
+                  const { newMap: updatedSpacesMap } = syncCurrentSpaceState(nodes, edges, spacesMap, activeSpaceId);
+                  const rootSpace = updatedSpacesMap['root'];
+                  if (rootSpace) {
+                    setSpacesMap(updatedSpacesMap);
+                    setNodes([...rootSpace.nodes]);
+                    setEdges([...(rootSpace.edges || [])]);
+                    setActiveSpaceId('root');
+                    setNavigationStack([]);
+                  }
+                }
+              }}
+              className={`hover:text-cyan-400 cursor-pointer transition-colors ${activeSpaceId === 'root' ? 'text-cyan-400 font-bold' : ''}`}
+            >
+              Canvas
+            </span>
+                {navigationStack.map((id, idx) => (
+                  <React.Fragment key={id}>
+                    <span className="text-white/10">/</span>
+                    <span 
+                      onClick={() => {
+                        // 1. Commit current and propagate
+                        const { newMap: updatedSpacesMap } = syncCurrentSpaceState(nodes, edges, spacesMap, activeSpaceId);
+                        
+                        // 2. Clear stack up to the target and switch
+                        const newStack = navigationStack.slice(0, idx);
+                        const targetSpace = updatedSpacesMap[id];
+                        if (targetSpace) {
+                          setSpacesMap(updatedSpacesMap);
+                          setNodes([...targetSpace.nodes]);
+                          setEdges([...(targetSpace.edges || [])]);
+                          setActiveSpaceId(id);
+                          setNavigationStack(newStack);
+                        }
+                      }}
+                      className="text-white/40 hover:text-cyan-400 cursor-pointer transition-colors"
+                    >
+                      {spacesMap[id]?.name || 'Space'}
+                    </span>
+                  </React.Fragment>
+                ))}
+                {activeSpaceId !== 'root' && (
+                  <>
+                    <span className="text-white/10">/</span>
+                    <span className="text-cyan-400 font-bold tracking-wider">
+                      {spacesMap[activeSpaceId]?.name || 'Nested Space'}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 bg-black/40 backdrop-blur-xl border border-white/5 px-3 py-1.5 rounded-xl shadow-2xl">
+             <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+             <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">
+               {currentName || 'Untitled Workspace'}
+             </span>
+          </div>
+
+          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/5 px-3 py-1.5 rounded-xl shadow-2xl">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest flex items-center gap-2">
+              <Cloud size={12} className="text-white/20" /> 
+              Live Sync
+            </span>
+          </div>
         </div>
 
         {/* Action HUD */}

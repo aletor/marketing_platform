@@ -12,131 +12,124 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { 
       image, 
-      target = 'person', 
-      customPrompt = '', 
       expansion = 0, 
-      feather = 5,
-      edgeSmooth = 2,
-      confidence = 0.5 
+      feather = 0.6,
+      threshold = 0.9 // Default to 0.9 as requested
     } = body;
 
     if (!image) {
       return NextResponse.json({ error: 'Missing image input' }, { status: 400 });
     }
 
-    console.log(`--- MATTE ENGINE START --- Target: ${target}`);
-
-    // 1. Fetch Image
-    let imageBuffer: Buffer;
-    if (image.startsWith('http')) {
-      const response = await axios.get(image, { responseType: 'arraybuffer' });
-      imageBuffer = Buffer.from(response.data);
-    } else {
-      // Handle Base64
-      const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-      imageBuffer = Buffer.from(base64Data, 'base64');
-    }
+    console.log(`--- BACKGROUND REMOVER START ---`);
 
     if (!process.env.REPLICATE_API_TOKEN) {
       return NextResponse.json({ error: 'REPLICATE_API_TOKEN is not configured' }, { status: 500 });
     }
 
-    // 2. ML Inference (Replicate)
-    // We choose different models based on target
+    // 1. ML Inference: Professional Matting (851-labs/background-remover)
     let maskUrl: string;
+    let bbox = [0, 0, 0, 0];
     
-    // NOTE: These are example model IDs on Replicate. In a real scenario, we'd pick the best ones.
-    // SAM 2 is great for everything. MODNet for specialized hair/person.
     try {
-      if (target === 'person' || target === 'hair') {
-        // Example: Robust Video Matting or MODNet
-        // Using a reliable matting model
-        const output = await replicate.run(
-          "cjwbw/robust-video-matting:7334d201d4ca6b8256af3923769c735d3262529341f531c3ced91bf39d1b0d2d",
-          { input: { input_path: image } }
-        );
-        // This usually returns a dict/array
-        maskUrl = Array.isArray(output) ? output[0] : (output as any).toString();
-      } else {
-        // Use SAM 2 for General Objects / Custom
-        // facebook/sam-2
-        const input: any = { image };
-        if (target === 'custom' && customPrompt) {
-          // GroundingDINO + SAM style (conceptually)
-          // For now, let's use a versatile SAM2 implementation that accepts "target"
-          input.mask_limit = 1;
+      const output: any = await replicate.run(
+        "851-labs/background-remover:a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc",
+        { 
+          input: { 
+            image,
+            threshold: Number(threshold),
+            reverse: false
+          } 
         }
-
-        const output = await replicate.run(
-          "arielreid/segment-anything-2:4f1e913a1e944b3605c31f2fc55653528b1464c12662c6d4827c1cdb66f272a2",
-          { input }
-        );
-        maskUrl = Array.isArray(output) ? output[0] : (output as any).toString();
-      }
+      );
+      maskUrl = Array.isArray(output) ? output[0] : output.toString();
     } catch (mlErr: any) {
-      console.error("[Matte API] ML Error:", mlErr);
-      return NextResponse.json({ error: `ML Model failed: ${mlErr.message}` }, { status: 500 });
+      console.error("[Background Remover] ML Error:", mlErr);
+      return NextResponse.json({ error: `ML Engine failed: ${mlErr.message}` }, { status: 500 });
     }
 
-    // 3. Fetch Generated Mask
-    const maskResponse = await axios.get(maskUrl, { responseType: 'arraybuffer' });
-    let maskBuffer = Buffer.from(maskResponse.data);
+    // 2. Fetch Mask and Image
+    const [maskResponse, imageResponse] = await Promise.all([
+      axios.get(maskUrl, { responseType: 'arraybuffer' }),
+      image.startsWith('http') 
+        ? axios.get(image, { responseType: 'arraybuffer' }).then(r => r.data)
+        : Promise.resolve(Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64'))
+    ]);
 
-    // 4. Refinement with Sharp
-    // 4.1 Normalize mask to Grayscale and resize to match original image
-    const metadata = await sharp(imageBuffer).metadata();
-    const w = metadata.width || 0;
-    const h = metadata.height || 0;
+    const maskBuffer = Buffer.from(maskResponse.data);
+    const imageBuffer = Buffer.from(imageResponse);
 
+    const imgMetadata = await sharp(imageBuffer).metadata();
+    const w = imgMetadata.width || 1920;
+    const h = imgMetadata.height || 1080;
+
+    // 3. Extract Alpha and Refine
     let maskProcessor = sharp(maskBuffer)
       .resize(w, h)
-      .grayscale();
+      .ensureAlpha()
+      .extractChannel('alpha');
 
-    // 4.2 Apply Refinements (Expansion / Erosion)
+    // Expansion (Dilate)
     if (expansion !== 0) {
-      // Simulated expansion using blur + threshold
-      maskProcessor = maskProcessor.blur(Math.abs(expansion))
-        .threshold(expansion > 0 ? 128 : 200);
+      const sigma = Math.max(0.3, Math.abs(expansion) / 2);
+      maskProcessor = maskProcessor.blur(sigma).threshold(expansion > 0 ? 128 : 200);
     }
 
-    // 4.3 Apply Smoothing & Feathering
-    if (edgeSmooth > 0) {
-      maskProcessor = maskProcessor.blur(edgeSmooth);
-    }
-    
+    // Feather (Gaussian Blur)
     if (feather > 0) {
-      maskProcessor = maskProcessor.blur(feather);
+      maskProcessor = maskProcessor.blur(Math.max(0.3, feather));
     }
 
     const finalMaskBuffer = await maskProcessor.png().toBuffer();
 
-    // 5. Alpha Composition (Join Channel)
+    // 4. Calculate BBox from mask
+    const { data: maskPixels } = await sharp(finalMaskBuffer)
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    let minX = w, minY = h, maxX = 0, maxY = 0;
+    let found = false;
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (maskPixels[y * w + x] > 128) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+          found = true;
+        }
+      }
+    }
+
+    if (found) {
+      bbox = [minX, minY, maxX - minX, maxY - minY];
+    } else {
+      bbox = [0, 0, w, h]; // Fallback if no person found
+    }
+
+    // 5. Compose Cutout
     const rgbaBuffer = await sharp(imageBuffer)
       .ensureAlpha()
       .joinChannel(finalMaskBuffer)
       .png()
       .toBuffer();
 
-    // 6. Final Outputs
-    const rgbaBase64 = `data:image/png;base64,${rgbaBuffer.toString('base64')}`;
-    const maskBase64 = `data:image/png;base64,${finalMaskBuffer.toString('base64')}`;
-
-    console.log(`[Matte API] SUCCESS: Mask extracted and applied (${Math.round(rgbaBuffer.length / 1024)} KB)`);
-
     return NextResponse.json({
-      rgba_image: rgbaBase64,
-      mask: maskBase64,
+      mask: `data:image/png;base64,${finalMaskBuffer.toString('base64')}`,
+      rgba_image: `data:image/png;base64,${rgbaBuffer.toString('base64')}`,
+      bbox,
       metadata: {
-        confidence,
-        target,
+        engine: '851-labs',
+        threshold,
+        expansion,
+        feather,
         resolution: `${w}x${h}`
       }
     });
 
   } catch (error: any) {
-    console.error('[Matte API] CRITICAL ERROR:', error);
-    return NextResponse.json({ 
-      error: error.message || 'Unknown matte extraction error'
-    }, { status: 500 });
+    console.error('[Background Remover] CRITICAL ERROR:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
