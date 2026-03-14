@@ -311,13 +311,13 @@ export const UrlImageNode = memo(({ id, data }: NodeProps<any>) => {
   const next = () => {
     if (urls.length === 0) return;
     const nextIdx = (selectedIndex + 1) % urls.length;
-    updateData({ selectedIndex: nextIdx, value: urls[nextIdx] });
+    updateData({ selectedIndex: nextIdx, value: urls[nextIdx], type: 'image' });
   };
 
   const prev = () => {
     if (urls.length === 0) return;
     const prevIdx = (selectedIndex - 1 + urls.length) % urls.length;
-    updateData({ selectedIndex: prevIdx, value: urls[prevIdx] });
+    updateData({ selectedIndex: prevIdx, value: urls[prevIdx], type: 'image' });
   };
 
   return (
@@ -373,7 +373,7 @@ export const UrlImageNode = memo(({ id, data }: NodeProps<any>) => {
                     const newUrls = [...urls];
                     if (newUrls.length === 0) newUrls.push(val);
                     else newUrls[selectedIndex] = val;
-                    updateData({ urls: newUrls, value: val });
+                    updateData({ urls: newUrls, value: val, type: 'image' });
                   }}
                 />
               </div>
@@ -394,7 +394,7 @@ export const UrlImageNode = memo(({ id, data }: NodeProps<any>) => {
                   {urls.map((url, i) => (
                     <div 
                       key={i}
-                      onClick={() => updateData({ selectedIndex: i, value: url })}
+                      onClick={() => updateData({ selectedIndex: i, value: url, type: 'image' })}
                       className={`flex-shrink-0 w-12 h-12 rounded-lg border transition-all cursor-pointer overflow-hidden ${i === selectedIndex ? 'border-cyan-500 ring-2 ring-cyan-500/20' : 'border-white/10 opacity-50 hover:opacity-100'}`}
                     >
                       {url ? <img src={url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-white/5 flex items-center justify-center"><Link size={10} /></div>}
