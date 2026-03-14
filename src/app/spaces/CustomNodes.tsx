@@ -277,7 +277,9 @@ export const UrlImageNode = memo(({ id, data }: NodeProps<any>) => {
                 urls: json.urls, 
                 value: json.urls[0], 
                 selectedIndex: 0, 
-                pendingSearch: false 
+                pendingSearch: false,
+                type: 'image',
+                source: 'url'
               } 
             } : n));
           } else {
@@ -1712,7 +1714,11 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
         resolution: nodeData.resolution || "1k",
       };
 
-      console.log("[NanoBanana] Triggering API with params:", { ...inputParams, image: image ? '(base64 payload)' : 'none' });
+      const imageStr = typeof image === 'string' ? image : '';
+      console.log("[NanoBanana] Triggering API with params:", { 
+        ...inputParams, 
+        image: imageStr ? `${imageStr.substring(0, 50)}... (${imageStr.length} chars)` : 'none' 
+      });
 
       const res = await fetch('/api/gemini/generate', {
         method: 'POST',
@@ -1724,7 +1730,8 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
 
       if (!res.ok) {
         const errJson = await res.json();
-        throw new Error(errJson.error || `HTTP Error ${res.status}`);
+        const fullError = errJson.details ? `${errJson.error}\n\nDetalles: ${errJson.details}` : errJson.error;
+        throw new Error(fullError || `HTTP Error ${res.status}`);
       }
 
       const json = await res.json();
@@ -1741,7 +1748,7 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
     } catch (e: any) { 
       clearInterval(progressInterval);
       console.error("[NanoBanana] Error:", e.message);
-      alert("Nano Banana 2: " + e.message);
+      alert("Nano Banana 2 Error:\n" + e.message);
       setStatus('error'); 
     }
   };
@@ -1877,14 +1884,39 @@ export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
   };
 
   const onRun = async () => {
-    const sourceEdge = edges.find(e => e.target === id && e.targetHandle === 'media');
-    const sourceNode = nodes.find(n => n.id === sourceEdge?.source);
-    const media = sourceNode?.data.value;
+    console.log("[BackgroundRemover] onRun triggered");
+    
+    // Find ANY incoming edge if the specific one fails
+    const incomingEdges = edges.filter(e => e.target === id);
+    console.log("[BackgroundRemover] Connected edges:", incomingEdges.length);
 
-    if (!media) return alert("Need media input!");
+    if (incomingEdges.length === 0) {
+      return alert("No input connected! Connect an image node to the left side.");
+    }
+
+    // Try to find a node with a value among all connected sources
+    let media = "";
+    let sourceNodeLabel = "";
+
+    for (const edge of incomingEdges) {
+      const srcNode = nodes.find(n => n.id === edge.source);
+      const val = srcNode?.data?.value;
+      if (typeof val === 'string' && val) {
+        media = val;
+        sourceNodeLabel = (srcNode.data.label || srcNode.id) as string;
+        break;
+      }
+    }
+
+    console.log("[BackgroundRemover] Found media from:", sourceNodeLabel);
+
+    if (!media) {
+      return alert("Connected node (" + sourceNodeLabel + ") has no image data. Try selecting an image in the source node first.");
+    }
 
     setStatus('running');
     try {
+      console.log("[BackgroundRemover] Fetching matte...");
       const res = await fetch('/api/spaces/matte', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1916,7 +1948,8 @@ export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
       
       setStatus('success');
     } catch (err: any) {
-      console.error(err);
+      console.error("[BackgroundRemover] Error:", err.message);
+      alert("Background Remover Error:\n" + err.message);
       setStatus('idle');
     }
   };
@@ -2586,6 +2619,198 @@ export const VideoBackgroundRemovalNode = memo(({ id, data }: NodeProps<any>) =>
             <Handle type="source" position={Position.Right} id="rgba" className="handle-video" />
           </div>
         </div>
+      </div>
+    </div>
+  );
+});
+
+export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
+  const nodeData = data as any;
+  const { setNodes, getEdges, getNodes } = useReactFlow();
+  const [status, setStatus] = useState('idle');
+  const [progress, setProgress] = useState(0);
+  const [result, setResult] = useState<string | null>(nodeData.value || null);
+
+  const onRun = async () => {
+    const edges = getEdges();
+    const nodes = getNodes();
+    
+    // Find inputs
+    const promptEdge = edges.find((e: any) => e.target === id && e.targetHandle === 'prompt');
+    const firstFrameEdge = edges.find((e: any) => e.target === id && e.targetHandle === 'firstFrame');
+    const lastFrameEdge = edges.find((e: any) => e.target === id && e.targetHandle === 'lastFrame');
+
+    const findSourceValue = (edge: any) => {
+      if (!edge) return null;
+      const sourceNode = nodes.find((n: any) => n.id === edge.source);
+      return sourceNode?.data?.value;
+    };
+
+    const prompt = findSourceValue(promptEdge) || nodeData.prompt || "";
+    const firstFrame = findSourceValue(firstFrameEdge);
+    const lastFrame = findSourceValue(lastFrameEdge);
+
+    if (!prompt) return alert("Se necesita un Creative Prompt para generar video. Puedes escribirlo en el nodo o conectar un nodo de Prompt.");
+
+    setStatus('running');
+    setProgress(0);
+
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        const next = prev + (100 - prev) * 0.05;
+        return next > 99 ? 99 : next;
+      });
+    }, 2000);
+
+    try {
+      const res = await fetch('/api/gemini/video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          firstFrame,
+          lastFrame,
+          resolution: nodeData.resolution || "1080p",
+          durationSeconds: nodeData.duration || "5",
+          audio: nodeData.audio || false
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Generation failed");
+      }
+
+      const json = await res.json();
+      if (json.output) {
+        setResult(json.output);
+        setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, value: json.output, type: 'video' } } : n)));
+        setStatus('success');
+      }
+    } catch (e: any) {
+      console.error(e);
+      setStatus('error');
+      alert("Error generating video: " + e.message);
+    } finally {
+      clearInterval(progressInterval);
+      setProgress(100);
+    }
+  };
+
+  const updateData = (key: string, val: any) => {
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
+  };
+
+  return (
+    <div className={`custom-node processor-node w-[350px] ${status === 'running' ? 'node-glow-running' : ''}`}>
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Gemini Video (Veo 3.1)" />
+      
+      <div className="handle-wrapper handle-left !top-[20%]">
+        <Handle type="target" position={Position.Left} id="firstFrame" className="handle-image" />
+        <span className="handle-label text-emerald-400">First Frame</span>
+      </div>
+      <div className="handle-wrapper handle-left !top-[40%]">
+        <Handle type="target" position={Position.Left} id="lastFrame" className="handle-image" />
+        <span className="handle-label text-emerald-400">Last Frame</span>
+      </div>
+      <div className="handle-wrapper handle-left !top-[60%]">
+        <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
+        <span className="handle-label text-emerald-400">Creative Prompt</span>
+      </div>
+
+      <div className="node-header flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600">
+        <Video size={16} className="text-white" />
+        <span className="font-black tracking-tighter uppercase whitespace-nowrap text-white">Gemini Video</span>
+        <div className="ml-auto bg-white/20 px-2 py-0.5 rounded text-[8px] font-bold text-white uppercase">VEO 3.1</div>
+      </div>
+
+      <div className="node-content space-y-4">
+        {/* Prompt Input Fallback */}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1">
+            <Type size={10} className="text-zinc-500" />
+            <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Creative Prompt</span>
+          </div>
+          <textarea 
+            className="node-textarea text-[10px] min-h-[60px] bg-black/40 border-white/10" 
+            placeholder="Describe the motion, scene, and details..."
+            value={nodeData.prompt || ''}
+            onChange={(e) => updateData('prompt', e.target.value)}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+             <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Resolution</span>
+             <select 
+               className="node-input text-[10px]" 
+               value={nodeData.resolution || '1080p'} 
+               onChange={(e) => updateData('resolution', e.target.value)}
+             >
+               <option value="720p">720p HD</option>
+               <option value="1080p">1080p Full HD</option>
+               <option value="4K">4K Ultra HD</option>
+             </select>
+          </div>
+          <div className="space-y-1">
+             <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Duration</span>
+             <select 
+               className="node-input text-[10px]" 
+               value={nodeData.duration || '5'} 
+               onChange={(e) => updateData('duration', e.target.value)}
+             >
+               <option value="4">4 Seconds</option>
+               <option value="5">5 Seconds</option>
+               <option value="6">6 Seconds</option>
+               <option value="8">8 Seconds</option>
+             </select>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between p-2 bg-black/40 rounded-lg border border-white/5">
+          <span className="text-[10px] font-black text-zinc-400 uppercase">Include Native Audio</span>
+          <button 
+            onClick={() => updateData('audio', !nodeData.audio)}
+            className={`w-10 h-5 rounded-full transition-all relative ${nodeData.audio ? 'bg-emerald-500' : 'bg-zinc-800'}`}
+          >
+            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${nodeData.audio ? 'left-6' : 'left-1'}`} />
+          </button>
+        </div>
+
+        <button 
+          onClick={onRun}
+          disabled={status === 'running'}
+          className="execute-btn w-full justify-center gap-2 group relative overflow-hidden"
+        >
+          {status === 'running' && (
+            <div className="absolute inset-0 bg-emerald-500/20" style={{ width: `${progress}%`, transition: 'width 0.5s ease-out' }} />
+          )}
+          <Zap size={14} className={status === 'running' ? 'animate-pulse' : 'group-hover:scale-125 transition-transform'} />
+          <span className="relative z-10">{status === 'running' ? `GENERATING ${Math.round(progress)}%` : 'GENERATE VIDEO'}</span>
+        </button>
+
+        <div className="preview-container aspect-video bg-black/60 rounded-xl border border-white/5 overflow-hidden flex items-center justify-center relative group">
+          {result ? (
+            <video 
+              src={result} 
+              className="w-full h-full object-cover" 
+              controls 
+              loop 
+              muted 
+              playsInline
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-2 opacity-20 group-hover:opacity-40 transition-opacity">
+              <Video size={32} />
+              <span className="text-[8px] font-black uppercase tracking-[2px]">No video generated</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="handle-wrapper handle-right">
+        <span className="handle-label text-cyan-400">Video Out</span>
+        <Handle type="source" position={Position.Right} id="video" className="handle-video" />
       </div>
     </div>
   );

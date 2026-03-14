@@ -241,5 +241,23 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
     ],
     outputs: [],
     dataSchema: {}
+  },
+  geminiVideo: {
+    type: 'geminiVideo',
+    label: 'Gemini Video',
+    description: 'Generates high-fidelity videos using Veo 3.1 with first and last frame control.',
+    inputs: [
+      { id: 'firstFrame', label: 'First Frame', type: 'image' },
+      { id: 'lastFrame', label: 'Last Frame', type: 'image' },
+      { id: 'prompt', label: 'Creative Prompt', type: 'prompt' }
+    ],
+    outputs: [
+      { id: 'video', label: 'Video Out', type: 'video' }
+    ],
+    dataSchema: {
+      resolution: '720p | 1080p | 4K',
+      duration: '4 | 5 | 6 | 8',
+      audio: 'boolean'
+    }
   }
 };

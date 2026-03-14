@@ -113,20 +113,20 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
             <Download size={10} /> Ingesta
           </h3>
           <div className="grid grid-cols-2 gap-2">
-            <div className="dndnode border-emerald-500/30 hover:border-emerald-500/50" onDragStart={(event) => onDragStart(event, 'mediaInput')} draggable title="Media Asset">
-              <FilePlus size={12} className="text-emerald-500" /> <span className="uppercase tracking-tighter scale-90">Asset</span>
+            <div className="dndnode border-emerald-500/30 hover:border-emerald-500 hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]" onDragStart={(event) => onDragStart(event, 'mediaInput')} draggable title="Media Asset">
+              <FilePlus size={12} className="text-emerald-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-emerald-500">Asset</span>
               <TypeIndicators nodeType="mediaInput" />
             </div>
-            <div className="dndnode border-blue-500/30 hover:border-blue-500/50" onDragStart={(event) => onDragStart(event, 'promptInput')} draggable title="Prompt Input">
-              <Type size={12} className="text-blue-500" /> <span className="uppercase tracking-tighter scale-90">Prompt</span>
+            <div className="dndnode border-emerald-500/30 hover:border-emerald-500 hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]" onDragStart={(event) => onDragStart(event, 'promptInput')} draggable title="Prompt Input">
+              <Type size={12} className="text-emerald-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-emerald-500">Prompt</span>
               <TypeIndicators nodeType="promptInput" />
             </div>
-            <div className="dndnode border-emerald-500/30 hover:border-emerald-500/50" onDragStart={(event) => onDragStart(event, 'background')} draggable title="Canvas Base">
-              <Paintbrush size={12} className="text-emerald-500" /> <span className="uppercase tracking-tighter scale-90">Canvas</span>
+            <div className="dndnode border-emerald-500/30 hover:border-emerald-500 hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]" onDragStart={(event) => onDragStart(event, 'background')} draggable title="Canvas Base">
+              <Paintbrush size={12} className="text-emerald-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-emerald-500">Canvas</span>
               <TypeIndicators nodeType="background" />
             </div>
-            <div className="dndnode border-blue-500/30 hover:border-blue-500/50" onDragStart={(event) => onDragStart(event, 'urlImage')} draggable title="Web Carousel">
-              <Globe size={12} className="text-blue-500" /> <span className="uppercase tracking-tighter scale-90">Web</span>
+            <div className="dndnode border-emerald-500/30 hover:border-emerald-500 hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]" onDragStart={(event) => onDragStart(event, 'urlImage')} draggable title="Web Carousel">
+              <Globe size={12} className="text-emerald-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-emerald-500">Web</span>
               <TypeIndicators nodeType="urlImage" />
             </div>
           </div>
@@ -138,32 +138,36 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
             <Zap size={10} /> Inteligencia
           </h3>
           <div className="grid grid-cols-2 gap-2">
-            <div className="dndnode border-cyan-500/30 hover:border-cyan-500/50" onDragStart={(event) => onDragStart(event, 'backgroundRemover')} draggable title="Human Matting">
-              <Scissors size={12} className="text-cyan-400" /> <span className="uppercase tracking-tighter scale-90">Matting</span>
+            <div className="dndnode border-cyan-500/30 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]" onDragStart={(event) => onDragStart(event, 'backgroundRemover')} draggable title="Human Matting">
+              <Scissors size={12} className="text-cyan-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-cyan-500">Matting</span>
               <TypeIndicators nodeType="backgroundRemover" />
             </div>
-            <div className="dndnode border-cyan-500/30 hover:border-cyan-500/50" onDragStart={(event) => onDragStart(event, 'mediaDescriber')} draggable title="Vision Eye">
-              <Eye size={12} className="text-cyan-500" /> <span className="uppercase tracking-tighter scale-90">Eye</span>
+            <div className="dndnode border-cyan-500/30 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]" onDragStart={(event) => onDragStart(event, 'mediaDescriber')} draggable title="Vision Eye">
+              <Eye size={12} className="text-cyan-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-cyan-500">Eye</span>
               <TypeIndicators nodeType="mediaDescriber" />
             </div>
-            <div className="dndnode border-blue-500/30 hover:border-blue-500/50" onDragStart={(event) => onDragStart(event, 'enhancer')} draggable title="Enhancer">
-              <Sparkles size={12} className="text-blue-400" /> <span className="uppercase tracking-tighter scale-90">Enhance</span>
+            <div className="dndnode border-cyan-500/30 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]" onDragStart={(event) => onDragStart(event, 'enhancer')} draggable title="Enhancer">
+              <Sparkles size={12} className="text-cyan-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-cyan-500">Enhance</span>
               <TypeIndicators nodeType="enhancer" />
             </div>
-            <div className="dndnode border-cyan-500/30 hover:border-cyan-500/50" onDragStart={(event) => onDragStart(event, 'grokProcessor')} draggable title="Grok Studio">
-              <Compass size={12} className="text-cyan-500" /> <span className="uppercase tracking-tighter scale-90">Grok</span>
+            <div className="dndnode border-cyan-500/30 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]" onDragStart={(event) => onDragStart(event, 'grokProcessor')} draggable title="Grok Studio">
+              <Compass size={12} className="text-cyan-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-cyan-500">Grok</span>
               <TypeIndicators nodeType="grokProcessor" />
             </div>
-            <div className="dndnode border-cyan-500/30 hover:border-cyan-500/50" onDragStart={(event) => onDragStart(event, 'nanoBanana')} draggable title="Nano Node">
-              <Sparkles size={12} className="text-cyan-300" /> <span className="uppercase tracking-tighter scale-90">Nano</span>
+            <div className="dndnode border-cyan-500/30 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]" onDragStart={(event) => onDragStart(event, 'nanoBanana')} draggable title="Nano Node">
+              <Sparkles size={12} className="text-cyan-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-cyan-500">Nano</span>
               <TypeIndicators nodeType="nanoBanana" />
             </div>
-            <div className="dndnode border-rose-500/30 hover:border-rose-500/50" onDragStart={(event) => onDragStart(event, 'runwayProcessor')} draggable title="Runway G3">
-              <Video size={12} className="text-rose-500" /> <span className="uppercase tracking-tighter scale-90">Runway</span>
+            <div className="dndnode border-cyan-500/30 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]" onDragStart={(event) => onDragStart(event, 'geminiVideo')} draggable title="Gemini Video">
+              <Video size={12} className="text-cyan-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-cyan-500">Veo 3.1</span>
+              <TypeIndicators nodeType="geminiVideo" />
+            </div>
+            <div className="dndnode border-cyan-500/30 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]" onDragStart={(event) => onDragStart(event, 'runwayProcessor')} draggable title="Runway G3">
+              <Video size={12} className="text-cyan-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-cyan-500">Runway</span>
               <TypeIndicators nodeType="runwayProcessor" />
             </div>
-            <div className="dndnode border-rose-500/30 hover:border-rose-500/50" onDragStart={(event) => onDragStart(event, 'videoBackgroundRemoval')} draggable title="Video BG Removal">
-              <Scissors size={12} className="text-rose-400" /> <span className="uppercase tracking-tighter scale-90">VideoBG</span>
+            <div className="dndnode border-cyan-500/30 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]" onDragStart={(event) => onDragStart(event, 'videoBackgroundRemoval')} draggable title="Video BG Removal">
+              <Scissors size={12} className="text-cyan-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-cyan-500">VideoBG</span>
               <TypeIndicators nodeType="videoBackgroundRemoval" />
             </div>
           </div>
@@ -175,20 +179,20 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
             <PlusSquare size={10} /> Lógica
           </h3>
           <div className="grid grid-cols-2 gap-2">
-            <div className="dndnode border-blue-500/30 hover:border-blue-500/50" onDragStart={(event) => onDragStart(event, 'concatenator')} draggable title="Concat">
-              <PlusSquare size={12} className="text-blue-500" /> <span className="uppercase tracking-tighter scale-90">Concat</span>
+            <div className="dndnode border-blue-500/30 hover:border-blue-500 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]" onDragStart={(event) => onDragStart(event, 'concatenator')} draggable title="Concat">
+              <PlusSquare size={12} className="text-blue-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-blue-500">Concat</span>
               <TypeIndicators nodeType="concatenator" />
             </div>
-            <div className="dndnode border-cyan-500/30 hover:border-cyan-500/50" onDragStart={(event) => onDragStart(event, 'space')} draggable title="Nested Space">
-              <Layers size={12} className="text-cyan-500" /> <span className="uppercase tracking-tighter scale-90">Space</span>
+            <div className="dndnode border-blue-500/30 hover:border-blue-500 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]" onDragStart={(event) => onDragStart(event, 'space')} draggable title="Nested Space">
+              <Layers size={12} className="text-blue-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-blue-500">Space</span>
               <TypeIndicators nodeType="space" />
             </div>
-            <div className="dndnode border-emerald-500/30 hover:border-emerald-500/50" onDragStart={(event) => onDragStart(event, 'spaceInput')} draggable title="Entry">
-              <ChevronRight size={12} className="text-emerald-500" /> <span className="uppercase tracking-tighter scale-90">Entry</span>
+            <div className="dndnode border-blue-500/30 hover:border-blue-500 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]" onDragStart={(event) => onDragStart(event, 'spaceInput')} draggable title="Entry">
+              <ChevronRight size={12} className="text-blue-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-blue-500">Entry</span>
               <TypeIndicators nodeType="spaceInput" />
             </div>
-            <div className="dndnode border-rose-500/30 hover:border-rose-500/50" onDragStart={(event) => onDragStart(event, 'spaceOutput')} draggable title="Exit">
-              <ChevronLeft size={12} className="text-rose-500" /> <span className="uppercase tracking-tighter scale-90">Exit</span>
+            <div className="dndnode border-blue-500/30 hover:border-blue-500 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]" onDragStart={(event) => onDragStart(event, 'spaceOutput')} draggable title="Exit">
+              <ChevronLeft size={12} className="text-blue-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-blue-500">Exit</span>
               <TypeIndicators nodeType="spaceOutput" />
             </div>
           </div>
@@ -200,12 +204,12 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
             <Layers size={10} /> Composición
           </h3>
           <div className="grid grid-cols-2 gap-2">
-            <div className="dndnode border-cyan-500/30 hover:border-cyan-500/50" onDragStart={(event) => onDragStart(event, 'imageComposer')} draggable title="Composer">
-              <Layers size={12} className="text-cyan-500" /> <span className="uppercase tracking-tighter scale-90">Layout</span>
+            <div className="dndnode border-amber-500/30 hover:border-amber-500 hover:shadow-[0_0_15px_rgba(245,158,11,0.2)]" onDragStart={(event) => onDragStart(event, 'imageComposer')} draggable title="Composer">
+              <Layers size={12} className="text-amber-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-amber-500">Layout</span>
               <TypeIndicators nodeType="imageComposer" />
             </div>
-            <div className="dndnode border-amber-500/30 hover:border-amber-500/50" onDragStart={(event) => onDragStart(event, 'imageExport')} draggable title="Exporter">
-              <Download size={12} className="text-amber-500" /> <span className="uppercase tracking-tighter scale-90">Export</span>
+            <div className="dndnode border-amber-500/30 hover:border-amber-500 hover:shadow-[0_0_15px_rgba(245,158,11,0.2)]" onDragStart={(event) => onDragStart(event, 'imageExport')} draggable title="Exporter">
+              <Download size={12} className="text-amber-500" /> <span className="uppercase tracking-tighter scale-90 font-black text-amber-500">Export</span>
               <TypeIndicators nodeType="imageExport" />
             </div>
           </div>

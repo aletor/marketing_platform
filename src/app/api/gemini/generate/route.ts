@@ -32,11 +32,17 @@ export async function POST(req: NextRequest) {
           mimeType = splitParts[0].split(':')[1];
           base64Data = splitParts[1];
         } else if (image.startsWith('http')) {
-          const imgRes = await fetch(image);
-          if (!imgRes.ok) throw new Error("Failed to fetch image");
+          console.log(`[Gemini REST] Fetching external image: ${image}`);
+          const imgRes = await fetch(image, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+          });
+          if (!imgRes.ok) throw new Error(`Failed to fetch image: ${imgRes.status} ${imgRes.statusText}`);
           const buffer = await imgRes.arrayBuffer();
           base64Data = Buffer.from(buffer).toString('base64');
           mimeType = imgRes.headers.get('content-type') || 'image/png';
+          console.log(`[Gemini REST] External image fetched successfully: ${mimeType}`);
         }
 
         if (base64Data) {
@@ -112,15 +118,13 @@ export async function POST(req: NextRequest) {
     const data = await response.json();
     console.log("[Gemini REST] Full Raw Data:", JSON.stringify(data, null, 2));
     
-    if (!response.ok) {
+    if (data.error) {
       console.error("[Gemini REST] API ERROR Payload:", JSON.stringify(data, null, 2));
       const isQuota = response.status === 429;
       return NextResponse.json({ 
         error: isQuota ? "Google API Quota Reached (429)" : `Gemini REST Error (${response.status})`,
-        details: isQuota 
-          ? `Saturación de Google: ${data.error?.message || "Límite de peticiones alcanzado"}. Por favor, espera 1-2 minutos.` 
-          : (data.error?.message || JSON.stringify(data))
-      }, { status: response.status });
+        details: data.error?.message || JSON.stringify(data)
+      }, { status: response.status || 500 });
     }
 
     const candidate = data.candidates?.[0];

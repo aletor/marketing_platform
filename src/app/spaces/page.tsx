@@ -36,6 +36,7 @@ import {
   SpaceInputNode,
   SpaceOutputNode,
   VideoBackgroundRemovalNode,
+  GeminiVideoNode,
   ButtonEdge 
 } from './CustomNodes';
 import Sidebar from './Sidebar';
@@ -93,6 +94,7 @@ const nodeTypes: any = {
   spaceInput: SpaceInputNode,
   spaceOutput: SpaceOutputNode,
   videoBackgroundRemoval: VideoBackgroundRemovalNode,
+  geminiVideo: GeminiVideoNode,
 };
 
 const edgeTypes = {

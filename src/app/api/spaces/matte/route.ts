@@ -8,91 +8,113 @@ const replicate = new Replicate({
 });
 
 export async function POST(req: NextRequest) {
+  console.log(`[Background Remover] POST request received`);
   try {
     const body = await req.json();
     const { 
       image, 
       expansion = 0, 
       feather = 0.6,
-      threshold = 0.9 // Default to 0.9 as requested
+      threshold = 0.9 
     } = body;
 
     if (!image) {
       return NextResponse.json({ error: 'Missing image input' }, { status: 400 });
     }
-
     console.log(`--- BACKGROUND REMOVER START ---`);
+
+    // 0. Pre-fetch image if URL to avoid 403 Forbidden on Replicate workers (bypass with User-Agent)
+    let imageBuffer: Buffer;
+    let imageInputForReplicate: string = image;
+
+    if (image.startsWith('http')) {
+      console.log(`[Background Remover] Pre-fetching image to bypass potential 403: ${image}`);
+      const imgRes = await axios.get(image, { 
+        responseType: 'arraybuffer',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      });
+      imageBuffer = Buffer.from(imgRes.data);
+      console.log(`[Background Remover] Image download status: ${imgRes.status}. First 10 bytes: ${imageBuffer.slice(0, 10).toString('hex')}`);
+      const mime = imgRes.headers['content-type'] || 'image/png';
+      imageInputForReplicate = `data:${mime};base64,${imageBuffer.toString('base64')}`;
+    } else {
+      imageBuffer = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+      console.log(`[Background Remover] Base64 Image. First 10 bytes: ${imageBuffer.slice(0, 10).toString('hex')}`);
+      imageInputForReplicate = image; // Use original base64
+    }
 
     if (!process.env.REPLICATE_API_TOKEN) {
       return NextResponse.json({ error: 'REPLICATE_API_TOKEN is not configured' }, { status: 500 });
     }
 
     // 1. ML Inference: Professional Matting (851-labs/background-remover)
-    let maskUrl: string;
-    let bbox = [0, 0, 0, 0];
-    
-    try {
-      const output: any = await replicate.run(
-        "851-labs/background-remover:a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc",
-        { 
-          input: { 
-            image,
-            threshold: Number(threshold),
-            reverse: false
-          } 
+    let maskUrl: string = "";
+    let maxRetries = 3;
+    let retryDelay = 2000; // Start with 2s
+
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            console.log(`[Background Remover] ML Attempt ${i + 1}/${maxRetries}`);
+            const output: any = await replicate.run(
+                "851-labs/background-remover:a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc",
+                { 
+                    input: { 
+                        image: imageInputForReplicate,
+                        threshold: Number(threshold),
+                        reverse: false
+                    } 
+                }
+            );
+            maskUrl = Array.isArray(output) ? output[0] : output.toString();
+            break; // Success!
+        } catch (mlErr: any) {
+            const is429 = mlErr.message?.includes("429") || mlErr.status === 429;
+            if (is429 && i < maxRetries - 1) {
+                console.warn(`[Background Remover] Rate limit hit (429). Retrying in ${retryDelay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+                retryDelay *= 2; // Exponential backoff
+                continue;
+            }
+            console.error("[Background Remover] ML Error:", mlErr);
+            return NextResponse.json({ 
+                error: is429 ? "Replicate Rate Limit: Too many requests or low balance (<$5). Please wait a moment." : `ML Engine failed: ${mlErr.message}`,
+                details: mlErr.message 
+            }, { status: is429 ? 429 : 500 });
         }
-      );
-      maskUrl = Array.isArray(output) ? output[0] : output.toString();
-    } catch (mlErr: any) {
-      console.error("[Background Remover] ML Error:", mlErr);
-      return NextResponse.json({ error: `ML Engine failed: ${mlErr.message}` }, { status: 500 });
     }
 
-    // 2. Fetch Mask and Image
-    const [maskResponse, imageResponse] = await Promise.all([
-      axios.get(maskUrl, { responseType: 'arraybuffer' }),
-      image.startsWith('http') 
-        ? axios.get(image, { responseType: 'arraybuffer' }).then(r => r.data)
-        : Promise.resolve(Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64'))
-    ]);
+    // 2. Fetch Mask (Image buffer already available)
+    console.log(`[Background Remover] Downloading mask: ${maskUrl}`);
+    const maskRes = await axios.get(maskUrl, { responseType: 'arraybuffer' });
+    if (maskRes.status !== 200) throw new Error(`Failed to download mask: ${maskRes.status}`);
+    const maskBuffer = Buffer.from(maskRes.data);
+    console.log(`[Background Remover] Mask downloaded. First 10 bytes: ${maskBuffer.slice(0, 10).toString('hex')}`);
+    console.log(`[Background Remover] Processing buffers... (Mask size: ${maskBuffer.length})`);
 
-    const maskBuffer = Buffer.from(maskResponse.data);
-    const imageBuffer = Buffer.from(imageResponse);
-
+    // Verify imageBuffer is valid
     const imgMetadata = await sharp(imageBuffer).metadata();
-    const w = imgMetadata.width || 1920;
+    const w = imgMetadata.width || 1080;
     const h = imgMetadata.height || 1080;
 
-    // 3. Extract Alpha and Refine
-    let maskProcessor = sharp(maskBuffer)
+    // 3. Process Mask
+    // Replicate masks are typically grayscale. We force to grayscale and resize.
+    const finalMaskPngBuffer = await sharp(maskBuffer)
       .resize(w, h)
-      .ensureAlpha()
-      .extractChannel('alpha');
+      .grayscale()
+      .png()
+      .toBuffer();
 
-    // Expansion (Dilate)
-    if (expansion !== 0) {
-      const sigma = Math.max(0.3, Math.abs(expansion) / 2);
-      maskProcessor = maskProcessor.blur(sigma).threshold(expansion > 0 ? 128 : 200);
-    }
-
-    // Feather (Gaussian Blur)
-    if (feather > 0) {
-      maskProcessor = maskProcessor.blur(Math.max(0.3, feather));
-    }
-
-    const finalMaskBuffer = await maskProcessor.png().toBuffer();
-
-    // 4. Calculate BBox from mask
-    const { data: maskPixels } = await sharp(finalMaskBuffer)
-      .raw()
-      .toBuffer({ resolveWithObject: true });
-
+    // 4. Calculate BBox from raw mask pixels
+    const rawMask = await sharp(finalMaskPngBuffer).raw().toBuffer();
     let minX = w, minY = h, maxX = 0, maxY = 0;
     let found = false;
+    let bbox = [0, 0, w, h];
 
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        if (maskPixels[y * w + x] > 128) {
+        if (rawMask[y * w + x] > 128) {
           if (x < minX) minX = x;
           if (x > maxX) maxX = x;
           if (y < minY) minY = y;
@@ -101,22 +123,23 @@ export async function POST(req: NextRequest) {
         }
       }
     }
-
-    if (found) {
-      bbox = [minX, minY, maxX - minX, maxY - minY];
-    } else {
-      bbox = [0, 0, w, h]; // Fallback if no person found
-    }
+    if (found) bbox = [minX, minY, maxX - minX, maxY - minY];
 
     // 5. Compose Cutout
+    // Use 'dest-in' blend mode which uses the alpha of the mask to crop the source
     const rgbaBuffer = await sharp(imageBuffer)
+      .resize(w, h)
+      .toColourspace('srgb')
       .ensureAlpha()
-      .joinChannel(finalMaskBuffer)
+      .composite([{
+        input: finalMaskPngBuffer,
+        blend: 'dest-in'
+      }])
       .png()
       .toBuffer();
 
     return NextResponse.json({
-      mask: `data:image/png;base64,${finalMaskBuffer.toString('base64')}`,
+      mask: `data:image/png;base64,${finalMaskPngBuffer.toString('base64')}`,
       rgba_image: `data:image/png;base64,${rgbaBuffer.toString('base64')}`,
       bbox,
       metadata: {
@@ -124,7 +147,8 @@ export async function POST(req: NextRequest) {
         threshold,
         expansion,
         feather,
-        resolution: `${w}x${h}`
+        resolution: `${w}x${h}`,
+        format: imgMetadata.format
       }
     });
 
