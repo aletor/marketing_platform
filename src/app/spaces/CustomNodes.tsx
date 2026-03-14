@@ -1664,7 +1664,12 @@ export const GrokNode = memo(({ id, data }: NodeProps<any>) => {
 });
 
 export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
-  const nodeData = data as BaseNodeData;
+  const nodeData = data as BaseNodeData & { 
+    aspect_ratio?: string; 
+    guidance_scale?: number; 
+    num_inference_steps?: number;
+    quality?: 'draft' | 'final';
+  };
   const nodes = useNodes();
   const edges = useEdges();
   const { setNodes } = useReactFlow();
@@ -1672,85 +1677,174 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<string | null>(null);
 
+  // Auto-detect if we have an image input
+  const imageInput = useMemo(() => 
+    edges.find(e => e.target === id && e.targetHandle === 'image'),
+    [edges, id]
+  );
+
   const onRun = async () => {
     const prompt = nodes.find(n => n.id === edges.find(e => e.target === id && e.targetHandle === 'prompt')?.source)?.data.value;
-    const image = nodes.find(n => n.id === edges.find(e => e.target === id && e.targetHandle === 'image')?.source)?.data.value;
+    const image = nodes.find(n => n.id === imageInput?.source)?.data.value;
     
     if (!prompt) return alert("Need prompt!");
 
     setStatus('running');
     setProgress(0);
     
-    // Simulate progress increment while waiting for API
     const progressInterval = setInterval(() => {
       setProgress((prev: number) => {
-        if (prev >= 95) return prev;
-        return prev + (prev < 50 ? 5 : 2);
+        const newProgress = prev + 1;
+        if (newProgress > 95) {
+          clearInterval(progressInterval);
+          return 95;
+        }
+        return newProgress;
       });
     }, 300);
 
     try {
-      const res = await fetch('/api/replicate/generate', {
+      // Use logical defaults or nodeData values
+      const inputParams: any = {
+        prompt,
+        image,
+        aspect_ratio: nodeData.aspect_ratio || "1:1",
+        resolution: nodeData.resolution || "1k",
+      };
+
+      console.log("[NanoBanana] Triggering API with params:", { ...inputParams, image: image ? '(base64 payload)' : 'none' });
+
+      const res = await fetch('/api/gemini/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          model: 'lucataco/flux-dev-nano-banana',
-          input: { 
-            prompt,
-            image: image || undefined // Use image if provided for img2img
-          }
-        })
+        body: JSON.stringify(inputParams)
       });
-      const json = await res.json();
-      
-      clearInterval(progressInterval);
-      setProgress(100);
 
+      console.log("[NanoBanana] Response status:", res.status);
+
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.error || `HTTP Error ${res.status}`);
+      }
+
+      const json = await res.json();
+      console.log("[NanoBanana] API Result received");
+      
       if (json.output) {
-        const outUrl = typeof json.output === 'string' ? json.output : json.output[0];
+        const outUrl = json.output;
         setResult(outUrl);
         setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, value: outUrl, type: 'image' } } : n)));
         setStatus('success');
+      } else {
+        throw new Error("No output received from API");
       }
-    } catch (e) { 
+    } catch (e: any) { 
       clearInterval(progressInterval);
-      console.error(e);
+      console.error("[NanoBanana] Error:", e.message);
+      alert("Nano Banana 2: " + e.message);
       setStatus('error'); 
     }
   };
 
+  const updateData = (key: string, val: any) => {
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
+  };
+
   return (
-    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}>
-      <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana" />
-      <div className="handle-wrapper handle-left !top-[25%]">
+    <div className={`custom-node processor-node w-[320px] ${status === 'running' ? 'node-glow-running' : ''}`}>
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana 2" />
+      
+      <div className="handle-wrapper handle-left !top-[20%]">
         <Handle type="target" position={Position.Left} id="image" className="handle-image" />
-        <span className="handle-label">Image in</span>
+        <span className="handle-label">Reference Img</span>
       </div>
-      <div className="handle-wrapper handle-left !top-[75%]">
+      <div className="handle-wrapper handle-left !top-[40%]">
         <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
-        <span className="handle-label">Prompt in</span>
+        <span className="handle-label">Creative Prompt</span>
       </div>
 
-      <div className="node-content">
-        <button className="execute-btn w-full justify-center mb-2" onClick={onRun} disabled={status === 'running'}>
-          {status === 'running' ? 'GENERATE...' : 'GENERATE IMAGE'}
+      <div className="node-header flex items-center gap-2">
+        <ImageIcon size={16} className="text-cyan-400" />
+        <span className="font-black tracking-tighter uppercase whitespace-nowrap">Nano Banana 2</span>
+        <div className="ml-auto flex gap-1 bg-black/40 p-0.5 rounded-lg border border-white/5">
+           <span className="px-2 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest bg-cyan-500 text-black">
+              ORIGINAL
+           </span>
+        </div>
+      </div>
+
+      <div className="node-content space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+             <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Layout</span>
+             <select 
+               className="node-input text-[10px]" 
+               value={nodeData.aspect_ratio || '1:1'} 
+               onChange={(e) => updateData('aspect_ratio', e.target.value)}
+             >
+               <option value="1:1">1:1 Square</option>
+               <option value="16:9">16:9 Wide</option>
+               <option value="9:16">9:16 Story</option>
+               <option value="3:2">3:2 Classic</option>
+               <option value="4:3">4:3 Photo</option>
+             </select>
+          </div>
+          <div className="space-y-1">
+             <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Quality / Res</span>
+             <select 
+               className="node-input text-[10px] !border-cyan-500/30" 
+               value={nodeData.resolution || '1k'} 
+               onChange={(e) => updateData('resolution', e.target.value)}
+             >
+               <option value="0.5k">0.5k (Fast)</option>
+               <option value="1k">1k (Normal)</option>
+               <option value="2k">2k (High)</option>
+               <option value="4k">4k (Ultra)</option>
+             </select>
+          </div>
+        </div>
+
+        <button 
+          className="execute-btn w-full justify-center group/btn relative overflow-hidden" 
+          onClick={onRun} 
+          disabled={status === 'running'}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-white/10 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_2s_infinite]" />
+          {status === 'running' ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+          <span className="ml-2 font-black tracking-widest uppercase">
+            {status === 'running' ? 'GEMINI IS THINKING...' : 'GENERATE FROM FLASH'}
+          </span>
         </button>
 
         {status === 'running' && (
-          <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden mb-4 border border-white/5">
-            <div 
-              className="h-full bg-gradient-to-r from-pink-500 to-purple-500 transition-all duration-300 ease-out shadow-[0_0_8px_rgba(236,72,153,0.5)]"
-              style={{ width: `${progress}%` }}
-            />
+          <div className="space-y-2">
+            <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-cyan-500 transition-all duration-300 shadow-[0_0_8px_rgba(6,182,212,0.5)]"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-[7px] text-cyan-500/60 font-medium animate-pulse text-center uppercase tracking-tighter">
+              Generating High Quality Nano Banana 2 (20-40s)...
+            </p>
           </div>
         )}
 
-        <div className="drop-zone overflow-hidden bg-black/60 min-h-[160px]">
-          {result ? <img src={result} className="w-full h-full object-cover" alt="Result" /> : 
-           <ImageIcon className="text-gray-800" size={32} />}
+        <div className="drop-zone overflow-hidden bg-black/60 min-h-[160px] border-white/5 group/media relative">
+          {result ? (
+            <img src={result} className="w-full h-full object-cover group-hover/media:scale-105 transition-transform duration-700" alt="Result" />
+          ) : (
+            <div className="flex flex-col items-center gap-2 opacity-20">
+              <ImageIcon className="text-zinc-400" size={32} />
+              <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">No content generated</span>
+            </div>
+          )}
         </div>
       </div>
+
       <div className="handle-wrapper handle-right">
+        <span className="handle-label">Asset out</span>
+        <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
     </div>
   );

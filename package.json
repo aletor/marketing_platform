@@ -15,6 +15,8 @@
     "@aws-sdk/s3-request-presigner": "^3.1005.0",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
+    "@google/genai": "^1.45.0",
+    "@google/generative-ai": "^0.24.1",
     "@remotion/bundler": "^4.0.434",
     "@remotion/lambda": "^4.0.434",
     "@remotion/renderer": "^4.0.434",

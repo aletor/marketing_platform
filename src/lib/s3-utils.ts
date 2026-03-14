@@ -1,14 +1,15 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-// Create client lazily or with explicit region to avoid build-time caching issues
+// Force us-east-1 to match the bucket location and avoid endpoint conflicts
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || "us-east-1",
+  region: "us-east-1",
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
   },
 });
+console.log("[S3 Utils] Client hardcoded to: us-east-1");
 
 export const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || "content-engine-ai-docs-832666711966";
 
@@ -28,7 +29,7 @@ export async function uploadToS3(filename: string, fileBuffer: Buffer, contentTy
   };
 
   const command = new PutObjectCommand(params);
-  await s3Client.send(command).catch((err) => {
+  await s3Client.send(command).catch((err: any) => {
     console.error("Error uploading to S3:", err);
     throw err;
   });
@@ -70,7 +71,7 @@ export async function deleteFromS3(key: string) {
   };
 
   const command = new DeleteObjectCommand(params);
-  await s3Client.send(command).catch((err) => {
+  await s3Client.send(command).catch((err: any) => {
     console.error("Error deleting from S3:", err);
     throw err;
   });

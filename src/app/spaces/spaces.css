@@ -84,6 +84,31 @@
   border-color: rgba(255, 255, 255, 0.3);
 }
 
+.node-slider {
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.node-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  border: 2px solid #000;
+  transition: all 0.2s;
+}
+
+.node-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.3);
+}
+
 /* Specific Node Types */
 .media-node .node-header { color: #f43f5e; }
 .prompt-node .node-header { color: #3b82f6; }
@@ -163,6 +188,12 @@
 .react-flow__handle:hover {
   transform: scale(1.5);
   background: #fff !important;
+}
+
+/* Animations */
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
 }
 
 /* Sidebar Styling */
