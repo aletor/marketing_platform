@@ -2725,20 +2725,6 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
       </div>
 
       <div className="node-content space-y-4">
-        {/* Prompt Input Fallback */}
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-1">
-            <Type size={10} className="text-zinc-500" />
-            <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Creative Prompt</span>
-          </div>
-          <textarea 
-            className="node-textarea text-[10px] min-h-[60px] bg-black/40 border-white/10" 
-            placeholder="Describe the motion, scene, and details..."
-            value={nodeData.prompt || ''}
-            onChange={(e) => updateData('prompt', e.target.value)}
-          />
-        </div>
-
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
              <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Resolution</span>
@@ -2765,16 +2751,6 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
                <option value="8">8 Seconds</option>
              </select>
           </div>
-        </div>
-
-        <div className="flex items-center justify-between p-2 bg-black/40 rounded-lg border border-white/5">
-          <span className="text-[10px] font-black text-zinc-400 uppercase">Include Native Audio</span>
-          <button 
-            onClick={() => updateData('audio', !nodeData.audio)}
-            className={`w-10 h-5 rounded-full transition-all relative ${nodeData.audio ? 'bg-emerald-500' : 'bg-zinc-800'}`}
-          >
-            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${nodeData.audio ? 'left-6' : 'left-1'}`} />
-          </button>
         </div>
 
         <button 
