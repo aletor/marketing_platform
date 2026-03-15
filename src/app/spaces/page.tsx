@@ -1024,8 +1024,20 @@ const SpacesContent = () => {
           </div>
         )}
         
-        {/* Header Internal HUD / Breadcrumbs */}
-        <div key="header-hud" className="absolute top-6 left-6 z-50 flex items-center gap-4">
+        {/* Header Internal HUD / Brand Logo / Breadcrumbs */}
+        <div key="header-hud" className="absolute top-6 left-6 z-50 flex items-center gap-3">
+          {/* Minimalist Logo */}
+          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/10 p-2 rounded-xl shadow-2xl group hover:border-cyan-500/50 transition-all cursor-pointer">
+            <div className="relative w-8 h-8 flex items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.4)] overflow-hidden">
+               <Layers size={18} className="text-white relative z-10" />
+               <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[11px] font-black uppercase tracking-[3px] text-white leading-none">Media</span>
+              <span className="text-[9px] font-black uppercase tracking-[1px] text-cyan-500/80 leading-tight">Composer</span>
+            </div>
+          </div>
+
           <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/5 p-1 rounded-xl shadow-2xl">
             <button 
               onClick={handleGoBack}
@@ -1094,7 +1106,7 @@ const SpacesContent = () => {
           <div className="flex items-center gap-3 bg-black/40 backdrop-blur-xl border border-white/5 px-3 py-1.5 rounded-xl shadow-2xl">
              <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
              <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">
-               {currentName || 'Untitled Workspace'}
+               {currentName || 'Untitled Composition'}
              </span>
           </div>
 

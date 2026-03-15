@@ -8,8 +8,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Content Engine AI",
-  description: "Transform internal knowledge into marketing engine.",
+  title: "Media Composer",
+  description: "Advanced AI-powered media creation and composition engine.",
 };
 
 import { AppLayout } from "@/components/layout/AppLayout";
