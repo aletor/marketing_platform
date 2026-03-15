@@ -133,6 +133,24 @@ const SpacesContent = () => {
   const [projectToDelete, setProjectToDelete] = useState<any | null>(null);
   const [navigationStack, setNavigationStack] = useState<string[]>([]);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, nodeId?: string } | null>(null);
+  
+  // Access Security
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passcode, setPasscode] = useState('');
+  const [passError, setPassError] = useState(false);
+
+  const handleAuth = (val: string) => {
+    setPasscode(val);
+    if (val === '6666') {
+      setIsAuthenticated(true);
+    } else if (val.length === 4) {
+      setPassError(true);
+      setTimeout(() => {
+        setPasscode('');
+        setPassError(false);
+      }, 500);
+    }
+  };
 
   // Helper to detect structure and data output from a space
   const analyzeSpaceStructure = (nodes: any[], edges: any[]): { 
@@ -967,13 +985,61 @@ const SpacesContent = () => {
           edgeTypes={edgeTypes}
           defaultEdgeOptions={defaultEdgeOptions}
           fitView
-          minZoom={0.1}
+          fitViewOptions={{ padding: 0.8 }}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
+          minZoom={0.05}
           maxZoom={4}
           proOptions={{ hideAttribution: true }}
           className="spaces-canvas"
         >
           <Background color="#111" gap={40} size={1} />
         </ReactFlow>
+
+        {/* Password Overlay */}
+        {!isAuthenticated && (
+          <div className="fixed inset-0 z-[1000] bg-[#0a0a0a] flex flex-col items-center justify-center backdrop-blur-3xl overflow-hidden">
+            {/* Ambient Background Glows */}
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[120px] animate-pulse" />
+            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[120px] animate-pulse delay-700" />
+            
+            <div className="relative z-10 flex flex-col items-center gap-8 w-full max-w-sm px-6">
+               <div className="flex flex-col items-center gap-2">
+                 <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl shadow-2xl shadow-cyan-500/20 mb-4">
+                   <Layers size={32} className="text-white" />
+                 </div>
+                 <h1 className="text-2xl font-black text-white uppercase tracking-[8px] mr-[-8px]">Media</h1>
+                 <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-[4px] opacity-80">Composer Access</p>
+               </div>
+
+               <div className="w-full flex flex-col gap-4">
+                 <div className="relative">
+                   <input 
+                     type="password"
+                     autoFocus
+                     maxLength={4}
+                     value={passcode}
+                     onChange={(e) => handleAuth(e.target.value)}
+                     placeholder="••••"
+                     className={`w-full bg-white/5 border ${passError ? 'border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.2)]' : 'border-white/10'} rounded-2xl py-5 text-center text-4xl font-black tracking-[1.5em] pl-[1.5em] text-white focus:outline-none focus:border-cyan-500/40 transition-all placeholder:text-white/10`}
+                   />
+                   {passError && (
+                     <p className="absolute -bottom-6 left-0 w-full text-center text-[8px] font-black text-rose-500 uppercase tracking-widest animate-bounce">
+                       Invalid passcode
+                     </p>
+                   )}
+                 </div>
+                 <p className="text-center text-[9px] font-medium text-white/30 uppercase tracking-[2px]">Enter security key to initialize studio</p>
+               </div>
+            </div>
+
+            <div className="absolute bottom-12 flex flex-col items-center gap-2 opacity-20 hover:opacity-100 transition-opacity">
+               <div className="flex items-center gap-2">
+                 <div className="w-1 h-1 rounded-full bg-cyan-500" />
+                 <span className="text-[8px] font-bold text-white uppercase tracking-[4px]">Verified Infrastructure</span>
+               </div>
+            </div>
+          </div>
+        )}
 
         {/* Context Menu */}
         {contextMenu && (
