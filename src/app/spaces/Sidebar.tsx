@@ -19,7 +19,8 @@ import {
   Download,
   ChevronRight,
   ChevronLeft,
-  Globe
+  Globe,
+  Crop
 } from 'lucide-react';
 import { NODE_REGISTRY } from './nodeRegistry';
 
@@ -174,6 +175,14 @@ const Sidebar = () => {
               <div className="dndnode border-amber-500/10 hover:border-amber-500" onDragStart={(event) => onDragStart(event, 'imageExport')} draggable title="Exporter">
                 <Download size={14} className="text-amber-500 shrink-0" /> <span className="text-amber-600">Export</span>
                 <TypeIndicators nodeType="imageExport" />
+              </div>
+              <div className="dndnode border-amber-500/10 hover:border-amber-500" onDragStart={(event) => onDragStart(event, 'painter')} draggable title="Painter">
+                <Paintbrush size={14} className="text-amber-500 shrink-0" /> <span className="text-amber-600">Painter</span>
+                <TypeIndicators nodeType="painter" />
+              </div>
+              <div className="dndnode border-amber-500/10 hover:border-amber-500" onDragStart={(event) => onDragStart(event, 'crop')} draggable title="Crop Asset">
+                <Crop size={14} className="text-amber-500 shrink-0" /> <span className="text-amber-600">Crop</span>
+                <TypeIndicators nodeType="crop" />
               </div>
             </div>
           </div>
