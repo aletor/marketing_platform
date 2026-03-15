@@ -433,6 +433,7 @@ export const ImageComposerNode = ({ id, data }: NodeProps<any>) => {
   const layersConfig: Record<string, { x: number, y: number, scale: number }> = nodeData.layersConfig || {};
   const selectedLayerId = nodeData.selectedLayerId || null;
   const [isStudioOpen, setIsStudioOpen] = useState(false);
+  const [isRendering, setIsRendering] = useState(false);
 
   // Dragging State (local for performance)
   const [dragInfo, setDragInfo] = useState<{ 
@@ -656,6 +657,45 @@ export const ImageComposerNode = ({ id, data }: NodeProps<any>) => {
             })}
           </div>
         </div>
+
+        {/* RENDER COMPOSITION BUTTON */}
+        <button 
+          onClick={async () => {
+            if (layers.length === 0) return alert("Add layers before rendering!");
+            setIsRendering(true);
+            try {
+              const formData = new FormData();
+              formData.append('layers', JSON.stringify(layers));
+              formData.append('format', 'jpeg');
+              formData.append('width', '1920');
+              formData.append('height', '1080');
+              formData.append('previewWidth', '1920');
+              formData.append('previewHeight', '1080');
+
+              const res = await fetch('/api/spaces/compose', { method: 'POST', body: formData });
+              if (!res.ok) throw new Error("Server composition failed");
+
+              const blob = await res.blob();
+              const base64Url = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+
+              updateData({ value: base64Url, type: 'image' });
+            } catch (e: any) {
+              console.error(e);
+              alert("Render failed: " + e.message);
+            } finally {
+              setIsRendering(false);
+            }
+          }}
+          disabled={isRendering || layers.length === 0}
+          className="execute-btn w-full justify-center mt-4 gap-2"
+        >
+          {isRendering ? 'RENDERING...' : 'RENDER COMPOSITION'}
+        </button>
       </div>
       
       <div className="handle-wrapper handle-right">
