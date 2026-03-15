@@ -68,14 +68,7 @@ import {
   Zap
 } from 'lucide-react';
 
-const initialNodes: Node[] = [
-  {
-    id: 'welcome-prompt',
-    type: 'promptInput',
-    data: { value: 'A high-tech digital laboratory with neon lights and floating holograms' },
-    position: { x: 400, y: 150 },
-  }
-];
+const initialNodes: Node[] = [];
 
 const nodeTypes: any = {
   mediaInput: MediaInputNode,
@@ -993,6 +986,15 @@ const SpacesContent = () => {
           className="spaces-canvas"
         >
           <Background color="#111" gap={40} size={1} />
+          
+          {/* Initial State Message */}
+          {isAuthenticated && nodes.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <span className="text-white/90 text-[14px] font-black uppercase tracking-[20px] animate-pulse drop-shadow-2xl">
+                Hola
+              </span>
+            </div>
+          )}
         </ReactFlow>
 
         {/* Password Overlay */}

@@ -26,9 +26,8 @@ export const AgentHUD = ({ onGenerate, isGenerating = false }: AgentHUDProps) =>
     <div className="absolute top-6 left-6 z-[100] flex flex-col gap-4 w-[240px] pointer-events-none">
       {/* Branding Block - Minimalist version (no background) */}
       <div className="flex items-center gap-3 p-2.5 pointer-events-auto">
-        <div className="relative w-8 h-8 flex items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl shadow-lg shadow-cyan-500/20 overflow-hidden shrink-0">
+        <div className="relative w-8 h-8 flex items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl shadow-lg shadow-cyan-500/20 shrink-0">
           <Layers size={18} className="text-white relative z-10" />
-          <div className="absolute inset-0 bg-white/20 translate-y-full hover:translate-y-0 transition-transform duration-500" />
         </div>
         <div className="flex flex-col">
           <span className="text-[12px] font-black uppercase tracking-[2px] text-white leading-none drop-shadow-sm">Media</span>

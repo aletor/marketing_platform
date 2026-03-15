@@ -2466,21 +2466,73 @@ export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
   const onRun = async () => {
     const inputEdge = edges.find(e => e.target === id && e.targetHandle === 'media');
     const inputNode = nodes.find(n => n.id === inputEdge?.source);
-    const mediaUrl = inputNode?.data.value;
-    const mediaType = inputNode?.data.type;
     
-    if (!mediaUrl) return alert("Need media input to describe!");
+    if (!inputNode) return alert("Need media input to describe!");
 
     setStatus('running');
     
     try {
+      let finalMediaUrl = inputNode.data.value;
+      let finalMediaType = inputNode.type === 'imageComposer' ? 'image' : (inputNode.data.type || 'image');
+
+      // If it's a composer and it doesn't have a flattened value yet, compose it on the fly
+      if (inputNode.type === 'imageComposer' && !finalMediaUrl) {
+        // Extract layers
+        const composerEdges = edges.filter(e => e.target === inputNode.id)
+          .sort((a: any, b: any) => (a.targetHandle || '').localeCompare(b.targetHandle || ''));
+        
+        const layersConfig: Record<string, any> = inputNode.data.layersConfig || {};
+        
+        const layers = composerEdges.map(edge => {
+          const node = nodes.find(n => n.id === edge.source);
+          const hId = edge.targetHandle || 'layer-0';
+          const config = layersConfig[hId] || { x: 0, y: 0, scale: 1 };
+          
+          return {
+            type: node?.type,
+            value: (node?.data?.value || ((node?.data as any)?.urls && (node?.data as any)?.urls[(node?.data as any)?.selectedIndex || 0])) as string | undefined,
+            color: node?.data?.color as string | undefined,
+            width: node?.data?.width as number || 0,
+            height: node?.data?.height as number || 0,
+            x: config.x,
+            y: config.y,
+            scale: config.scale
+          };
+        }).filter(l => l.value || l.color);
+
+        if (layers.length === 0) throw new Error("Composer has no layers attached.");
+
+        const formData = new FormData();
+        formData.append('layers', JSON.stringify(layers));
+        formData.append('format', 'jpeg'); // JPEG is smaller for passing to OpenAI
+        formData.append('width', '1920');
+        formData.append('height', '1080');
+        formData.append('previewWidth', '1920');
+        formData.append('previewHeight', '1080');
+
+        const composeRes = await fetch('/api/spaces/compose', { method: 'POST', body: formData });
+        if (!composeRes.ok) throw new Error("Failed to flatten composer image.");
+        
+        const blob = await composeRes.blob();
+        
+        // Convert blob to base64 for the OpenAI Vision API (it accepts data URIs)
+        finalMediaUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      if (!finalMediaUrl) throw new Error("No media URL available to describe.");
+
       const res = await fetch('/api/spaces/describe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          url: mediaUrl, 
-          type: mediaType,
-          metadata: inputNode?.data.metadata
+          url: finalMediaUrl, 
+          type: finalMediaType,
+          metadata: inputNode.data.metadata
         })
       });
       const json = await res.json();
@@ -2817,17 +2869,6 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
               onChange={(val) => updateData('cameraPreset', val)} 
             />
           </div>
-
-          <div className="space-y-1">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Animation Motion</span>
-            <input 
-              type="text" 
-              className="node-input text-[10px]" 
-              value={nodeData.animationPrompt || ''}
-              placeholder="e.g. gentle camera zoom..."
-              onChange={(e) => updateData('animationPrompt', e.target.value)}
-            />
-          </div>
         </div>
 
         <button 
@@ -2842,7 +2883,7 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
           <span className="relative z-10">{status === 'running' ? `GENERATING ${Math.round(progress)}%` : 'GENERATE VIDEO'}</span>
         </button>
 
-        <div className="preview-container aspect-video bg-slate-50 rounded-xl border border-slate-200/60 overflow-hidden flex items-center justify-center relative group">
+        <div className="preview-container w-full min-h-[200px] bg-slate-50 rounded-xl border border-slate-200/60 overflow-hidden flex items-center justify-center relative group">
           {result ? (
             <video 
               src={result} 
