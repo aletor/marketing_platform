@@ -259,5 +259,36 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
       duration: '4 | 5 | 6 | 8',
       audio: 'boolean'
     }
+  },
+  painter: {
+    type: 'painter',
+    label: 'Painter',
+    description: 'An interactive drawing canvas. Use this when the user asks to draw, paint, sketch, or mask freely. Allows freehand drawing, erasing, and outputs a base64 image immediately. Input is optional (used as a base background).',
+    inputs: [
+      { id: 'image', label: 'Base Image', type: 'image', required: false }
+    ],
+    outputs: [
+      { id: 'image', label: 'Output Image', type: 'image' }
+    ],
+    dataSchema: {
+      bgColor: 'string (hex color)',
+      strokeColor: 'string (hex color)',
+      brushSize: 'number'
+    }
+  },
+  crop: {
+    type: 'crop',
+    label: 'Crop Asset',
+    description: 'An interactive image cropping tool. Use this when the user needs to reframe, crop, cut, or change the aspect ratio of an existing image. It provides an interactive bounding box over the source image.',
+    inputs: [
+      { id: 'image', label: 'Source Image', type: 'image', required: true }
+    ],
+    outputs: [
+      { id: 'image', label: 'Cropped Image', type: 'image' }
+    ],
+    dataSchema: {
+      aspectRatio: 'free | 1:1 | 16:9 | 9:16',
+      cropConfig: '{ x: number, y: number, w: number, h: number } (Percentages 0-100)'
+    }
   }
 };

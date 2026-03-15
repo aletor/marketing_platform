@@ -37,6 +37,8 @@ import {
   SpaceOutputNode,
   VideoBackgroundRemovalNode,
   GeminiVideoNode,
+  PainterNode,
+  CropNode,
   ButtonEdge 
 } from './CustomNodes';
 import Sidebar from './Sidebar';
@@ -89,6 +91,8 @@ const nodeTypes: any = {
   spaceOutput: SpaceOutputNode,
   videoBackgroundRemoval: VideoBackgroundRemovalNode,
   geminiVideo: GeminiVideoNode,
+  painter: PainterNode,
+  crop: CropNode,
 };
 
 const edgeTypes = {
@@ -979,7 +983,7 @@ const SpacesContent = () => {
           defaultEdgeOptions={defaultEdgeOptions}
           fitView
           fitViewOptions={{ padding: 0.8 }}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.3 }}
           minZoom={0.05}
           maxZoom={4}
           proOptions={{ hideAttribution: true }}

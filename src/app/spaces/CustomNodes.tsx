@@ -38,7 +38,9 @@ import {
   Move,
   Maximize,
   MousePointer2,
-  Sparkles
+  Sparkles,
+  Eraser,
+  Crop
 } from 'lucide-react';
 import './spaces.css';
 
@@ -2945,6 +2947,476 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
       <div className="handle-wrapper handle-right">
         <span className="handle-label text-cyan-400">Video Out</span>
         <Handle type="source" position={Position.Right} id="video" className="handle-video" />
+      </div>
+    </div>
+  );
+});
+
+// --- PAINTER NODE ---
+export const PainterNode = memo(({ id, data }: NodeProps<any>) => {
+  const { setNodes } = useReactFlow();
+  const nodeData = data as BaseNodeData & { 
+    bgColor?: string, 
+    strokeColor?: string, 
+    brushSize?: number 
+  };
+  
+  const width = 1024;
+  const height = 1024;
+  
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [color, setColor] = useState(nodeData.strokeColor || '#ffffff');
+  const [bgColor, setBgColor] = useState(nodeData.bgColor || '#000000');
+  const [brushSize, setBrushSize] = useState(nodeData.brushSize || 10);
+  const [mode, setMode] = useState<'brush'|'eraser'>('brush');
+  
+  const saveToNode = useCallback(() => {
+    if (!canvasRef.current) return;
+    const dataUrl = canvasRef.current.toDataURL('image/png');
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, value: dataUrl, type: 'image' } } : n));
+  }, [id, setNodes]);
+
+  // Handle changes to background color without clearing drawing
+  useEffect(() => {
+    if (data.value) return; 
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (ctx && canvas) {
+      const currentData = canvas.toDataURL();
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, width, height);
+      const img = new Image();
+      img.onload = () => {
+         ctx.drawImage(img, 0, 0);
+         saveToNode();
+      };
+      img.src = currentData;
+    }
+  }, [bgColor, saveToNode, data.value, width, height]);
+
+  // Initialize Canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    if (!data.value) {
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, width, height);
+      saveToNode();
+    } else {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+      };
+      img.src = data.value;
+    }
+  }, []);
+
+  const updateData = (key: string, val: any) => {
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
+  };
+
+  const getCoordinates = (e: React.PointerEvent) => {
+    if (!canvasRef.current || !containerRef.current) return { x: 0, y: 0 };
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = canvasRef.current.width / rect.width;
+    const scaleY = canvasRef.current.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  };
+
+  const startDrawing = (e: React.PointerEvent) => {
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const { x, y } = getCoordinates(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = brushSize;
+    ctx.strokeStyle = mode === 'eraser' ? bgColor : color;
+    
+    setIsDrawing(true);
+  };
+
+  const draw = (e: React.PointerEvent) => {
+    if (!isDrawing) return;
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const { x, y } = getCoordinates(e);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = (e: React.PointerEvent) => {
+    if (!isDrawing) return;
+    const ctx = canvasRef.current?.getContext('2d');
+    if (ctx) ctx.closePath();
+    setIsDrawing(false);
+    e.preventDefault();
+    e.stopPropagation();
+    saveToNode();
+  };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, width, height);
+    saveToNode();
+  };
+
+  return (
+    <div className="custom-node bg-[#1e1e1e] border-slate-700 w-[300px]">
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Painter" />
+      
+      <div className="handle-wrapper handle-left">
+        <Handle type="target" position={Position.Left} id="image" className="handle-image" />
+        <span className="handle-label text-emerald-500">Base Image</span>
+      </div>
+
+      <div className="node-content p-3 space-y-3">
+        <div ref={containerRef} className="nodrag nopan bg-[#000000] rounded-lg overflow-hidden flex items-center justify-center relative touch-none border border-slate-700">
+          <canvas
+            ref={canvasRef}
+            width={width}
+            height={height}
+            className="w-full h-auto aspect-square cursor-crosshair touch-none"
+            onPointerDown={startDrawing}
+            onPointerMove={draw}
+            onPointerUp={stopDrawing}
+            onPointerLeave={stopDrawing}
+            style={{ touchAction: 'none' }}
+          />
+        </div>
+
+        <div className="flex items-center gap-2 border-b border-white/10 pb-3 mt-2">
+          <button 
+            onClick={() => setMode('brush')}
+            className={`p-1.5 rounded-md transition-colors ${mode === 'brush' ? 'bg-white/20 text-white' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
+          >
+            <Paintbrush size={14} />
+          </button>
+          <button 
+            onClick={() => setMode('eraser')}
+            className={`p-1.5 rounded-md transition-colors ${mode === 'eraser' ? 'bg-white/20 text-white' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
+          >
+            <Eraser size={14} />
+          </button>
+          <button onClick={clearCanvas} className="ml-auto text-[10px] text-gray-400 hover:text-white underline underline-offset-2">
+            Clear
+          </button>
+        </div>
+
+        <div className="space-y-3 pt-1">
+          <div className="flex items-center gap-2">
+            <input 
+              type="color" 
+              value={color} 
+              onChange={(e) => { setColor(e.target.value); updateData('strokeColor', e.target.value); }}
+              className="w-5 h-5 rounded cursor-pointer border-0 p-0 nodrag"
+            />
+            <input 
+              type="text" 
+              value={color.toUpperCase()} 
+              onChange={(e) => { setColor(e.target.value); updateData('strokeColor', e.target.value); }}
+              className="bg-black/30 border border-white/10 rounded px-2 py-1 text-[9px] text-white font-mono w-[60px] nodrag"
+            />
+            
+            <div className="flex-1 flex items-center gap-2 ml-2">
+              <span className="text-[9px] text-gray-500">Size</span>
+              <input 
+                type="range" 
+                min="1" max="100" 
+                value={brushSize} 
+                onChange={(e) => { setBrushSize(parseInt(e.target.value)); updateData('brushSize', parseInt(e.target.value)); }}
+                className="flex-1 accent-white nodrag"
+              />
+              <span className="text-[9px] text-gray-400 w-4 text-right">{brushSize}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1 border-t border-white/5">
+             <div className="bg-black/30 border border-white/5 p-1 px-2 rounded flex items-center gap-1">
+               <span className="text-[9px] text-gray-600 font-mono">W</span>
+               <input type="number" readOnly value={width} className="bg-transparent text-[10px] text-white font-mono outline-none w-8 p-0 border-0" />
+             </div>
+             <div className="bg-black/30 border border-white/5 p-1 px-2 rounded flex items-center gap-1">
+               <span className="text-[9px] text-gray-600 font-mono">H</span>
+               <input type="number" readOnly value={height} className="bg-transparent text-[10px] text-white font-mono outline-none w-8 p-0 border-0" />
+             </div>
+             
+             <div className="ml-auto flex items-center gap-2 bg-black/30 border border-white/5 p-1 px-2 rounded">
+               <span className="text-[9px] font-medium text-gray-400">Background Color</span>
+               <input 
+                 type="color" 
+                 value={bgColor} 
+                 onChange={(e) => { setBgColor(e.target.value); updateData('bgColor', e.target.value); }}
+                 className="w-4 h-4 rounded cursor-pointer border-0 p-0 nodrag"
+               />
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="handle-wrapper handle-right">
+        <span className="handle-label text-cyan-500">Output Image</span>
+        <Handle type="source" position={Position.Right} id="image" className="handle-image" />
+      </div>
+    </div>
+  );
+});
+
+// --- CROP NODE ---
+export const CropNode = memo(({ id, data }: NodeProps<any>) => {
+  const { setNodes } = useReactFlow();
+  const edges = useEdges();
+  const nodes = useNodes();
+  
+  const nodeData = data as BaseNodeData & { 
+    aspectRatio?: string,
+    cropConfig?: { x: number, y: number, w: number, h: number }
+  };
+  
+  const [aspectRatio, setAspectRatio] = useState(nodeData.aspectRatio || 'free'); 
+  const [crop, setCrop] = useState(nodeData.cropConfig || { x: 10, y: 10, w: 80, h: 80 }); 
+  
+  const previewRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const [draggingAction, setDraggingAction] = useState<'move' | 'nw' | 'ne' | 'sw' | 'se' | null>(null);
+  const [dragStartInfo, setDragStartInfo] = useState<{ startX: number, startY: number, initialCrop: any } | null>(null);
+
+  const inputEdge = edges.find(e => e.target === id && e.targetHandle === 'image');
+  const inputNode = nodes.find(n => n.id === inputEdge?.source);
+  const sourceHandle = (inputEdge as any)?.sourceHandle;
+  const rawValue = sourceHandle 
+    ? (inputNode?.data[sourceHandle] || inputNode?.data[`result_${sourceHandle}`] || inputNode?.data.value)
+    : inputNode?.data?.value;
+    
+  const sourceImage = typeof rawValue === 'string' ? rawValue : undefined;
+
+  const updateData = (key: string, val: any) => {
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
+  };
+  
+  const applyCrop = useCallback(() => {
+    if (!sourceImage || !previewRef.current) return;
+    
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      const naturalAR = img.naturalWidth / img.naturalHeight;
+      const previewRect = previewRef.current!.getBoundingClientRect();
+      const containerAR = previewRect.width / previewRect.height;
+      
+      let renderX = crop.x;
+      let renderY = crop.y;
+      let renderW = crop.w;
+      let renderH = crop.h;
+
+      const sx = (renderX / 100) * img.naturalWidth;
+      const sy = (renderY / 100) * img.naturalHeight;
+      const sw = (renderW / 100) * img.naturalWidth;
+      const sh = (renderH / 100) * img.naturalHeight;
+      
+      canvas.width = sw;
+      canvas.height = sh;
+      
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+      
+      const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      
+      setNodes((nds: any) => nds.map((n: any) => n.id === id ? { 
+        ...n, 
+        data: { 
+          ...n.data, 
+          value: croppedDataUrl, 
+          type: 'image',
+          cropConfig: crop,
+          aspectRatio
+        } 
+      } : n));
+    };
+    img.src = sourceImage;
+  }, [sourceImage, crop, id, setNodes, aspectRatio]);
+
+  const handlePointerDown = (e: React.PointerEvent, action: 'move' | 'nw' | 'ne' | 'sw' | 'se') => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDraggingAction(action);
+    setDragStartInfo({ startX: e.clientX, startY: e.clientY, initialCrop: { ...crop } });
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!draggingAction || !dragStartInfo || !containerRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const deltaX = ((e.clientX - dragStartInfo.startX) / rect.width) * 100;
+    const deltaY = ((e.clientY - dragStartInfo.startY) / rect.height) * 100;
+
+    let newX = dragStartInfo.initialCrop.x;
+    let newY = dragStartInfo.initialCrop.y;
+    let newW = dragStartInfo.initialCrop.w;
+    let newH = dragStartInfo.initialCrop.h;
+
+    if (draggingAction === 'move') {
+      newX = Math.max(0, Math.min(100 - newW, dragStartInfo.initialCrop.x + deltaX));
+      newY = Math.max(0, Math.min(100 - newH, dragStartInfo.initialCrop.y + deltaY));
+    } else if (draggingAction === 'nw') {
+      newX = Math.max(0, Math.min(newX + newW - 5, dragStartInfo.initialCrop.x + deltaX));
+      newY = Math.max(0, Math.min(newY + newH - 5, dragStartInfo.initialCrop.y + deltaY));
+      newW = dragStartInfo.initialCrop.w - (newX - dragStartInfo.initialCrop.x);
+      newH = dragStartInfo.initialCrop.h - (newY - dragStartInfo.initialCrop.y);
+    } else if (draggingAction === 'ne') {
+      newY = Math.max(0, Math.min(newY + newH - 5, dragStartInfo.initialCrop.y + deltaY));
+      newW = Math.max(5, Math.min(100 - newX, dragStartInfo.initialCrop.w + deltaX));
+      newH = dragStartInfo.initialCrop.h - (newY - dragStartInfo.initialCrop.y);
+    } else if (draggingAction === 'sw') {
+      newX = Math.max(0, Math.min(newX + newW - 5, dragStartInfo.initialCrop.x + deltaX));
+      newW = dragStartInfo.initialCrop.w - (newX - dragStartInfo.initialCrop.x);
+      newH = Math.max(5, Math.min(100 - newY, dragStartInfo.initialCrop.h + deltaY));
+    } else if (draggingAction === 'se') {
+      newW = Math.max(5, Math.min(100 - newX, dragStartInfo.initialCrop.w + deltaX));
+      newH = Math.max(5, Math.min(100 - newY, dragStartInfo.initialCrop.h + deltaY));
+    }
+
+    if (newX < 0) newX = 0;
+    if (newY < 0) newY = 0;
+    if (newX + newW > 100) newW = 100 - newX;
+    if (newY + newH > 100) newH = 100 - newY;
+
+    setCrop({ x: newX, y: newY, w: newW, h: newH });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (draggingAction) {
+      setDraggingAction(null);
+      setDragStartInfo(null);
+      e.stopPropagation();
+    }
+  };
+
+  return (
+    <div className="custom-node bg-[#1e1e1e] border-slate-700 w-[340px]">
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Crop Asset" />
+      
+      <div className="handle-wrapper handle-left">
+        <Handle type="target" position={Position.Left} id="image" className="handle-image" />
+        <span className="handle-label text-emerald-500">Source Image</span>
+      </div>
+
+      <div className="node-content p-3 space-y-3 flex flex-col items-center">
+        <div 
+          ref={containerRef}
+          className="relative bg-black rounded-lg border border-white/10 overflow-hidden flex items-center justify-center min-h-[150px] w-full touch-none select-none nodrag nopan flex-1"
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
+        >
+          {!sourceImage ? (
+            <div className="flex flex-col items-center gap-2 opacity-30 p-8">
+              <Crop size={24} />
+              <span className="text-[9px] uppercase tracking-widest font-black text-center">Connect an image<br/>to crop</span>
+            </div>
+          ) : (
+            <>
+              <img 
+                ref={previewRef}
+                src={sourceImage} 
+                alt="Source" 
+                className="w-full h-full object-fill pointer-events-none block" 
+              />
+              
+              <div className="absolute inset-0 bg-black/40 pointer-events-none"></div>
+              
+              <div 
+                className="absolute border border-amber-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] group/crop cursor-move"
+                style={{
+                  left: `${crop.x}%`,
+                  top: `${crop.y}%`,
+                  width: `${crop.w}%`,
+                  height: `${crop.h}%`,
+                  pointerEvents: draggingAction !== null ? 'none' : 'auto' 
+                }}
+                onPointerDown={(e) => handlePointerDown(e, 'move')}
+              >
+                <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-0 group-hover/crop:opacity-50 transition-opacity">
+                   <div className="border-b border-r border-amber-400/40"></div>
+                   <div className="border-b border-r border-amber-400/40"></div>
+                   <div className="border-b border-amber-400/40"></div>
+                   <div className="border-b border-r border-amber-400/40"></div>
+                   <div className="border-b border-r border-amber-400/40"></div>
+                   <div className="border-b border-amber-400/40"></div>
+                   <div className="border-r border-amber-400/40"></div>
+                   <div className="border-r border-amber-400/40"></div>
+                   <div></div>
+                </div>
+
+                <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border border-amber-500 cursor-nwse-resize pointer-events-auto shadow-sm" onPointerDown={(e) => handlePointerDown(e, 'nw')}></div>
+                <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border border-amber-500 cursor-nesw-resize pointer-events-auto shadow-sm" onPointerDown={(e) => handlePointerDown(e, 'ne')}></div>
+                <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border border-amber-500 cursor-nesw-resize pointer-events-auto shadow-sm" onPointerDown={(e) => handlePointerDown(e, 'sw')}></div>
+                <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border border-amber-500 cursor-nwse-resize pointer-events-auto shadow-sm" onPointerDown={(e) => handlePointerDown(e, 'se')}></div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 w-full pt-2">
+           <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Aspect</span>
+           <select 
+             value={aspectRatio} 
+             onChange={(e) => {
+               setAspectRatio(e.target.value);
+               updateData('aspectRatio', e.target.value);
+               if (e.target.value === '1:1') setCrop({ x: 25, y: 10, w: 50, h: 80 }); 
+               if (e.target.value === '16:9') setCrop({ x: 10, y: 25, w: 80, h: 50 }); 
+               if (e.target.value === '9:16') setCrop({ x: 30, y: 10, w: 40, h: 80 });
+             }}
+             className="node-input text-[10px] w-full max-w-[100px] nodrag"
+           >
+             <option value="free">Freeform</option>
+             <option value="1:1">1:1 Square</option>
+             <option value="16:9">16:9 Wide</option>
+             <option value="9:16">9:16 Story</option>
+           </select>
+
+           <button 
+             onClick={applyCrop}
+             disabled={!sourceImage}
+             className="ml-auto bg-amber-500 hover:bg-amber-400 text-white font-black text-[9px] px-3 py-1.5 rounded uppercase tracking-widest shadow-[0_0_10px_rgba(245,158,11,0.3)] disabled:opacity-50 nodrag transition-colors"
+           >
+             Apply Crop
+           </button>
+        </div>
+      </div>
+
+      <div className="handle-wrapper handle-right">
+        <span className="handle-label text-cyan-500">Cropped Out</span>
+        <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
     </div>
   );
