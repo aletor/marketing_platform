@@ -72,11 +72,24 @@ const Sidebar = ({ onGenerate, isGenerating = false }: SidebarProps) => {
 
   return (
     <aside className="spaces-sidebar border-r border-white/5 bg-[#050505]">
-      {/* AI Assistant Section */}
+      {/* AI Assistant Section & Brand Logo */}
       <div className="sidebar-category mb-6">
-        <div className="flex items-center gap-2 mb-3 px-2">
-          <Sparkles size={14} className="text-cyan-400 animate-pulse" />
-          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[2px]">Agent Assistant</h3>
+        <div className="px-2 mb-4">
+          <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-2.5 rounded-2xl group hover:border-cyan-500/50 transition-all cursor-pointer shadow-xl">
+            <div className="relative w-9 h-9 flex items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.4)] overflow-hidden shrink-0">
+               <Layers size={20} className="text-white relative z-10" />
+               <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[13px] font-black uppercase tracking-[3px] text-white leading-none">Media</span>
+              <span className="text-[10px] font-black uppercase tracking-[1px] text-cyan-500 leading-tight">Composer</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 mb-3 px-2 opacity-50">
+          <Sparkles size={12} className="text-cyan-400 animate-pulse" />
+          <h3 className="text-[9px] font-black text-white/60 uppercase tracking-[2px]">Agent Assistant</h3>
         </div>
         <div className="px-2">
           <textarea 

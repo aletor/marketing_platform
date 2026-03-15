@@ -971,7 +971,6 @@ const SpacesContent = () => {
           className="spaces-canvas"
         >
           <Background color="#111" gap={40} size={1} />
-          <Controls />
         </ReactFlow>
 
         {/* Context Menu */}
@@ -1024,20 +1023,8 @@ const SpacesContent = () => {
           </div>
         )}
         
-        {/* Header Internal HUD / Brand Logo / Breadcrumbs */}
+        {/* Header Internal HUD / Breadcrumbs */}
         <div key="header-hud" className="absolute top-6 left-6 z-50 flex items-center gap-3">
-          {/* Minimalist Logo */}
-          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/10 p-2 rounded-xl shadow-2xl group hover:border-cyan-500/50 transition-all cursor-pointer">
-            <div className="relative w-8 h-8 flex items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.4)] overflow-hidden">
-               <Layers size={18} className="text-white relative z-10" />
-               <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[11px] font-black uppercase tracking-[3px] text-white leading-none">Media</span>
-              <span className="text-[9px] font-black uppercase tracking-[1px] text-cyan-500/80 leading-tight">Composer</span>
-            </div>
-          </div>
-
           <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/5 p-1 rounded-xl shadow-2xl">
             <button 
               onClick={handleGoBack}
@@ -1110,42 +1097,38 @@ const SpacesContent = () => {
              </span>
           </div>
 
-          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/5 px-3 py-1.5 rounded-xl shadow-2xl">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest flex items-center gap-2">
-              <Cloud size={12} className="text-white/20" /> 
-              Live Sync
-            </span>
-          </div>
         </div>
 
-        {/* Action HUD */}
-        <div key="action-hud" className="absolute top-6 right-6 z-50 flex gap-2">
+        {/* Action HUD - Minimalist */}
+        <div key="action-hud" className="absolute top-6 right-6 z-50 flex gap-1.5">
             <button 
               onClick={autoLayoutNodes}
-              className="px-4 py-2.5 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105"
+              title="Order Nodes"
+              className="w-10 h-10 bg-black/40 hover:bg-white/10 backdrop-blur-xl border border-white/5 rounded-xl text-white flex items-center justify-center transition-all hover:scale-105 group"
             >
-              <LayoutGrid size={14} className="text-emerald-400" /> Order Nodes
+              <LayoutGrid size={16} className="text-emerald-400 group-hover:text-emerald-300" />
             </button>
             <button 
               onClick={() => fitView({ padding: 0.2, duration: 800 })}
-              className="px-4 py-2.5 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105"
+              title="Fit View"
+              className="w-10 h-10 bg-black/40 hover:bg-white/10 backdrop-blur-xl border border-white/5 rounded-xl text-white flex items-center justify-center transition-all hover:scale-105 group"
             >
-              <Maximize size={14} className="text-cyan-400" /> Fit View
+              <Maximize size={16} className="text-cyan-400 group-hover:text-cyan-300" />
             </button>
             <button 
               onClick={() => setShowLoadModal(true)}
-              className="px-4 py-2.5 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105"
+              title="My Spaces"
+              className="w-10 h-10 bg-black/40 hover:bg-white/10 backdrop-blur-xl border border-white/5 rounded-xl text-white flex items-center justify-center transition-all hover:scale-105 group"
             >
-              <FolderOpen size={14} className="text-rose-400" /> My Spaces
+              <FolderOpen size={16} className="text-rose-400 group-hover:text-rose-300" />
             </button>
             <button 
               onClick={() => activeProjectId ? saveProject() : setShowSaveModal(true)}
               disabled={isSaving}
-              className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white border border-rose-400/20 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105 shadow-xl shadow-rose-900/20 disabled:opacity-50"
+              className={`h-10 px-4 ${activeProjectId ? 'bg-rose-600/20 text-rose-400 border-rose-500/30' : 'bg-rose-600 text-white'} hover:brightness-110 backdrop-blur-xl border rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105 disabled:opacity-50`}
             >
               {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} 
-              {activeProjectId ? 'Save Changes' : 'Save Project'}
+              <span className="hidden sm:inline">{activeProjectId ? 'Commit' : 'Save'}</span>
             </button>
         </div>
 
