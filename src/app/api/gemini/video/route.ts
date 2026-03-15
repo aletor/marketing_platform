@@ -5,7 +5,19 @@ import crypto from "crypto";
 export async function POST(req: NextRequest) {
   console.log("[Gemini Video] Request received");
   try {
-    const { prompt, firstFrame, lastFrame, resolution, durationSeconds, audio } = await req.json();
+    const { 
+      prompt, 
+      firstFrame, 
+      lastFrame, 
+      resolution, 
+      durationSeconds, 
+      audio,
+      seed,
+      negativePrompt,
+      animationPrompt,
+      cameraPreset
+    } = await req.json();
+
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
     if (!apiKey) {
@@ -53,15 +65,22 @@ export async function POST(req: NextRequest) {
     await processImage(firstFrame, "first_frame");
     await processImage(lastFrame, "last_frame");
 
+    // Construct Enhanced Prompt
+    let finalPrompt = prompt;
+    if (animationPrompt) finalPrompt += `. Animation: ${animationPrompt}`;
+    if (cameraPreset) finalPrompt += `. Camera motion: ${cameraPreset}`;
+    if (negativePrompt) finalPrompt += `. Negative prompt: avoid ${negativePrompt}`;
+
     const payload = {
       instances: [{
-        prompt: prompt,
+        prompt: finalPrompt,
         referenceImages: referenceImages.length > 0 ? referenceImages : undefined
       }],
       parameters: {
         sampleCount: 1,
         aspectRatio: "16:9",
-        resolution: resolution || "1080p"
+        resolution: resolution || "1080p",
+        seed: seed !== undefined ? Number(seed) : undefined
       }
     };
 

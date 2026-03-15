@@ -2624,9 +2624,63 @@ export const VideoBackgroundRemovalNode = memo(({ id, data }: NodeProps<any>) =>
   );
 });
 
+const CameraMotionSelector = ({ value, onChange }: { value: string, onChange: (val: string) => void }) => {
+  const motions = [
+    { id: '', label: 'Auto', icon: <div className="w-full h-full border border-dashed border-white/20 rounded-md" /> },
+    { id: 'Dolly-in', label: 'Dolly-in', icon: (
+      <svg viewBox="0 0 40 40" className="w-full h-full">
+        <rect x="10" y="10" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1" className="animate-dolly-in" />
+        <path d="M5 5 L15 15 M35 5 L25 15 M5 35 L15 25 M35 35 L25 25" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 2" />
+      </svg>
+    )},
+    { id: 'Dolly-out', label: 'Dolly-out', icon: (
+      <svg viewBox="0 0 40 40" className="w-full h-full">
+        <rect x="10" y="10" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1" className="animate-dolly-out" />
+        <path d="M5 5 L15 15 M35 5 L25 15 M5 35 L15 25 M35 35 L25 25" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 2" />
+      </svg>
+    )},
+    { id: 'Orbit-Left', label: 'Orbit L', icon: (
+      <svg viewBox="0 0 40 40" className="w-full h-full">
+        <circle cx="20" cy="20" r="12" fill="none" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 2" />
+        <circle cx="20" cy="8" r="3" fill="currentColor" className="animate-orbit" />
+      </svg>
+    )},
+    { id: 'Slow-Pan', label: 'Pan', icon: (
+      <svg viewBox="0 0 40 40" className="w-full h-full">
+        <rect x="5" y="12" width="30" height="16" fill="none" stroke="currentColor" strokeWidth="1" rx="2" />
+        <path d="M8 15 L12 15 M15 15 L19 15 M22 15 L26 15" stroke="currentColor" strokeWidth="0.5" className="animate-pan" />
+      </svg>
+    )},
+    { id: 'Crane-Up', label: 'Crane', icon: (
+      <svg viewBox="0 0 40 40" className="w-full h-full">
+        <rect x="12" y="5" width="16" height="30" fill="none" stroke="currentColor" strokeWidth="1" rx="2" />
+        <path d="M15 8 L15 12 M15 15 L15 19 M15 22 L15 26" stroke="currentColor" strokeWidth="0.5" className="animate-crane" />
+      </svg>
+    )},
+  ];
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {motions.map(m => (
+        <button
+          key={m.id}
+          onClick={() => onChange(m.id)}
+          className={`group flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all border ${value === m.id ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'bg-white/5 border-white/5 text-zinc-500 hover:border-white/20'}`}
+        >
+          <div className="w-10 h-10 flex items-center justify-center">
+            {m.icon}
+          </div>
+          <span className="text-[7px] font-black uppercase tracking-widest">{m.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
+
 export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as any;
   const { setNodes, getEdges, getNodes } = useReactFlow();
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [status, setStatus] = useState('idle');
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<string | null>(nodeData.value || null);
@@ -2672,7 +2726,11 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
           lastFrame,
           resolution: nodeData.resolution || "1080p",
           durationSeconds: nodeData.duration || "5",
-          audio: nodeData.audio || false
+          audio: nodeData.audio || false,
+          seed: nodeData.seed,
+          negativePrompt: nodeData.negativePrompt,
+          animationPrompt: nodeData.animationPrompt,
+          cameraPreset: nodeData.cameraPreset
         })
       });
 
@@ -2751,6 +2809,50 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
                <option value="8">8 Seconds</option>
              </select>
           </div>
+        </div>
+
+        {/* --- Advanced Settings Control --- */}
+        <div className="border-t border-white/5 pt-3">
+          <button 
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="w-full flex items-center justify-between text-[8px] font-black text-white/40 uppercase tracking-widest hover:text-cyan-500 transition-colors"
+          >
+            Advanced Controls
+            <ChevronRight size={10} className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
+          </button>
+          
+          {showAdvanced && (
+            <div className="mt-4 space-y-4 animate-in fade-in slide-in-from-top-2 pb-2">
+              <div className="space-y-1">
+                <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Negative Prompt</span>
+                <textarea 
+                  className="node-textarea text-[10px] min-h-[35px] resize-none" 
+                  value={nodeData.negativePrompt || ''}
+                  placeholder="Items to avoid..."
+                  onChange={(e) => updateData('negativePrompt', e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Camera Motion</span>
+                <CameraMotionSelector 
+                  value={nodeData.cameraPreset || ''} 
+                  onChange={(val) => updateData('cameraPreset', val)} 
+                />
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Animation Motion</span>
+                <input 
+                  type="text" 
+                  className="node-input text-[10px]" 
+                  value={nodeData.animationPrompt || ''}
+                  placeholder="e.g. gentle camera zoom..."
+                  onChange={(e) => updateData('animationPrompt', e.target.value)}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <button 
