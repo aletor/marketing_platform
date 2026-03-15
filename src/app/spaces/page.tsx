@@ -40,6 +40,7 @@ import {
   ButtonEdge 
 } from './CustomNodes';
 import Sidebar from './Sidebar';
+import { AgentHUD } from './AgentHUD';
 import './spaces.css';
 import { NODE_REGISTRY } from './nodeRegistry';
 import { 
@@ -949,7 +950,7 @@ const SpacesContent = () => {
 
   return (
     <div className="flex w-full h-full" ref={reactFlowWrapper}>
-      <Sidebar onGenerate={onGenerateAssistant} isGenerating={isGeneratingAssistant} />
+      <Sidebar />
       <div className="flex-1 relative" onContextMenu={(e) => e.preventDefault()}>
         <ReactFlow
           nodes={nodes}
@@ -968,6 +969,7 @@ const SpacesContent = () => {
           fitView
           minZoom={0.1}
           maxZoom={4}
+          proOptions={{ hideAttribution: true }}
           className="spaces-canvas"
         >
           <Background color="#111" gap={40} size={1} />
@@ -1023,45 +1025,46 @@ const SpacesContent = () => {
           </div>
         )}
         
-        {/* Header Internal HUD / Breadcrumbs */}
-        <div key="header-hud" className="absolute top-6 left-6 z-50 flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/5 p-1 rounded-xl shadow-2xl">
-            <button 
-              onClick={handleGoBack}
-              disabled={navigationStack.length === 0}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-all disabled:opacity-20"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <div className="flex items-center gap-2 px-2">
-              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[2px]">
-            <span 
-              onClick={() => {
-                if (activeSpaceId !== 'root') {
-                  const { newMap: updatedSpacesMap } = syncCurrentSpaceState(nodes, edges, spacesMap, activeSpaceId);
-                  const rootSpace = updatedSpacesMap['root'];
-                  if (rootSpace) {
-                    setSpacesMap(updatedSpacesMap);
-                    setNodes([...rootSpace.nodes]);
-                    setEdges([...(rootSpace.edges || [])]);
-                    setActiveSpaceId('root');
-                    setNavigationStack([]);
-                  }
-                }
-              }}
-              className={`hover:text-cyan-400 cursor-pointer transition-colors ${activeSpaceId === 'root' ? 'text-cyan-400 font-bold' : ''}`}
-            >
-              Canvas
-            </span>
+        <AgentHUD onGenerate={onGenerateAssistant} isGenerating={isGeneratingAssistant} />
+
+        {/* Action HUD - Consolidating Breadcrumbs & Actions on the Right */}
+        <div key="action-hud" className="absolute top-6 right-6 z-50 flex items-center gap-4">
+            {/* Navigation & Project Context (Clean Ghost Style) */}
+            <div className="flex items-center gap-3 pr-2 border-r border-white/10">
+              <button 
+                onClick={handleGoBack}
+                disabled={navigationStack.length === 0}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-all disabled:opacity-0"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[2px]">
+                <span 
+                  onClick={() => {
+                    if (activeSpaceId !== 'root') {
+                      const { newMap: updatedSpacesMap } = syncCurrentSpaceState(nodes, edges, spacesMap, activeSpaceId);
+                      const rootSpace = updatedSpacesMap['root'];
+                      if (rootSpace) {
+                        setSpacesMap(updatedSpacesMap);
+                        setNodes([...rootSpace.nodes]);
+                        setEdges([...(rootSpace.edges || [])]);
+                        setActiveSpaceId('root');
+                        setNavigationStack([]);
+                      }
+                    }
+                  }}
+                  className={`hover:text-cyan-400 cursor-pointer transition-colors ${activeSpaceId === 'root' ? 'text-cyan-400 font-bold' : 'text-slate-400'}`}
+                >
+                  Canvas
+                </span>
+                
                 {navigationStack.map((id, idx) => (
                   <React.Fragment key={id}>
-                    <span className="text-white/10">/</span>
+                    <span className="text-white/20">/</span>
                     <span 
                       onClick={() => {
-                        // 1. Commit current and propagate
                         const { newMap: updatedSpacesMap } = syncCurrentSpaceState(nodes, edges, spacesMap, activeSpaceId);
-                        
-                        // 2. Clear stack up to the target and switch
                         const newStack = navigationStack.slice(0, idx);
                         const targetSpace = updatedSpacesMap[id];
                         if (targetSpace) {
@@ -1072,110 +1075,95 @@ const SpacesContent = () => {
                           setNavigationStack(newStack);
                         }
                       }}
-                      className="text-white/40 hover:text-cyan-400 cursor-pointer transition-colors"
+                      className="text-slate-400 hover:text-cyan-400 cursor-pointer transition-colors"
                     >
                       {spacesMap[id]?.name || 'Space'}
                     </span>
                   </React.Fragment>
                 ))}
+                
                 {activeSpaceId !== 'root' && (
                   <>
-                    <span className="text-white/10">/</span>
+                    <span className="text-white/20">/</span>
                     <span className="text-cyan-400 font-bold tracking-wider">
                       {spacesMap[activeSpaceId]?.name || 'Nested Space'}
                     </span>
                   </>
                 )}
               </div>
+
+              <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl">
+                 <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
+                 <span className="text-[10px] font-black text-white uppercase tracking-widest drop-shadow-sm">
+                   {currentName || 'Untitled Composition'}
+                 </span>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3 bg-black/40 backdrop-blur-xl border border-white/5 px-3 py-1.5 rounded-xl shadow-2xl">
-             <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
-             <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">
-               {currentName || 'Untitled Composition'}
-             </span>
-          </div>
-
+            {/* Quick Actions */}
+            <div className="flex gap-1.5">
+              <button 
+                onClick={autoLayoutNodes}
+                title="Order Nodes"
+                className="w-10 h-10 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/5 rounded-xl text-white flex items-center justify-center transition-all hover:scale-105 group"
+              >
+                <LayoutGrid size={16} className="text-emerald-400 group-hover:text-emerald-300" />
+              </button>
+              <button 
+                onClick={() => fitView({ padding: 0.2, duration: 800 })}
+                title="Fit View"
+                className="w-10 h-10 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/5 rounded-xl text-white flex items-center justify-center transition-all hover:scale-105 group"
+              >
+                <Maximize size={16} className="text-cyan-400 group-hover:text-cyan-300" />
+              </button>
+              <button 
+                onClick={() => setShowLoadModal(true)}
+                title="My Spaces"
+                className="w-10 h-10 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/5 rounded-xl text-white flex items-center justify-center transition-all hover:scale-105 group"
+              >
+                <FolderOpen size={16} className="text-rose-400 group-hover:text-rose-300" />
+              </button>
+              <button 
+                onClick={() => activeProjectId ? saveProject() : setShowSaveModal(true)}
+                disabled={isSaving}
+                className={`h-10 px-4 ${activeProjectId ? 'bg-rose-600/20 text-rose-400 border-rose-500/30' : 'bg-rose-600 text-white'} hover:brightness-110 backdrop-blur-xl border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105 disabled:opacity-50 shadow-xl shadow-rose-900/10`}
+              >
+                {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} 
+                <span className="hidden sm:inline">{activeProjectId ? 'Commit' : 'Save'}</span>
+              </button>
+            </div>
         </div>
 
-        {/* Action HUD - Minimalist */}
-        <div key="action-hud" className="absolute top-6 right-6 z-50 flex gap-1.5">
-            <button 
-              onClick={autoLayoutNodes}
-              title="Order Nodes"
-              className="w-10 h-10 bg-black/40 hover:bg-white/10 backdrop-blur-xl border border-white/5 rounded-xl text-white flex items-center justify-center transition-all hover:scale-105 group"
-            >
-              <LayoutGrid size={16} className="text-emerald-400 group-hover:text-emerald-300" />
-            </button>
-            <button 
-              onClick={() => fitView({ padding: 0.2, duration: 800 })}
-              title="Fit View"
-              className="w-10 h-10 bg-black/40 hover:bg-white/10 backdrop-blur-xl border border-white/5 rounded-xl text-white flex items-center justify-center transition-all hover:scale-105 group"
-            >
-              <Maximize size={16} className="text-cyan-400 group-hover:text-cyan-300" />
-            </button>
-            <button 
-              onClick={() => setShowLoadModal(true)}
-              title="My Spaces"
-              className="w-10 h-10 bg-black/40 hover:bg-white/10 backdrop-blur-xl border border-white/5 rounded-xl text-white flex items-center justify-center transition-all hover:scale-105 group"
-            >
-              <FolderOpen size={16} className="text-rose-400 group-hover:text-rose-300" />
-            </button>
-            <button 
-              onClick={() => activeProjectId ? saveProject() : setShowSaveModal(true)}
-              disabled={isSaving}
-              className={`h-10 px-4 ${activeProjectId ? 'bg-rose-600/20 text-rose-400 border-rose-500/30' : 'bg-rose-600 text-white'} hover:brightness-110 backdrop-blur-xl border rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105 disabled:opacity-50`}
-            >
-              {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} 
-              <span className="hidden sm:inline">{activeProjectId ? 'Commit' : 'Save'}</span>
-            </button>
-        </div>
-
-        {/* Legend HUD */}
-        <div key="legend-hud" className="absolute bottom-6 left-6 flex flex-wrap gap-x-6 gap-y-3 px-6 py-4 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl z-50 pointer-events-none shadow-2xl max-w-[600px]">
+        {/* Legend HUD - Ultra Minimal Single Row */}
+        <div key="legend-hud" className="absolute bottom-6 left-6 flex items-center gap-6 px-6 py-2.5 bg-white/5 backdrop-blur-2xl border border-white/5 rounded-full z-50 pointer-events-none shadow-2xl shadow-black/5">
+            {[
+              { color: 'bg-blue-500', label: 'Prompt' },
+              { color: 'bg-rose-500', label: 'Video' },
+              { color: 'bg-pink-500', label: 'Image' },
+              { color: 'bg-purple-500', label: 'Sound' },
+              { color: 'bg-cyan-500', label: 'Mask' },
+              { color: 'bg-orange-500', label: 'PDF' },
+              { color: 'bg-amber-500', label: 'Txt' },
+              { color: 'bg-emerald-500', label: 'Url' },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-2">
+                <div className={`w-1.5 h-1.5 rounded-full ${item.color} shadow-[0_0_8px_rgba(255,255,255,0.2)]`} />
+                <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">{item.label}</span>
+              </div>
+            ))}
+            <div className="h-3 w-[1px] bg-white/10 mx-1" />
             <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Prompt</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Video</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.6)]" />
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Image</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.6)]" />
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sound</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mask</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">PDF</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">TXT</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">URL</span>
-            </div>
-            <div className="border-l border-white/10 ml-2 pl-4 flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-500/20 rounded-full flex items-center justify-center border border-red-500/40 text-[8px] font-black text-red-500">X</div>
-              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Disconnect wire</span>
+              <div className="w-3 h-3 rounded-full border border-rose-500/50 flex items-center justify-center">
+                <div className="w-1 h-1 rounded-full bg-rose-500" />
+              </div>
+              <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">Disconnect</span>
             </div>
         </div>
 
         {/* Modals */}
         {showSaveModal && (
           <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden group">
+            <div className="w-full max-w-md bg-white border border-slate-200 shadow-2xl shadow-slate-200/50 relative overflow-hidden group">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-rose-500 to-transparent opacity-50" />
               <button 
                 onClick={() => setShowSaveModal(false)}
@@ -1183,7 +1171,7 @@ const SpacesContent = () => {
               >
                 <X size={20} />
               </button>
-              <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter">Save Workspace</h2>
+              <h2 className="text-2xl font-black text-slate-900">Save Workspace</h2>
               <p className="text-gray-400 text-xs mb-8">Give your AI pipeline a name to find it later in your hub.</p>
               
               <div className="relative mb-8">
@@ -1192,7 +1180,7 @@ const SpacesContent = () => {
                   type="text" 
                   autoFocus
                   placeholder="e.g., Cinematic Video Flow..."
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-gray-600 focus:outline-none focus:border-rose-500/50 transition-colors"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-4 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-rose-500/50 transition-colors"
                   value={currentName}
                   onChange={(e) => setCurrentName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && saveProject()}
@@ -1211,14 +1199,14 @@ const SpacesContent = () => {
 
         {showLoadModal && (
           <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 shadow-2xl relative max-h-[80vh] flex flex-col">
+            <div className="w-full max-w-2xl bg-white border border-slate-200 shadow-2xl shadow-slate-200/50 relative max-h-[80vh] flex flex-col">
               <button 
                 onClick={() => setShowLoadModal(false)}
                 className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors"
               >
                 <X size={20} />
               </button>
-              <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter">Your Projects</h2>
+              <h2 className="text-2xl font-black text-slate-900">Your Projects</h2>
               <p className="text-gray-400 text-xs mb-8">Select a configuration to restore it to the canvas.</p>
               
               <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
@@ -1230,7 +1218,7 @@ const SpacesContent = () => {
                 ) : (
                   <div className="grid gap-4">
                     {savedProjects.map((project) => (
-                      <div key={project.id} className="group/item flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all">
+                      <div key={project.id} className="group/item flex items-center gap-4 p-4 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-2xl transition-all">
                         <div className="w-12 h-12 bg-rose-500/20 rounded-xl flex items-center justify-center border border-rose-500/30">
                           <Workflow size={20} className="text-rose-500" />
                         </div>
@@ -1251,7 +1239,7 @@ const SpacesContent = () => {
                                 setEditingId(project.id);
                                 setEditingName(project.name);
                               }}
-                              className="text-sm font-bold text-white truncate uppercase tracking-tight cursor-pointer hover:text-rose-500 flex items-center gap-2 group/title"
+                              className="text-sm font-bold text-slate-900 truncate uppercase tracking-tight cursor-pointer hover:text-rose-600 flex items-center gap-2 group/title"
                             >
                               {project.name}
                               <Edit2 size={12} className="opacity-0 group-hover/title:opacity-50 transition-opacity" />
@@ -1307,7 +1295,7 @@ const SpacesContent = () => {
                 <Trash2 size={32} className="text-rose-500 mr-0" />
               </div>
 
-              <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter text-center">Delete Project?</h2>
+              <h2 className="text-2xl font-black text-slate-900 text-center">Delete Project?</h2>
               <p className="text-gray-400 text-xs mb-8 text-center px-4 leading-relaxed">
                 This will permanently remove <span className="text-white font-bold">"{projectToDelete.name}"</span> and all its associated media assets from the server.
               </p>
@@ -1339,7 +1327,7 @@ const SpacesContent = () => {
 
 export default function SpacesPage() {
   return (
-    <div className="w-screen h-screen bg-[#000] overflow-hidden">
+    <div className="w-screen h-screen bg-slate-50 overflow-hidden">
       <ReactFlowProvider>
         <SpacesContent />
       </ReactFlowProvider>

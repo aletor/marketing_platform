@@ -101,7 +101,7 @@ const NodeLabel = ({ id, label, defaultLabel }: { id: string, label?: string, de
       ) : (
         <div 
           onDoubleClick={() => setIsEditing(true)}
-          className="px-2 py-0.5 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 text-[9px] font-black text-white/40 truncate hover:text-cyan-400 group-hover/label:border-cyan-500/30 transition-all uppercase tracking-widest cursor-pointer select-none flex items-center gap-2"
+          className="px-2 py-0.5 rounded-lg bg-slate-50/50 backdrop-blur-md border border-white/10 text-[9px] font-black text-white/40 truncate hover:text-cyan-400 group-hover/label:border-cyan-500/30 transition-all uppercase tracking-widest cursor-pointer select-none flex items-center gap-2"
           title="Double click to rename (max 5 words)"
         >
           <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/50 animate-pulse" />
@@ -151,6 +151,7 @@ export const ButtonEdge = ({
       />
       <EdgeLabelRenderer>
         <div
+          key={id}
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
@@ -214,7 +215,7 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
 
         <div>
           <label className="node-label">Background Color</label>
-          <div className="flex gap-3 items-center bg-black/40 p-3 rounded-xl border border-white/5">
+          <div className="flex gap-3 items-center bg-slate-50/50 p-3 rounded-xl border border-slate-200/60">
             <input 
               type="color" 
               className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-none"
@@ -232,7 +233,7 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
           </div>
         </div>
 
-        <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/5 flex flex-col items-center justify-center min-h-[100px]" style={{ backgroundColor: color + '44' }}>
+        <div className="mt-4 p-3 bg-white/5 rounded-xl border border-slate-200/60 flex flex-col items-center justify-center min-h-[100px]" style={{ backgroundColor: color + '44' }}>
           <div className="w-20 h-12 border border-white/20 rounded shadow-lg" style={{ backgroundColor: color }}></div>
           <span className="text-[8px] font-black text-gray-500 uppercase mt-2">{w}x{h} ASPECT</span>
         </div>
@@ -328,7 +329,7 @@ export const UrlImageNode = memo(({ id, data }: NodeProps<any>) => {
         <Globe size={16} /> CAROUSEL {loading && <Loader2 size={12} className="animate-spin ml-auto" />}
       </div>
       <div className="node-content">
-        <div className="relative w-full aspect-video bg-black/60 rounded-xl overflow-hidden border border-white/10 group mb-3 shadow-inner">
+        <div className="relative w-full aspect-video bg-slate-50 rounded-xl overflow-hidden border border-white/10 group mb-3 shadow-inner">
           {currentUrl ? (
             <img src={currentUrl} className="w-full h-full object-contain" alt="Carousel" />
           ) : (
@@ -342,17 +343,17 @@ export const UrlImageNode = memo(({ id, data }: NodeProps<any>) => {
             <>
               <button 
                 onClick={prev}
-                className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 bg-black/80 backdrop-blur-md rounded-full text-white border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-cyan-500/20"
+                className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 bg-slate-100/50 backdrop-blur-md rounded-full text-white border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-cyan-500/20"
               >
                 <ChevronLeft size={16} />
               </button>
               <button 
                 onClick={next}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-black/80 backdrop-blur-md rounded-full text-white border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-cyan-500/20"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-slate-100/50 backdrop-blur-md rounded-full text-white border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-cyan-500/20"
               >
                 <ChevronRight size={16} />
               </button>
-              <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded text-[8px] font-mono text-cyan-400 border border-cyan-500/20">
+              <div className="absolute bottom-2 right-2 bg-slate-100/50 backdrop-blur-md px-2 py-0.5 rounded text-[8px] font-mono text-cyan-400 border border-cyan-500/20">
                 {selectedIndex + 1} / {urls.length}
               </div>
             </>
@@ -381,7 +382,7 @@ export const UrlImageNode = memo(({ id, data }: NodeProps<any>) => {
            </div>
 
            {urls.length > 0 && (
-             <div className="pt-2 border-t border-white/5">
+             <div className="pt-2 border-t border-slate-200/60">
                 <div className="text-[8px] font-black text-gray-600 uppercase mb-2 tracking-widest flex justify-between items-center">
                   <span>Gallery Stack</span>
                   <button 
@@ -624,7 +625,7 @@ export const ImageComposerNode = ({ id, data }: NodeProps<any>) => {
         </div>
 
         {/* LAYER MANAGER LIST */}
-        <div className="mt-4 border-t border-white/5 pt-3">
+        <div className="mt-4 border-t border-slate-200/60 pt-3">
           <div className="text-[8px] font-black text-gray-500 uppercase mb-2 tracking-widest flex items-center gap-2 px-1">
              <MousePointer2 size={10} /> Selection Manager
           </div>
@@ -636,7 +637,7 @@ export const ImageComposerNode = ({ id, data }: NodeProps<any>) => {
                 <div 
                   key={actualIdx} 
                   onClick={() => updateData({ selectedLayerId: l.handleId })}
-                  className={`group flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer ${isSelected ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/[0.03] border-white/5 hover:bg-white/10 hover:border-white/10'}`}
+                  className={`group flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer ${isSelected ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/[0.03] border-slate-200/60 hover:bg-white/10 hover:border-white/10'}`}
                 >
                   <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black ${isSelected ? 'bg-cyan-500 text-white' : 'bg-white/10 text-gray-500'}`}>
                     {actualIdx + 1}
@@ -773,7 +774,7 @@ const ComposerStudio = ({ layers, layersConfig: initialConfig, onSave, onClose }
   return (
     <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 studio-overlay" onPointerDown={() => setSelectedId(null)}>
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 h-16 border-b border-white/5 bg-black/60 flex items-center px-8 gap-6 backdrop-blur-md">
+      <div className="absolute top-0 left-0 right-0 h-16 border-b border-slate-200/60 bg-slate-50 flex items-center px-8 gap-6 backdrop-blur-md">
         <button onClick={() => onSave(config)} className="text-gray-500 hover:text-white transition-colors cursor-pointer"><X size={20} /></button>
         <div className="h-6 w-px bg-white/10" />
         <div className="flex items-center gap-3">
@@ -834,7 +835,7 @@ const ComposerStudio = ({ layers, layersConfig: initialConfig, onSave, onClose }
                       <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-cyan-500 rounded-full cursor-nesw-resize shadow-lg hover:scale-150 transition-transform" onPointerDown={(e) => onDown(e, l.handleId!, 'scale-bl')} />
                       <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-cyan-500 rounded-full cursor-nwse-resize shadow-lg hover:scale-150 transition-transform" onPointerDown={(e) => onDown(e, l.handleId!, 'scale-br')} />
                       
-                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-2 whitespace-nowrap bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-cyan-500/30 text-[9px] font-black uppercase text-cyan-400 shadow-xl pointer-events-none">
+                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-2 whitespace-nowrap bg-slate-100/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-cyan-500/30 text-[9px] font-black uppercase text-cyan-400 shadow-xl pointer-events-none">
                          <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse" />
                          L{idx + 1} • {Math.round(c.scale * 100)}%
                       </div>
@@ -1123,7 +1124,7 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
           <span>COMPOSITION MODE</span>
         </div>
 
-        <div className="relative w-full aspect-video bg-black/60 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
+        <div className="relative w-full aspect-video bg-slate-50 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
           {exportPreview || (sourceNode?.data.value && sourceNode.type !== 'imageComposer') ? (
             <img src={exportPreview || (sourceNode?.data.value as string)} className="w-full h-full object-contain" alt="Export Preview" />
           ) : sourceNode?.type === 'imageComposer' ? (
@@ -1250,7 +1251,7 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
 
       <div className="node-content">
         {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-black/40 rounded-xl mb-4">
+        <div className="flex gap-1 p-1 bg-slate-50/50 rounded-xl mb-4">
           <button 
             onClick={() => setActiveTab('upload')}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${activeTab === 'upload' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
@@ -1323,7 +1324,7 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
              {nodeData.value && (nodeData.type === 'video' || nodeData.type === 'image') && (
                 <button 
                   onClick={() => setShowFullSize(true)}
-                  className="w-full flex items-center justify-center gap-2 text-[10px] font-bold text-gray-400 hover:text-white transition-colors py-2 bg-white/5 rounded-lg border border-white/5"
+                  className="w-full flex items-center justify-center gap-2 text-[10px] font-bold text-gray-400 hover:text-white transition-colors py-2 bg-white/5 rounded-lg border border-slate-200/60"
                 >
                   <Maximize2 size={12} /> VER TAMAÑO COMPLETO
                 </button>
@@ -1347,7 +1348,7 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
 
         {/* Metadata section */}
         {nodeData.metadata && (
-          <div className="mt-4 pt-4 border-t border-white/5">
+          <div className="mt-4 pt-4 border-t border-slate-200/60">
             <div className="flex items-center gap-2 mb-2">
               <Info size={10} className="text-gray-600" />
               <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Asset Metadata</span>
@@ -1425,30 +1426,20 @@ export const ConcatenatorNode = memo(({ id, data }: NodeProps<any>) => {
     }
   }, [connectedInputs, nodes, id, nodeData.value, setNodes]);
 
-  // Handle generation: connected ones + 1 empty one at the end
-  const handleIds = useMemo(() => {
-    const ids = connectedInputs.map((e: any) => e.targetHandle || 'p0');
-    
-    // Sort logically to avoid alphabetical jumping (e.g., p10 before p2)
-    const sortedConnected = [...ids].sort((a, b) => {
-      const nA = parseInt(a.replace(/[^\d]/g, '')) || 0;
-      const nB = parseInt(b.replace(/[^\d]/g, '')) || 0;
-      return nA - nB;
-    });
-
-    const lastId = sortedConnected[sortedConnected.length - 1] || 'p-1';
-    const lastNum = parseInt(lastId.replace(/[^\d]/g, '')) ?? -1;
-    
-    // Return all connected + one new spare handle
-    return [...new Set([...ids, `p${lastNum + 1}`])];
-  }, [connectedInputs]);
+  // Fixed handles for stability: 8 slots available
+  const handleIds = ['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'];
 
   return (
     <div className="custom-node tool-node min-w-[220px]">
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Concatenator" />
       {handleIds.map((hId: any, index: number) => (
         <div key={hId} className="handle-wrapper handle-left" style={{ top: `${(index + 1) * (100 / (handleIds.length + 1))}%` }}>
-          <Handle type="target" position={Position.Left} id={hId} className="handle-prompt" />
+          <Handle 
+            type="target" 
+            position={Position.Left} 
+            id={hId} 
+            className={`handle-prompt ${connectedInputs.some(e => e.targetHandle === hId) ? 'active' : ''}`} 
+          />
           <span className="handle-label">In {index + 1}</span>
         </div>
       ))}
@@ -1459,7 +1450,7 @@ export const ConcatenatorNode = memo(({ id, data }: NodeProps<any>) => {
         <div className="node-badge">UTILITY</div>
       </div>
       <div className="node-content">
-        <div className="p-3 bg-black/40 rounded-lg text-[10px] text-gray-400 font-mono italic min-h-[50px] max-h-[150px] overflow-y-auto">
+        <div className="p-3 bg-slate-50/50 rounded-lg text-[10px] text-gray-400 font-mono italic min-h-[50px] max-h-[150px] overflow-y-auto">
           {nodeData.value || 'Connect prompts to combine them...'}
         </div>
         <div className="mt-2 text-[8px] text-gray-600 uppercase font-bold tracking-tighter">
@@ -1518,7 +1509,7 @@ export const EnhancerNode = memo(({ id, data }: NodeProps<any>) => {
         <button className="execute-btn w-full" onClick={handleEnhance} disabled={loading}>
           {loading ? 'ENHANCING...' : 'ENHANCE WITH OPENAI'}
         </button>
-        <div className="p-3 bg-black/40 rounded-lg text-[11px] text-gray-300 italic min-h-[80px]">
+        <div className="p-3 bg-slate-50/50 rounded-lg text-[11px] text-gray-300 italic min-h-[80px]">
           {nodeData.value || 'Connect a prompt and click Enhance...'}
         </div>
       </div>
@@ -1785,7 +1776,7 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
       <div className="node-content space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-             <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Layout</span>
+             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Layout</span>
              <select 
                className="node-input text-[10px]" 
                value={nodeData.aspect_ratio || '1:1'} 
@@ -1799,7 +1790,7 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
              </select>
           </div>
           <div className="space-y-1">
-             <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Quality / Res</span>
+             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Quality / Res</span>
              <select 
                className="node-input text-[10px] !border-cyan-500/30" 
                value={nodeData.resolution || '1k'} 
@@ -1838,7 +1829,7 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
           </div>
         )}
 
-        <div className="drop-zone overflow-hidden bg-black/60 min-h-[160px] border-white/5 group/media relative">
+        <div className="drop-zone overflow-hidden bg-slate-50 min-h-[160px] border-slate-200/60 group/media relative">
           {result ? (
             <img src={result} className="w-full h-full object-cover group-hover/media:scale-105 transition-transform duration-700" alt="Result" />
           ) : (
@@ -1989,8 +1980,8 @@ export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
       
       <div className="flex flex-col">
           {/* PREVIEW AREA */}
-          <div className="relative group/preview overflow-hidden bg-black/80 h-[220px] flex items-center justify-center border-b border-white/5">
-             <div className="absolute top-2 left-2 z-10 flex gap-1 bg-black/40 p-1 rounded-lg backdrop-blur-md border border-white/5">
+          <div className="relative group/preview overflow-hidden bg-slate-100/50 h-[220px] flex items-center justify-center border-b border-slate-200/60">
+             <div className="absolute top-2 left-2 z-10 flex gap-1 bg-slate-50/50 p-1 rounded-lg backdrop-blur-md border border-slate-200/60">
                 {(['original', 'mask', 'cutout'] as const).map(mode => (
                   <button 
                     key={mode}
@@ -2016,7 +2007,7 @@ export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
             )}
 
             {status === 'running' && (
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20">
+              <div className="absolute inset-0 bg-slate-50 backdrop-blur-sm flex flex-col items-center justify-center z-20">
                  <Loader2 size={24} className="animate-spin text-cyan-400 mb-2" />
                  <span className="text-[9px] font-black text-white uppercase tracking-widest">Processing Alpha...</span>
               </div>
@@ -2034,7 +2025,7 @@ export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
               <span>{status === 'running' ? 'REMOVING...' : 'REMOVE BACKGROUND'}</span>
             </button>
 
-            <div className="space-y-4 pt-2 border-t border-white/5">
+            <div className="space-y-4 pt-2 border-t border-slate-200/60">
                <div className="space-y-2">
                   <div className="flex justify-between items-center">
                      <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Threshold (Precision)</span>
@@ -2088,7 +2079,7 @@ export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
           </div>
           <div className="relative group/h">
              <Handle type="source" position={Position.Right} id="bbox" className="handle-txt !right-0 shadow-[0_0_10px_rgba(245,158,11,0.5)] cursor-crosshair" />
-             <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[7px] font-black uppercase text-amber-500 bg-black/80 px-1 border border-amber-500/20 rounded opacity-0 group-hover/h:opacity-100 transition-opacity whitespace-nowrap">BBOX</span>
+             <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[7px] font-black uppercase text-amber-500 bg-slate-100/50 px-1 border border-amber-500/20 rounded opacity-0 group-hover/h:opacity-100 transition-opacity whitespace-nowrap">BBOX</span>
           </div>
       </div>
 
@@ -2132,7 +2123,7 @@ const MatteStudioOverlay = ({
 }: MatteStudioOverlayProps) => {
   return (
     <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex flex-col studio-overlay nodrag nopan">
-      <div className="h-16 border-b border-white/5 bg-black/40 flex items-center px-8 gap-6 backdrop-blur-md">
+      <div className="h-16 border-b border-slate-200/60 bg-slate-50/50 flex items-center px-8 gap-6 backdrop-blur-md">
         <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors cursor-pointer"><X size={20} /></button>
         <div className="h-6 w-px bg-white/10" />
         <div className="flex items-center gap-3">
@@ -2153,7 +2144,7 @@ const MatteStudioOverlay = ({
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 bg-black/40 relative flex items-center justify-center p-12">
+        <div className="flex-1 bg-slate-50/50 relative flex items-center justify-center p-12">
            <div className="absolute top-8 left-8 z-10 flex gap-2">
               {(['original', 'mask', 'cutout'] as const).map(mode => (
                 <button 
@@ -2170,7 +2161,7 @@ const MatteStudioOverlay = ({
               {getPreviewImage() ? (
                 <img 
                   src={getPreviewImage()} 
-                  className={`max-w-full max-h-full object-contain rounded-2xl shadow-[0_40px_100px_rgba(0,0,0,0.8)] border border-white/5 ${previewMode === 'mask' ? 'invert brightness-125' : ''}`} 
+                  className={`max-w-full max-h-full object-contain rounded-2xl shadow-[0_40px_100px_rgba(0,0,0,0.8)] border border-slate-200/60 ${previewMode === 'mask' ? 'invert brightness-125' : ''}`} 
                   alt="Studio Preview" 
                 />
               ) : (
@@ -2181,7 +2172,7 @@ const MatteStudioOverlay = ({
               )}
 
               {status === 'running' && (
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-2xl">
+                <div className="absolute inset-0 bg-slate-50 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-2xl">
                    <div className="w-48 h-1 bg-cyan-500/10 rounded-full overflow-hidden mb-4">
                       <div className="h-full bg-cyan-500 animate-pulse w-full" />
                    </div>
@@ -2191,13 +2182,13 @@ const MatteStudioOverlay = ({
            </div>
         </div>
 
-        <div className="w-[380px] border-l border-white/5 bg-black/40 backdrop-blur-xl p-8 overflow-y-auto flex flex-col gap-8">
+        <div className="w-[380px] border-l border-slate-200/60 bg-slate-50/50 backdrop-blur-xl p-8 overflow-y-auto flex flex-col gap-8">
            <section className="space-y-4">
               <div className="flex items-center gap-2 text-cyan-400">
                  <Zap size={14} />
                  <h3 className="text-[10px] font-black uppercase tracking-widest">Configuration</h3>
               </div>
-              <div className="space-y-4 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
+              <div className="space-y-4 bg-white/[0.02] p-4 rounded-2xl border border-slate-200/60">
                 <div>
                   <label className="node-label flex justify-between mb-2">Threshold <span className="text-cyan-500">{(nodeData.threshold ?? 0.9).toFixed(2)}</span></label>
                   <input 
@@ -2215,7 +2206,7 @@ const MatteStudioOverlay = ({
                  <Paintbrush size={14} />
                  <h3 className="text-[10px] font-black uppercase tracking-widest">Refinement</h3>
               </div>
-              <div className="space-y-6 bg-white/[0.02] p-6 rounded-2xl border border-white/5">
+              <div className="space-y-6 bg-white/[0.02] p-6 rounded-2xl border border-slate-200/60">
                 <div>
                   <label className="node-label flex justify-between mb-3 uppercase tracking-tighter">Expansion <span className="text-cyan-400 font-mono">{nodeData.expansion ?? 0}px</span></label>
                   <input 
@@ -2341,7 +2332,7 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
       
       <div className="node-content">
         {/* Internal Blueprint Summary - MORE PROMINENT */}
-        <div className="flex flex-col gap-1.5 mb-5 p-2 bg-black/40 border border-white/5 rounded-xl shadow-inner">
+        <div className="flex flex-col gap-1.5 mb-5 p-2 bg-slate-50/50 border border-slate-200/60 rounded-xl shadow-inner">
           <div className="flex justify-between items-center px-1">
              <span className="text-[7.5px] font-black text-gray-500 uppercase tracking-widest">Internal Blueprint</span>
              <Layers size={10} className="text-gray-700" />
@@ -2528,7 +2519,7 @@ export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
           {status === 'running' ? 'ANALYZING...' : 'GENERATE DESCRIPTION'}
         </button>
 
-        <div className="p-3 bg-black/40 rounded-xl border border-white/5 min-h-[80px]">
+        <div className="p-3 bg-slate-50/50 rounded-xl border border-slate-200/60 min-h-[80px]">
           {description ? (
             <div className="text-[10px] text-gray-300 leading-relaxed font-mono">{description}</div>
           ) : (
@@ -2667,7 +2658,7 @@ const CameraMotionSelector = ({ value, onChange }: { value: string, onChange: (v
         <button
           key={m.id}
           onClick={() => onChange(m.id)}
-          className={`group flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all border ${value === m.id ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'bg-white/5 border-white/5 text-zinc-500 hover:border-white/20'}`}
+          className={`group flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all border ${value === m.id ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'bg-white/5 border-slate-200/60 text-zinc-500 hover:border-white/20'}`}
         >
           <div className="w-10 h-10 flex items-center justify-center">
             {m.icon}
@@ -2768,23 +2759,23 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
       
       <div className="handle-wrapper handle-left !top-[20%]">
         <Handle type="target" position={Position.Left} id="firstFrame" className="handle-image" />
-        <span className="handle-label text-emerald-400">First Frame</span>
+        <span className="handle-label text-emerald-600">First Frame</span>
       </div>
       <div className="handle-wrapper handle-left !top-[35%]">
         <Handle type="target" position={Position.Left} id="lastFrame" className="handle-image" />
-        <span className="handle-label text-emerald-400">Last Frame</span>
+        <span className="handle-label text-emerald-600">Last Frame</span>
       </div>
       <div className="handle-wrapper handle-left !top-[50%]">
         <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
-        <span className="handle-label text-emerald-400">Creative Prompt</span>
+        <span className="handle-label text-emerald-600">Creative Prompt</span>
       </div>
       <div className="handle-wrapper handle-left !top-[65%]">
         <Handle type="target" position={Position.Left} id="negativePrompt" className="handle-prompt border-rose-500/50" />
-        <span className="handle-label text-rose-400">Negative Prompt</span>
+        <span className="handle-label text-rose-600">Negative Prompt</span>
       </div>
 
       <div className="node-header bg-gradient-to-r from-emerald-600/20 to-cyan-600/20">
-        <Video size={16} className="text-emerald-400" />
+        <Video size={16} className="text-emerald-600" />
         <span>Gemini Video</span>
         <div className="node-badge">VEO 3.1</div>
       </div>
@@ -2792,7 +2783,7 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
       <div className="node-content space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-             <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Resolution</span>
+             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resolution</span>
              <select 
                className="node-input text-[10px]" 
                value={nodeData.resolution || '1080p'} 
@@ -2804,7 +2795,7 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
              </select>
           </div>
           <div className="space-y-1">
-             <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Duration</span>
+             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Duration</span>
              <select 
                className="node-input text-[10px]" 
                value={nodeData.duration || '5'} 
@@ -2818,9 +2809,9 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
           </div>
         </div>
 
-        <div className="border-t border-white/5 pt-3 space-y-4">
+        <div className="border-t border-slate-200/60 pt-3 space-y-4">
           <div className="space-y-2">
-            <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Camera Motion</span>
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Camera Motion</span>
             <CameraMotionSelector 
               value={nodeData.cameraPreset || ''} 
               onChange={(val) => updateData('cameraPreset', val)} 
@@ -2828,7 +2819,7 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
           </div>
 
           <div className="space-y-1">
-            <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Animation Motion</span>
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Animation Motion</span>
             <input 
               type="text" 
               className="node-input text-[10px]" 
@@ -2851,7 +2842,7 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
           <span className="relative z-10">{status === 'running' ? `GENERATING ${Math.round(progress)}%` : 'GENERATE VIDEO'}</span>
         </button>
 
-        <div className="preview-container aspect-video bg-black/60 rounded-xl border border-white/5 overflow-hidden flex items-center justify-center relative group">
+        <div className="preview-container aspect-video bg-slate-50 rounded-xl border border-slate-200/60 overflow-hidden flex items-center justify-center relative group">
           {result ? (
             <video 
               src={result} 

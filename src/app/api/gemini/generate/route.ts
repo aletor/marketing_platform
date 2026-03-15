@@ -128,8 +128,9 @@ export async function POST(req: NextRequest) {
     }
 
     const candidate = data.candidates?.[0];
-    const finishReason = candidate?.finishReason;
+    const finishReason = candidate?.finishReason || data.promptFeedback?.blockReason || "UNKNOWN";
     const safetyRatings = candidate?.safetyRatings;
+    
     console.log(`[Gemini REST] Finish Reason: ${finishReason}`);
     if (safetyRatings) {
       console.log("[Gemini REST] Safety Ratings:", JSON.stringify(safetyRatings, null, 2));
@@ -139,8 +140,8 @@ export async function POST(req: NextRequest) {
     const responseParts = candidate?.content?.parts || [];
 
     for (const part of responseParts) {
-      // Check both snake_case and camelCase just in case
-      const inlineData = part.inline_data || part.inlineData;
+      // Check both snake_case and camelCase and different possible structures
+      const inlineData = part.inline_data || part.inlineData || part.inline_data_preview;
       if (inlineData?.data) {
         console.log("[Gemini REST] Image detected in parts");
         imageBuffer = Buffer.from(inlineData.data, "base64");
@@ -151,8 +152,13 @@ export async function POST(req: NextRequest) {
     if (!imageBuffer) {
       const textResponse = responseParts.find((p: any) => p.text)?.text || "";
       console.warn("[Gemini REST] No image parts found. Text:", textResponse || "None");
+      const isBlocked = finishReason === "SAFETY" || finishReason === "BLOCKLIST" || finishReason === "OTHER";
+      let errorMessage = "No image was generated. Please try a different prompt.";
+      if (finishReason === "SAFETY") errorMessage = "Safety violation: Prompt or content blocked.";
+      if (finishReason === "OTHER") errorMessage = "Content Intercepted: This might be due to copyright filters or advanced safety triggers. Try a more general prompt.";
+      
       return NextResponse.json({ 
-        error: finishReason === "SAFETY" ? "Safety violation: Prompt or image blocked." : "No image was generated. Please try a different prompt.",
+        error: errorMessage,
         details: textResponse || `Finish Reason: ${finishReason}`
       }, { status: 500 });
     }
