@@ -37,7 +37,8 @@ import {
   Plus,
   Move,
   Maximize,
-  MousePointer2
+  MousePointer2,
+  Sparkles
 } from 'lucide-react';
 import './spaces.css';
 
@@ -1452,7 +1453,11 @@ export const ConcatenatorNode = memo(({ id, data }: NodeProps<any>) => {
         </div>
       ))}
       
-      <div className="node-header"><PlusSquare size={16} /> CONCATENATOR</div>
+      <div className="node-header bg-gradient-to-r from-blue-600/20 to-cyan-600/20">
+        <PlusSquare size={16} className="text-blue-400" /> 
+        <span>Concatenator</span>
+        <div className="node-badge">UTILITY</div>
+      </div>
       <div className="node-content">
         <div className="p-3 bg-black/40 rounded-lg text-[10px] text-gray-400 font-mono italic min-h-[50px] max-h-[150px] overflow-y-auto">
           {nodeData.value || 'Connect prompts to combine them...'}
@@ -1504,12 +1509,13 @@ export const EnhancerNode = memo(({ id, data }: NodeProps<any>) => {
         <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
         <span className="handle-label">Prompt in</span>
       </div>
-      <div className="node-header">
-        <Zap size={16} /> PROMPT ENHANCER
-        {loading && <Loader2 size={12} className="animate-spin ml-auto" />}
+      <div className="node-header bg-gradient-to-r from-purple-600/20 to-indigo-600/20">
+        <Zap size={16} className="text-purple-400" />
+        <span>Prompt Enhancer</span>
+        <div className="node-badge">AI TOOL</div>
       </div>
       <div className="node-content">
-        <button className="execute-btn w-full justify-center mb-3" onClick={handleEnhance} disabled={loading}>
+        <button className="execute-btn w-full" onClick={handleEnhance} disabled={loading}>
           {loading ? 'ENHANCING...' : 'ENHANCE WITH OPENAI'}
         </button>
         <div className="p-3 bg-black/40 rounded-lg text-[11px] text-gray-300 italic min-h-[80px]">
@@ -1770,14 +1776,10 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
         <span className="handle-label">Creative Prompt</span>
       </div>
 
-      <div className="node-header flex items-center gap-2">
-        <ImageIcon size={16} className="text-cyan-400" />
-        <span className="font-black tracking-tighter uppercase whitespace-nowrap">Nano Banana 2</span>
-        <div className="ml-auto flex gap-1 bg-black/40 p-0.5 rounded-lg border border-white/5">
-           <span className="px-2 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest bg-cyan-500 text-black">
-              ORIGINAL
-           </span>
-        </div>
+      <div className="node-header bg-gradient-to-r from-yellow-600/20 to-orange-600/20">
+        <Sparkles size={16} className="text-yellow-400" />
+        <span>Nano Banana 1</span>
+        <div className="node-badge">IMAGEN 3</div>
       </div>
 
       <div className="node-content space-y-4">
@@ -1812,14 +1814,13 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
         </div>
 
         <button 
-          className="execute-btn w-full justify-center group/btn relative overflow-hidden" 
+          className="execute-btn w-full" 
           onClick={onRun} 
           disabled={status === 'running'}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-white/10 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_2s_infinite]" />
           {status === 'running' ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-          <span className="ml-2 font-black tracking-widest uppercase">
-            {status === 'running' ? 'GEMINI IS THINKING...' : 'GENERATE FROM FLASH'}
+          <span className="ml-2">
+            {status === 'running' ? 'THINKING...' : 'GENERATE FROM FLASH'}
           </span>
         </button>
 
@@ -1975,14 +1976,14 @@ export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
         <span className="handle-label">Media Input</span>
       </div>
       
-      <div className="node-header">
+      <div className="node-header bg-gradient-to-r from-cyan-600/20 to-blue-600/20">
         <Scissors size={16} className="text-cyan-400" /> 
         <span>Remove Background</span>
         <button 
           onClick={() => setIsStudioOpen(true)}
-          className="ml-auto bg-white/5 border border-white/10 px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-1.5"
+          className="node-badge !bg-cyan-500/20 !text-cyan-400 hover:!bg-cyan-500/40 transition-colors pointer-events-auto cursor-pointer flex items-center gap-1.5 border-none outline-none"
         >
-          <Maximize2 size={10} className="text-cyan-400" /> Studio
+          <Maximize2 size={10} /> STUDIO
         </button>
       </div>
       
@@ -2027,10 +2028,10 @@ export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
             <button 
               onClick={onRun}
               disabled={status === 'running'}
-              className={`w-full py-3 justify-center group/btn relative overflow-hidden flex items-center gap-2 rounded-xl text-[11px] font-black uppercase tracking-[3px] transition-all transform active:scale-[0.98] ${status === 'running' ? 'bg-white/5 opacity-50' : 'bg-gradient-to-br from-cyan-500 to-blue-600 hover:shadow-2xl hover:shadow-cyan-500/30 text-white'}`}
+              className="execute-btn w-full"
             >
-              {status === 'running' ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} className="group-hover/btn:animate-pulse" />}
-              {status === 'running' ? 'REMOVING...' : 'REMOVE BACKGROUND'}
+              {status === 'running' ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+              <span>{status === 'running' ? 'REMOVING...' : 'REMOVE BACKGROUND'}</span>
             </button>
 
             <div className="space-y-4 pt-2 border-t border-white/5">
@@ -2514,9 +2515,10 @@ export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
         <span className="handle-label">Media in</span>
       </div>
       
-      <div className="node-header">
-        <Eye size={16} /> MEDIA DESCRIBER
-        {status === 'running' && <Loader2 size={12} className="animate-spin ml-auto" />}
+      <div className="node-header bg-gradient-to-r from-indigo-600/20 to-blue-600/20">
+        <Eye size={16} className="text-indigo-400" />
+        <span>Gemini Describer</span>
+        <div className="node-badge">VISION</div>
       </div>
       
       <div className="node-content">
@@ -2680,7 +2682,6 @@ const CameraMotionSelector = ({ value, onChange }: { value: string, onChange: (v
 export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as any;
   const { setNodes, getEdges, getNodes } = useReactFlow();
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [status, setStatus] = useState('idle');
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<string | null>(nodeData.value || null);
@@ -2693,6 +2694,7 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
     const promptEdge = edges.find((e: any) => e.target === id && e.targetHandle === 'prompt');
     const firstFrameEdge = edges.find((e: any) => e.target === id && e.targetHandle === 'firstFrame');
     const lastFrameEdge = edges.find((e: any) => e.target === id && e.targetHandle === 'lastFrame');
+    const negativePromptEdge = edges.find((e: any) => e.target === id && e.targetHandle === 'negativePrompt');
 
     const findSourceValue = (edge: any) => {
       if (!edge) return null;
@@ -2703,6 +2705,7 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
     const prompt = findSourceValue(promptEdge) || nodeData.prompt || "";
     const firstFrame = findSourceValue(firstFrameEdge);
     const lastFrame = findSourceValue(lastFrameEdge);
+    const negativePrompt = findSourceValue(negativePromptEdge) || nodeData.negativePrompt;
 
     if (!prompt) return alert("Se necesita un Creative Prompt para generar video. Puedes escribirlo en el nodo o conectar un nodo de Prompt.");
 
@@ -2728,7 +2731,7 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
           durationSeconds: nodeData.duration || "5",
           audio: nodeData.audio || false,
           seed: nodeData.seed,
-          negativePrompt: nodeData.negativePrompt,
+          negativePrompt: negativePrompt,
           animationPrompt: nodeData.animationPrompt,
           cameraPreset: nodeData.cameraPreset
         })
@@ -2767,19 +2770,23 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
         <Handle type="target" position={Position.Left} id="firstFrame" className="handle-image" />
         <span className="handle-label text-emerald-400">First Frame</span>
       </div>
-      <div className="handle-wrapper handle-left !top-[40%]">
+      <div className="handle-wrapper handle-left !top-[35%]">
         <Handle type="target" position={Position.Left} id="lastFrame" className="handle-image" />
         <span className="handle-label text-emerald-400">Last Frame</span>
       </div>
-      <div className="handle-wrapper handle-left !top-[60%]">
+      <div className="handle-wrapper handle-left !top-[50%]">
         <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
         <span className="handle-label text-emerald-400">Creative Prompt</span>
       </div>
+      <div className="handle-wrapper handle-left !top-[65%]">
+        <Handle type="target" position={Position.Left} id="negativePrompt" className="handle-prompt border-rose-500/50" />
+        <span className="handle-label text-rose-400">Negative Prompt</span>
+      </div>
 
-      <div className="node-header flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600">
-        <Video size={16} className="text-white" />
-        <span className="font-black tracking-tighter uppercase whitespace-nowrap text-white">Gemini Video</span>
-        <div className="ml-auto bg-white/20 px-2 py-0.5 rounded text-[8px] font-bold text-white uppercase">VEO 3.1</div>
+      <div className="node-header bg-gradient-to-r from-emerald-600/20 to-cyan-600/20">
+        <Video size={16} className="text-emerald-400" />
+        <span>Gemini Video</span>
+        <div className="node-badge">VEO 3.1</div>
       </div>
 
       <div className="node-content space-y-4">
@@ -2811,48 +2818,25 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
           </div>
         </div>
 
-        {/* --- Advanced Settings Control --- */}
-        <div className="border-t border-white/5 pt-3">
-          <button 
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="w-full flex items-center justify-between text-[8px] font-black text-white/40 uppercase tracking-widest hover:text-cyan-500 transition-colors"
-          >
-            Advanced Controls
-            <ChevronRight size={10} className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
-          </button>
-          
-          {showAdvanced && (
-            <div className="mt-4 space-y-4 animate-in fade-in slide-in-from-top-2 pb-2">
-              <div className="space-y-1">
-                <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Negative Prompt</span>
-                <textarea 
-                  className="node-textarea text-[10px] min-h-[35px] resize-none" 
-                  value={nodeData.negativePrompt || ''}
-                  placeholder="Items to avoid..."
-                  onChange={(e) => updateData('negativePrompt', e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Camera Motion</span>
-                <CameraMotionSelector 
-                  value={nodeData.cameraPreset || ''} 
-                  onChange={(val) => updateData('cameraPreset', val)} 
-                />
-              </div>
+        <div className="border-t border-white/5 pt-3 space-y-4">
+          <div className="space-y-2">
+            <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Camera Motion</span>
+            <CameraMotionSelector 
+              value={nodeData.cameraPreset || ''} 
+              onChange={(val) => updateData('cameraPreset', val)} 
+            />
+          </div>
 
-              <div className="space-y-1">
-                <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Animation Motion</span>
-                <input 
-                  type="text" 
-                  className="node-input text-[10px]" 
-                  value={nodeData.animationPrompt || ''}
-                  placeholder="e.g. gentle camera zoom..."
-                  onChange={(e) => updateData('animationPrompt', e.target.value)}
-                />
-              </div>
-            </div>
-          )}
+          <div className="space-y-1">
+            <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Animation Motion</span>
+            <input 
+              type="text" 
+              className="node-input text-[10px]" 
+              value={nodeData.animationPrompt || ''}
+              placeholder="e.g. gentle camera zoom..."
+              onChange={(e) => updateData('animationPrompt', e.target.value)}
+            />
+          </div>
         </div>
 
         <button 
