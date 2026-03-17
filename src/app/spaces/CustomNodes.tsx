@@ -3902,6 +3902,7 @@ export const CropNode = memo(({ id, data }: NodeProps<any>) => {
   
   const [draggingAction, setDraggingAction] = useState<'move' | 'nw' | 'ne' | 'sw' | 'se' | null>(null);
   const [dragStartInfo, setDragStartInfo] = useState<{ startX: number, startY: number, initialCrop: any } | null>(null);
+  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
 
   const inputEdge = edges.find(e => e.target === id && e.targetHandle === 'image');
   const inputNode = nodes.find(n => n.id === inputEdge?.source);
