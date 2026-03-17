@@ -1613,6 +1613,22 @@ const SpacesContent = () => {
             )}
           </div>
 
+          {/* ─ Horizontal node icon toolbar ─ */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 8,   /* sits above the 8px drag handle */
+              left: 0, right: 0,
+              height: 48,
+              background: 'rgba(0,0,0,0.25)',
+              backdropFilter: 'blur(8px)',
+              borderTop: '1px solid rgba(255,255,255,0.06)',
+              zIndex: 9,
+            }}
+          >
+            <Sidebar windowMode={true} />
+          </div>
+
           {/* ─ Draggable resize handle ─ */}
           <div
             onPointerDown={startViewerResize}
@@ -1646,10 +1662,12 @@ const SpacesContent = () => {
           ? { marginTop: viewerHeight, height: `calc(100vh - ${viewerHeight}px)` }
           : { height: '100%' }}
       >
-      {/* Sidebar floats above the viewer panel */}
-      <div style={{ zIndex: 10001, position: 'relative', flexShrink: 0 }}>
-        <Sidebar />
-      </div>
+      {/* Sidebar: vertical in normal mode, hidden when windowMode (replaced by horizontal toolbar in viewer panel) */}
+      {!windowMode && (
+        <div style={{ zIndex: 10001, position: 'relative', flexShrink: 0 }}>
+          <Sidebar windowMode={false} />
+        </div>
+      )}
       <div className="flex-1 relative" onContextMenu={(e) => e.preventDefault()}>
         <ReactFlow
           nodes={nodes}

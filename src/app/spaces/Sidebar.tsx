@@ -49,7 +49,7 @@ const NODE_KEYS: Record<string, string> = {
 };
 
 
-const Sidebar = () => {
+const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.effectAllowed = 'move';
@@ -108,6 +108,89 @@ const Sidebar = () => {
     );
   };
 
+  // ── WINDOW MODE: compact horizontal icon bar ───────────────────────────
+  if (windowMode) {
+    const allNodes = [
+      // Ingesta
+      { type: 'mediaInput',        icon: <FilePlus size={14} />,    color: 'text-emerald-500', label: 'Asset' },
+      { type: 'promptInput',       icon: <Type size={14} />,        color: 'text-emerald-500', label: 'Prompt' },
+      { type: 'background',        icon: <Paintbrush size={14} />,  color: 'text-emerald-500', label: 'Canvas' },
+      { type: 'urlImage',          icon: <Globe size={14} />,       color: 'text-emerald-500', label: 'Web' },
+      // Divider
+      null,
+      // Inteligencia
+      { type: 'backgroundRemover', icon: <Scissors size={14} />,    color: 'text-cyan-400',    label: 'Matting' },
+      { type: 'mediaDescriber',    icon: <Eye size={14} />,         color: 'text-cyan-400',    label: 'Eye' },
+      { type: 'enhancer',          icon: <Sparkles size={14} />,    color: 'text-cyan-400',    label: 'Enhance' },
+      { type: 'grokProcessor',     icon: <Compass size={14} />,     color: 'text-cyan-400',    label: 'Grok' },
+      { type: 'nanoBanana',        icon: <Sparkles size={14} />,    color: 'text-cyan-400',    label: 'Nano' },
+      { type: 'geminiVideo',       icon: <Video size={14} />,       color: 'text-cyan-400',    label: 'Veo' },
+      // Divider
+      null,
+      // Lógica
+      { type: 'concatenator',      icon: <PlusSquare size={14} />,  color: 'text-blue-400',    label: 'Concat' },
+      { type: 'space',             icon: <Layers size={14} />,      color: 'text-blue-400',    label: 'Space' },
+      // Divider
+      null,
+      // Composición
+      { type: 'imageComposer',     icon: <Layers size={14} />,      color: 'text-amber-400',   label: 'Layout' },
+      { type: 'imageExport',       icon: <Download size={14} />,    color: 'text-amber-400',   label: 'Export' },
+      { type: 'painter',           icon: <Paintbrush size={14} />,  color: 'text-amber-400',   label: 'Painter' },
+      { type: 'textOverlay',       icon: <Type size={14} />,        color: 'text-amber-400',   label: 'Text' },
+      { type: 'crop',              icon: <Crop size={14} />,        color: 'text-amber-400',   label: 'Crop' },
+    ];
+
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          overflowX: 'auto',
+          padding: '0 8px',
+          height: '100%',
+          scrollbarWidth: 'none',
+        }}
+        className="[&::-webkit-scrollbar]:hidden"
+      >
+        {allNodes.map((item, idx) =>
+          item === null ? (
+            <div key={`sep-${idx}`} style={{ width: 1, height: 24, flexShrink: 0, background: 'rgba(255,255,255,0.12)', marginInline: 4 }} />
+          ) : (
+            <div
+              key={item.type}
+              draggable
+              onDragStart={(e) => onDragStart(e, item.type)}
+              title={`${item.label} · ${NODE_KEYS[item.type] || ''}`}
+              style={{
+                flexShrink: 0,
+                width: 40,
+                height: 36,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 2,
+                borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(255,255,255,0.04)',
+                cursor: 'grab',
+                transition: 'all 0.15s',
+              }}
+              className="hover:bg-white/10 hover:border-white/20 active:scale-95"
+            >
+              <span className={item.color}>{item.icon}</span>
+              <span style={{ fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.04em', lineHeight: 1 }}>
+                {item.label}
+              </span>
+            </div>
+          )
+        )}
+      </div>
+    );
+  }
+
+  // ── NORMAL MODE: vertical sidebar panel ──────────────────────────────────
   return (
     <aside className="spaces-sidebar group/sidebar">
       {/* Expansion Indicator Arrow (Visible only when collapsed) */}
