@@ -179,7 +179,7 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
               }}
               className="hover:bg-white/10 hover:border-white/20 active:scale-95"
             >
-              <span className="text-slate-600">{item.icon}</span>
+              <span className={item.color}>{item.icon}</span>
               <span style={{ fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.04em', lineHeight: 1 }}>
                 {item.label}
               </span>
@@ -225,12 +225,12 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
                   { type: 'urlImage',    icon: <Globe size={13} />,          label: 'Web',    color: 'text-emerald-400' },
                 ].map(item => (
                   <div key={item.type}
-                    className="relative flex flex-col items-center justify-center gap-1 py-3 px-2 bg-white/20 hover:bg-white/30 border border-white/25 hover:border-emerald-400/50 rounded-2xl cursor-grab active:scale-95 transition-all text-center aspect-square"
+                    className="dndnode relative flex flex-col items-center justify-center gap-1 py-3 px-2 bg-white/20 hover:bg-white/30 border border-white/25 hover:border-emerald-400/50 rounded-2xl cursor-grab active:scale-95 transition-all text-center aspect-square"
                     onDragStart={(e) => onDragStart(e, item.type)} draggable
                     title={`${item.label} · ${NODE_KEYS[item.type]}`}
                   >
                     <KeyBadge nodeType={item.type} />
-                    <span className="text-slate-600">{item.icon}</span>
+                    <span className={item.color}>{item.icon}</span>
                     <span className="text-[7px] font-black text-slate-700">{item.label}</span>
                     <TypeIndicators nodeType={item.type} />
                   </div>
@@ -253,12 +253,12 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
                   { type: 'geminiVideo',       icon: <Video size={13} />,     label: 'Veo 3.1', color: 'text-cyan-400' },
                 ].map(item => (
                   <div key={item.type}
-                    className="relative flex flex-col items-center justify-center gap-1 py-3 px-2 bg-white/20 hover:bg-white/30 border border-white/25 hover:border-cyan-400/50 rounded-2xl cursor-grab active:scale-95 transition-all text-center aspect-square"
+                    className="dndnode relative flex flex-col items-center justify-center gap-1 py-3 px-2 bg-white/20 hover:bg-white/30 border border-white/25 hover:border-cyan-400/50 rounded-2xl cursor-grab active:scale-95 transition-all text-center aspect-square"
                     onDragStart={(e) => onDragStart(e, item.type)} draggable
                     title={`${item.label} · ${NODE_KEYS[item.type]}`}
                   >
                     <KeyBadge nodeType={item.type} />
-                    <span className="text-slate-600">{item.icon}</span>
+                    <span className={item.color}>{item.icon}</span>
                     <span className="text-[7px] font-black text-slate-700">{item.label}</span>
                     <TypeIndicators nodeType={item.type} />
                   </div>
@@ -279,12 +279,12 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
                   { type: 'spaceOutput',  icon: <ChevronLeft size={13} />,  label: 'Exit',  color: 'text-blue-400' },
                 ].map(item => (
                   <div key={item.type}
-                    className="relative flex flex-col items-center justify-center gap-1 py-3 px-2 bg-white/20 hover:bg-white/30 border border-white/25 hover:border-blue-400/50 rounded-2xl cursor-grab active:scale-95 transition-all text-center aspect-square"
+                    className="dndnode relative flex flex-col items-center justify-center gap-1 py-3 px-2 bg-white/20 hover:bg-white/30 border border-white/25 hover:border-blue-400/50 rounded-2xl cursor-grab active:scale-95 transition-all text-center aspect-square"
                     onDragStart={(e) => onDragStart(e, item.type)} draggable
                     title={`${item.label} · ${NODE_KEYS[item.type]}`}
                   >
                     <KeyBadge nodeType={item.type} />
-                    <span className="text-slate-600">{item.icon}</span>
+                    <span className={item.color}>{item.icon}</span>
                     <span className="text-[7px] font-black text-slate-700">{item.label}</span>
                     <TypeIndicators nodeType={item.type} />
                   </div>
@@ -307,12 +307,12 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
                   { type: 'bezierMask',    icon: <Scissors size={13} />,    label: 'Bezier',  color: 'text-amber-400' },
                 ].map(item => (
                   <div key={item.type}
-                    className="relative flex flex-col items-center justify-center gap-1 py-3 px-2 bg-white/20 hover:bg-white/30 border border-white/25 hover:border-amber-400/50 rounded-2xl cursor-grab active:scale-95 transition-all text-center aspect-square"
+                    className="dndnode relative flex flex-col items-center justify-center gap-1 py-3 px-2 bg-white/20 hover:bg-white/30 border border-white/25 hover:border-amber-400/50 rounded-2xl cursor-grab active:scale-95 transition-all text-center aspect-square"
                     onDragStart={(e) => onDragStart(e, item.type)} draggable
                     title={`${item.label} · ${NODE_KEYS[item.type]}`}
                   >
                     <KeyBadge nodeType={item.type} />
-                    <span className="text-slate-600">{item.icon}</span>
+                    <span className={item.color}>{item.icon}</span>
                     <span className="text-[7px] font-black text-slate-700">{item.label}</span>
                     <TypeIndicators nodeType={item.type} />
                   </div>
