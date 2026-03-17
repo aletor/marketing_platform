@@ -3475,7 +3475,7 @@ export const PainterNode = memo(({ id, data }: NodeProps<any>) => {
       img.src = data.value;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasW, canvasH]);
+  }, [canvasW, canvasH, fullscreen]);
 
   // ── Drawing handlers (all use refs, never trigger re-render) ──────────────
   const getXY = (e: React.PointerEvent) => {
