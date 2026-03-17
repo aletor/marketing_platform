@@ -276,7 +276,7 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
   const color = nodeData.color ?? '#000000';
 
   return (
-    <div className={`custom-node background-node` }>
+    <div className={`custom-node background-node ${_nc ? 'node-collapsed' : ''}` }>
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Background" />
       <div className="node-header">
         <CollapseBtn collapsed={_nc} onToggle={_nct} />
@@ -637,7 +637,7 @@ export const ImageComposerNode = ({ id, data }: NodeProps<any>) => {
 
 
   return (
-    <div className={`custom-node composer-node min-w-[340px]` }>
+    <div className={`custom-node composer-node min-w-[340px] ${_nc ? 'node-collapsed' : ''}` }>
       {handleIds.map((hId: any, index: number) => (
         <div key={hId} className="handle-wrapper handle-left" style={{ top: `${(index + 1) * (100 / (handleIds.length + 1))}%` }}>
           <Handle type="target" position={Position.Left} id={hId} className="handle-image" />
@@ -1142,7 +1142,7 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
 
 
   return (
-    <div className={`custom-node export-node border-rose-500/30` }>
+    <div className={`custom-node export-node border-rose-500/30 ${_nc ? 'node-collapsed' : ''}` }>
       <NodeLabel id={id} label={data.label} defaultLabel="Export" />
 
       {/* Hidden iframe — receives the form POST response (Content-Disposition: attachment) */}
@@ -1529,7 +1529,7 @@ export const PromptNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const { setNodes } = useReactFlow();
   return (
-    <div className={`custom-node prompt-node` } style={{ minWidth: 280, minHeight: 160 }}>
+    <div className={`custom-node prompt-node ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 280, minHeight: 160 }}>
       <NodeResizer minWidth={280} minHeight={160} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Prompt" />
       <div className="node-header">
@@ -1586,7 +1586,7 @@ export const ConcatenatorNode = memo(({ id, data, selected }: NodeProps<any>) =>
   const handleIds = ['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'];
 
   return (
-    <div className={`custom-node tool-node` } style={{ minWidth: 240, minHeight: 180 }}>
+    <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 240, minHeight: 180 }}>
       <NodeResizer minWidth={240} minHeight={180} maxWidth={600} maxHeight={520} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Concatenator" />
       {handleIds.map((hId: any, index: number) => (
@@ -1674,7 +1674,7 @@ export const EnhancerNode = memo(({ id, data, selected }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node tool-node` } style={{ minWidth: 280, minHeight: 200 }}>
+    <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 280, minHeight: 200 }}>
       <NodeResizer minWidth={280} minHeight={200} maxWidth={620} maxHeight={660} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Enhancer" />
 
@@ -2268,7 +2268,7 @@ export const TextOverlayNode = memo(({ id, data, selected }: NodeProps<any>) => 
   }, [text, fontFamily, fontSize, color, fontWeight, textAlign, canvasW, canvasH, id, setNodes]);
 
   return (
-    <div className={`custom-node tool-node` } style={{ minWidth: 300, minHeight: 280 }}>
+    <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 300, minHeight: 280 }}>
       <NodeResizer minWidth={300} minHeight={280} maxWidth={700} maxHeight={720} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Text Overlay" />
 
@@ -2928,7 +2928,7 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
       />
 
       {/* Main node card */}
-      <div className={`custom-node space-node border-cyan-500/30` } style={{ position: 'relative', zIndex: 0 }}>
+      <div className={`custom-node space-node border-cyan-500/30 ${_nc ? 'node-collapsed' : ''}` } style={{ position: 'relative', zIndex: 0 }}>
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Space" />
       
       {/* Input handle only if space has an internal InputNode */}
@@ -3794,7 +3794,7 @@ export const PainterNode = memo(({ id, data, selected }: NodeProps<any>) => {
   );
 
   return (
-    <div className={`custom-node bg-[#141414] border-amber-900/30` } style={{ padding: 0, overflow: 'visible', minWidth: 280, minHeight: 280 }}>
+    <div className={`custom-node bg-[#141414] border-amber-900/30 ${_nc ? 'node-collapsed' : ''}` } style={{ padding: 0, overflow: 'visible', minWidth: 280, minHeight: 280 }}>
       <NodeResizer minWidth={280} minHeight={280} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Painter" />
 
@@ -4020,7 +4020,7 @@ export const CropNode = memo(({ id, data }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node bg-[#1e1e1e] border-slate-700 w-[340px]` }>
+    <div className={`custom-node bg-[#1e1e1e] border-slate-700 w-[340px] ${_nc ? 'node-collapsed' : ''}` }>
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Crop Asset" />
       
       <div className="handle-wrapper handle-left">
