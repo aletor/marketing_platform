@@ -156,8 +156,8 @@ const SpacesContent = () => {
       const vpY = window.innerHeight / 2 - (nodeY + nodeH / 2) * zoom;
       setViewport({ x: vpX, y: vpY, zoom });
     }, 50);
-    // Welcome splash disappears at 2.5s
-    const tw = setTimeout(() => setShowWelcome(false), 2500);
+    // Welcome splash disappears at 4s
+    const tw = setTimeout(() => setShowWelcome(false), 4000);
     return () => { clearTimeout(t); clearTimeout(tw); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -712,8 +712,8 @@ const SpacesContent = () => {
       setIsAuthenticated(true);
       // Trigger welcome splash, then show FINAL OUT 3s after it disappears
       setShowWelcome(true);
-      setTimeout(() => setShowWelcome(false), 2500);
-      setTimeout(() => setShowFinalOut(true), 5500); // 2.5s splash + 3s delay
+      setTimeout(() => setShowWelcome(false), 4000);
+      setTimeout(() => setShowFinalOut(true), 7000); // 4s splash + 3s delay
     } else if (val.length === 4) {
       setPassError(true);
       setTimeout(() => {
@@ -1778,14 +1778,14 @@ const SpacesContent = () => {
           position: 'fixed', inset: 0, zIndex: 20000,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           pointerEvents: 'none',
-          animation: 'welcomeFade 2.5s ease forwards',
+          animation: 'welcomeFade 4s ease forwards',
         }}>
           <style>{`
             @keyframes welcomeFade {
-              0%   { opacity: 0; transform: scale(0.92); }
-              20%  { opacity: 1; transform: scale(1); }
-              75%  { opacity: 1; transform: scale(1); }
-              100% { opacity: 0; transform: scale(1.04); }
+              0%   { opacity: 0; transform: scale(0.94); }
+              15%  { opacity: 1; transform: scale(1); }
+              80%  { opacity: 1; transform: scale(1); }
+              100% { opacity: 0; transform: scale(1.03); }
             }
           `}</style>
           <span style={{

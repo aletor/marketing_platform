@@ -143,8 +143,11 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
     label: 'Nano Banana 2',
     description: 'Generates images and supports image-to-image transformations.',
     inputs: [
-      { id: 'prompt', label: 'Prompt Input', type: 'prompt' },
-      { id: 'image', label: 'Base Image', type: 'image' }
+      { id: 'prompt',  label: 'Prompt Input',  type: 'prompt' },
+      { id: 'image',   label: 'Ref 1 (Base)',  type: 'image' },
+      { id: 'image2',  label: 'Ref 2',          type: 'image' },
+      { id: 'image3',  label: 'Ref 3',          type: 'image' },
+      { id: 'image4',  label: 'Ref 4',          type: 'image' },
     ],
     outputs: [
       { id: 'image', label: 'Image Out', type: 'image' }
