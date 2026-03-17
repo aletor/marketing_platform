@@ -1707,7 +1707,7 @@ const SpacesContent = () => {
           : { height: '100%' }}
       >
       {/* Sidebar: fixed full-height, floats above everything including viewer */}
-      <div style={{ position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 10001 }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 10003 }}>
         <Sidebar />
       </div>
       <div className="flex-1 relative" onContextMenu={(e) => e.preventDefault()} style={{ marginLeft: 0 }}>
