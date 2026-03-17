@@ -1462,9 +1462,10 @@ export const PromptNode = memo(({ id, data, selected }: NodeProps<any>) => {
       <div className="node-header">
         <Type size={16} /> PROMPT
       </div>
-      <div className="node-content">
+      <div className="node-content" style={{ display: 'flex', flexDirection: 'column' }}>
         <textarea 
           className="node-textarea nowheel nodrag nokey"
+          style={{ flex: 1, resize: 'none', minHeight: 80 }}
           placeholder="Describe your vision..."
           value={nodeData.value || ''}
           onChange={(e) => setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, value: e.target.value } } : n))}
