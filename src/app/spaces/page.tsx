@@ -71,7 +71,8 @@ import {
   Scissors,
   Cloud,
   Sparkles,
-  Zap
+  Zap,
+  Download
 } from 'lucide-react';
 
 const initialNodes: Node[] = [];
@@ -226,6 +227,20 @@ const SpacesContent = () => {
     }
   }, []);
 
+  // Hide FINAL node visually when Window Viewer is open (restore on close)
+  useEffect(() => {
+    setNodes((prev: any[]) =>
+      prev.map((n: any) => n.id === FINAL_NODE_ID
+        ? {
+            ...n,
+            style: windowMode
+              ? { ...(n.style || {}), opacity: 0, pointerEvents: 'none' }
+              : { ...(n.style || {}), opacity: 1, pointerEvents: 'auto' },
+          }
+        : n
+      )
+    );
+  }, [windowMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Track final output media for the viewer panel
   const finalMedia = useMemo(() => {
@@ -238,6 +253,15 @@ const SpacesContent = () => {
     const type = vidNode?.data?.value ? 'video' : 'image';
     return { value, type } as { value: string | null; type: 'image' | 'video' };
   }, [nodes, edges]);
+
+  // Download helper for viewer (placed after finalMedia to avoid use-before-declaration)
+  const downloadViewerMedia = useCallback(() => {
+    if (!finalMedia.value) return;
+    const a = document.createElement('a');
+    a.href = finalMedia.value;
+    a.download = `output.${finalMedia.type === 'video' ? 'mp4' : 'jpg'}`;
+    a.click();
+  }, [finalMedia]);
 
   // Listen for toggle-final-window events from the FinalOutputNode button
   useEffect(() => {
@@ -1622,6 +1646,68 @@ const SpacesContent = () => {
             userSelect: 'none',
           }}
         >
+
+          {/* ─ Viewer action buttons (top-right) ─ */}
+          <div style={{
+            position: 'absolute', top: 10, right: 12, zIndex: 20,
+            display: 'flex', gap: 6, alignItems: 'center',
+          }}>
+            {finalMedia.value && (
+              <button
+                onClick={downloadViewerMedia}
+                title={`Download ${finalMedia.type}`}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '5px 10px',
+                  background: 'rgba(255,255,255,0.07)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: 8,
+                  color: 'rgba(255,255,255,0.8)',
+                  fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
+                  textTransform: 'uppercase', cursor: 'pointer',
+                }}
+                className="hover:bg-white/15 transition-all"
+              >
+                <Download size={11} />
+                <span>{finalMedia.type === 'video' ? 'Video' : 'Imagen'}</span>
+              </button>
+            )}
+            <button
+              onClick={() => setWindowMode(false)}
+              title="Close viewer"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '5px 10px',
+                background: 'rgba(255,255,255,0.05)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 8,
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: 9, fontWeight: 700, letterSpacing: '0.06em',
+                textTransform: 'uppercase', cursor: 'pointer',
+              }}
+              className="hover:bg-white/12 hover:text-white/80 transition-all"
+            >
+              <X size={11} />
+              <span>Cerrar</span>
+            </button>
+          </div>
+
+          {/* ─ Connection circle at bottom center of viewer ─ */}
+          <div style={{
+            position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 20,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            pointerEvents: 'none',
+          }}>
+            <div style={{
+              width: 14, height: 14, borderRadius: '50%',
+              background: finalMedia.value ? (finalMedia.type === 'video' ? '#f43f5e' : '#ec4899') : 'rgba(255,255,255,0.15)',
+              border: `2px solid ${finalMedia.value ? (finalMedia.type === 'video' ? '#f43f5e' : '#ec4899') : 'rgba(255,255,255,0.2)'}`,
+              boxShadow: finalMedia.value ? `0 0 10px ${finalMedia.type === 'video' ? 'rgba(244,63,94,0.6)' : 'rgba(236,72,153,0.6)'}` : 'none',
+            }} />
+          </div>
 
           {/* Media display area — pan/zoom/fit */}
           <div
