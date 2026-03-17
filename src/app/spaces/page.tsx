@@ -1706,11 +1706,11 @@ const SpacesContent = () => {
           ? { marginTop: viewerHeight, height: `calc(100vh - ${viewerHeight}px)` }
           : { height: '100%' }}
       >
-      {/* Sidebar: always visible, z-index above viewer panel */}
-      <div style={{ zIndex: 10001, position: 'relative', flexShrink: 0 }}>
+      {/* Sidebar: fixed full-height, floats above everything including viewer */}
+      <div style={{ position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 10001 }}>
         <Sidebar />
       </div>
-      <div className="flex-1 relative" onContextMenu={(e) => e.preventDefault()}>
+      <div className="flex-1 relative" onContextMenu={(e) => e.preventDefault()} style={{ marginLeft: 0 }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
