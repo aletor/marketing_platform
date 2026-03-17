@@ -40,6 +40,7 @@ import {
   CropNode,
   BezierMaskNode,
   TextOverlayNode,
+  FinalOutputNode,
   ButtonEdge 
 } from './CustomNodes';
 
@@ -75,6 +76,8 @@ import {
 
 const initialNodes: Node[] = [];
 
+const FINAL_NODE_ID = 'final_output_permanent';
+
 const nodeTypes: any = {
   mediaInput: MediaInputNode,
   promptInput: PromptNode,
@@ -96,6 +99,7 @@ const nodeTypes: any = {
   crop: CropNode,
   bezierMask: BezierMaskNode,
   textOverlay: TextOverlayNode,
+  finalOutput: FinalOutputNode,
 };
 
 
@@ -135,7 +139,68 @@ const SpacesContent = () => {
   const [navigationStack, setNavigationStack] = useState<string[]>([]);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, nodeId?: string } | null>(null);
 
-  // ── Undo / Redo history ──────────────────────────────────────────────────
+  // ── Window Viewer Mode ─────────────────────────────────────────────────────
+  const [windowMode, setWindowMode] = useState(false);
+  const [viewerHeight, setViewerHeight] = useState(() => Math.max(Math.round(window.innerHeight * 0.5), 400));
+  const isDraggingViewer = useRef(false);
+  const dragStartY = useRef(0);
+  const dragStartH = useRef(0);
+
+  const startViewerResize = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    isDraggingViewer.current = true;
+    dragStartY.current = e.clientY;
+    dragStartH.current = viewerHeight;
+    const onMove = (ev: PointerEvent) => {
+      if (!isDraggingViewer.current) return;
+      const delta = ev.clientY - dragStartY.current;
+      const newH = Math.min(Math.max(dragStartH.current + delta, 200), Math.round(window.innerHeight * 0.82));
+      setViewerHeight(newH);
+    };
+    const onUp = () => {
+      isDraggingViewer.current = false;
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+    };
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  }, [viewerHeight]);
+  
+  // Track final output media for the viewer panel
+  const finalMedia = useMemo(() => {
+    const imgEdge = edges.find((e: any) => e.target === FINAL_NODE_ID && e.targetHandle === 'image');
+    const vidEdge = edges.find((e: any) => e.target === FINAL_NODE_ID && e.targetHandle === 'video');
+    const vidNode = vidEdge ? nodes.find((n: any) => n.id === vidEdge.source) : null;
+    const imgNode = imgEdge ? nodes.find((n: any) => n.id === imgEdge.source) : null;
+    const value = (typeof vidNode?.data?.value === 'string' ? vidNode.data.value : null) ||
+                  (typeof imgNode?.data?.value === 'string' ? imgNode.data.value : null);
+    const type = vidNode?.data?.value ? 'video' : 'image';
+    return { value, type } as { value: string | null; type: 'image' | 'video' };
+  }, [nodes, edges]);
+
+  // Listen for toggle-final-window events from the FinalOutputNode button
+  useEffect(() => {
+    const handler = () => setWindowMode(prev => !prev);
+    window.addEventListener('toggle-final-window', handler);
+    return () => window.removeEventListener('toggle-final-window', handler);
+  }, []); // toggle-final-window listener
+
+  // Initialize FINAL node on empty canvas (first ever use, no project loaded)
+  useEffect(() => {
+    setNodes(prev => {
+      if (prev.some((n: any) => n.id === FINAL_NODE_ID)) return prev;
+      return [...prev, {
+        id: FINAL_NODE_ID,
+        type: 'finalOutput',
+        position: { x: 1400, y: 200 },
+        data: { label: 'FINAL OUT' },
+        deletable: false,
+      }];
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
   const MAX_HISTORY = 10;
   const historyRef = useRef<Array<{ nodes: any[]; edges: any[] }>>([]);
   const futureRef  = useRef<Array<{ nodes: any[]; edges: any[] }>>([]);
@@ -874,7 +939,20 @@ const SpacesContent = () => {
       return;
     }
 
-    setNodes([...(rootSpace.nodes || [])]);
+    const makeFinalNode = (existingNodes: any[]) => {
+      const hasFinal = existingNodes.some((n: any) => n.id === FINAL_NODE_ID);
+      if (hasFinal) return existingNodes;
+      const finalNode = {
+        id: FINAL_NODE_ID,
+        type: 'finalOutput',
+        position: { x: 1400, y: 200 },
+        data: { label: 'FINAL OUT' },
+        deletable: false,
+      };
+      return [...existingNodes, finalNode];
+    };
+
+    setNodes(makeFinalNode([...(rootSpace.nodes || [])]));
     setEdges([...(rootSpace.edges || [])]);
     setActiveProjectId(project.id);
     setActiveSpaceId(rootSpaceId);
@@ -1022,7 +1100,8 @@ const SpacesContent = () => {
     // Client-side clear detection — no AI needed for simple canvas reset
     const clearKeywords = ['clear', 'limpiar', 'reset', 'borrar', 'vaciar', 'limpia', 'elimina todo', 'nueva pizarra', 'start over', 'new canvas'];
     if (clearKeywords.some(kw => prompt.toLowerCase().includes(kw))) {
-      setNodes([]);
+      // Keep the permanent FINAL node when clearing
+      setNodes(prev => prev.filter((n: any) => n.id === FINAL_NODE_ID));
       setEdges([]);
       return;
     }
@@ -1460,13 +1539,128 @@ const SpacesContent = () => {
   );
 
   return (
-    <div className="flex w-full h-full" ref={reactFlowWrapper}>
-      <Sidebar />
+    <div className="flex w-full h-full" ref={reactFlowWrapper} style={{ flexDirection: 'column' }}>
+
+      {/* ── WINDOW VIEWER PANEL ─────────────────────────────────────────────── */}
+      {windowMode && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0,
+            height: viewerHeight,
+            zIndex: 9998,
+            background: '#07070a',
+            display: 'flex',
+            flexDirection: 'column',
+            userSelect: 'none',
+          }}
+        >
+          {/* Window header */}
+          <div
+            className="flex items-center justify-between px-4 py-2 flex-shrink-0"
+            style={{ background: 'rgba(251,191,36,0.06)', borderBottom: '1px solid rgba(251,191,36,0.12)' }}
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">
+                Output Viewer
+                {finalMedia.value && (
+                  <span className="ml-2 text-amber-400/60">· {finalMedia.type} · {viewerHeight}px</span>
+                )}
+              </span>
+            </div>
+            <button
+              onClick={() => setWindowMode(false)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95"
+              style={{
+                background: 'rgba(251,191,36,0.1)',
+                border: '1px solid rgba(251,191,36,0.25)',
+                color: '#fbbf24',
+              }}
+            >
+              <X size={12} />
+              <span>Close Window</span>
+            </button>
+          </div>
+
+          {/* Media display area */}
+          <div className="flex-1 flex items-center justify-center overflow-hidden relative">
+            {finalMedia.value ? (
+              <>
+                {finalMedia.type === 'video' ? (
+                  <video
+                    src={finalMedia.value}
+                    className="max-w-full max-h-full"
+                    style={{ objectFit: 'contain' }}
+                    controls
+                    autoPlay
+                    loop
+                  />
+                ) : (
+                  <img
+                    src={finalMedia.value}
+                    className="max-w-full max-h-full"
+                    style={{ objectFit: 'contain' }}
+                    alt="Final output"
+                  />
+                )}
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-3 opacity-30">
+                <Maximize size={48} strokeWidth={1} className="text-amber-400" />
+                <span className="text-amber-300 text-xs font-bold uppercase tracking-widest">No output yet — connect a node to FINAL OUT</span>
+              </div>
+            )}
+          </div>
+
+          {/* ─ Draggable resize handle ─ */}
+          <div
+            onPointerDown={startViewerResize}
+            style={{
+              position: 'absolute',
+              bottom: 0, left: 0, right: 0,
+              height: 8,
+              cursor: 'ns-resize',
+              background: 'rgba(251,191,36,0.08)',
+              borderTop: '1px solid rgba(251,191,36,0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10,
+            }}
+          >
+            {/* Grip dots */}
+            <div style={{ display: 'flex', gap: 3 }}>
+              {[0,1,2,3,4].map(i => (
+                <div key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(251,191,36,0.5)' }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MAIN CANVAS AREA ────────────────────────────────────────────────── */}
+      <div
+        className="flex flex-1"
+        style={windowMode
+          ? { marginTop: viewerHeight, height: `calc(100vh - ${viewerHeight}px)` }
+          : { height: '100%' }}
+      >
+      {/* Sidebar floats above the viewer panel */}
+      <div style={{ zIndex: 10001, position: 'relative', flexShrink: 0 }}>
+        <Sidebar />
+      </div>
       <div className="flex-1 relative" onContextMenu={(e) => e.preventDefault()}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
+          onNodesChange={(changes) => {
+            // Guard: prevent deletion of the permanent FINAL output node
+            const filtered = changes.filter(
+              (c) => !(c.type === 'remove' && c.id === FINAL_NODE_ID)
+            );
+            onNodesChange(filtered);
+          }}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           isValidConnection={isValidConnection}
@@ -1913,6 +2107,7 @@ const SpacesContent = () => {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
