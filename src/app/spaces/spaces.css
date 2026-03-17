@@ -32,22 +32,22 @@
 
 /* ── NodeResizer handles ── */
 .react-flow__resize-control {
-  border-radius: 50% !important;
-  width: 9px !important;
-  height: 9px !important;
-  background: #ffffff !important;
-  border: 2px solid #3b82f6 !important;
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.25), 0 2px 4px rgba(0,0,0,0.15) !important;
-  transition: transform 0.15s;
+  border-radius: 2px !important;
+  width: 7px !important;
+  height: 7px !important;
+  background: #333333 !important;
+  border: none !important;
+  box-shadow: none !important;
+  transition: transform 0.15s, background 0.15s;
 }
 .react-flow__resize-control:hover {
   transform: scale(1.4);
-  border-color: #2563eb !important;
+  background: #555555 !important;
 }
 /* Edge resize lines (middle-of-edge handles) */
 .react-flow__resize-control.line {
-  border-radius: 3px !important;
-  background: rgba(59,130,246,0.5) !important;
+  border-radius: 2px !important;
+  background: #333333 !important;
   border: none !important;
 }
 
