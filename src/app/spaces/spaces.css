@@ -115,7 +115,8 @@
   padding: 20px;
   overflow-y: auto;
   flex: 1;
-  min-height: 0; /* crucial: allows flex child to shrink below its content size */
+  min-height: 0;
+  background: rgba(255, 255, 255, 0.20);
 }
 
 .node-content::-webkit-scrollbar {
