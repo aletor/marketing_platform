@@ -176,7 +176,7 @@ const SpacesContent = () => {
   // Scroll → zoom centered on cursor
   const onViewerWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    const factor = Math.pow(0.998, e.deltaY);   // smooth, proportional to scroll speed
     const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
