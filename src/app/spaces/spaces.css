@@ -315,6 +315,9 @@
 
 /* ── Collapsed node ── */
 .custom-node.node-collapsed {
+  /* KEY FIX: inline min-height (280-320px) blocks shrinking to 44px → override it */
+  min-height: 0 !important;
+  min-width: 0 !important;
   overflow: hidden !important;
 }
 /* Hide everything except the header & handles when collapsed */
@@ -325,14 +328,14 @@
   display: flex !important;
   border-radius: 20px !important;
 }
-/* Center all handles at 50% when collapsed so they stay on the header */
+/* Center handles at header height when collapsed */
 .custom-node.node-collapsed .handle-wrapper {
   top: 50% !important;
   transition: top 0.2s ease;
 }
-/* Also ensure the RF node wrapper clips content during collapse */
-.react-flow__node:has(.node-collapsed) {
-  overflow: hidden !important;
+/* Hide handle text labels when collapsed (handles remain clickable) */
+.custom-node.node-collapsed .handle-label {
+  display: none !important;
 }
 
 /* Animations */
