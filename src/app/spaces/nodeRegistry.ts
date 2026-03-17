@@ -102,19 +102,6 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
       value: 'string'
     }
   },
-  runwayProcessor: {
-    type: 'runwayProcessor',
-    label: 'RunwayML Gen-3',
-    description: 'Generates high-quality AI video from a prompt and/or a source video.',
-    inputs: [
-      { id: 'prompt', label: 'Prompt Input', type: 'prompt' },
-      { id: 'video', label: 'Video Input', type: 'video' }
-    ],
-    outputs: [
-      { id: 'video', label: 'Video Out', type: 'video' }
-    ],
-    dataSchema: {}
-  },
   grokProcessor: {
     type: 'grokProcessor',
     label: 'Grok Imagine',
@@ -218,20 +205,6 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
     ],
     dataSchema: {}
   },
-  videoBackgroundRemoval: {
-    type: 'videoBackgroundRemoval',
-    label: 'Video BG Removal',
-    description: 'Professional video background removal and matting using RVM.',
-    inputs: [
-      { id: 'video', label: 'Source Video', type: 'url' }
-    ],
-    outputs: [
-      { id: 'mask', label: 'Mask', type: 'mask' },
-      { id: 'rgba', label: 'Cutout Video', type: 'url' },
-      { id: 'green', label: 'Green Screen', type: 'url' }
-    ],
-    dataSchema: {}
-  },
   spaceOutput: {
     type: 'spaceOutput',
     label: 'Space Exit',
@@ -289,6 +262,25 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
     dataSchema: {
       aspectRatio: 'free | 1:1 | 16:9 | 9:16',
       cropConfig: '{ x: number, y: number, w: number, h: number } (Percentages 0-100)'
+    }
+  },
+  bezierMask: {
+    type: 'bezierMask',
+    label: 'Bezier Mask',
+    description: 'An interactive vector pen tool to draw bezier curves over an image. Creates precise custom shape masks with zoom, pan and point editing. Outputs both a B&W mask and an RGBA transparent cutout, identical to the Background Remover.',
+    inputs: [
+      { id: 'image', label: 'Reference Image', type: 'image', required: true }
+    ],
+    outputs: [
+      { id: 'mask', label: 'Mask', type: 'mask' },
+      { id: 'rgba', label: 'RGBA', type: 'image' }
+    ],
+    dataSchema: {
+      points: 'Array of bezier points',
+      closed: 'boolean',
+      invert: 'boolean',
+      result_mask: 'string (B&W mask data URL)',
+      result_rgba: 'string (RGBA transparent cutout data URL)'
     }
   }
 };

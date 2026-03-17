@@ -126,14 +126,6 @@ const Sidebar = () => {
                 <Video size={14} className="text-cyan-500 shrink-0" /> <span className="text-cyan-600">Veo 3.1</span>
                 <TypeIndicators nodeType="geminiVideo" />
               </div>
-              <div className="dndnode border-cyan-500/10 hover:border-cyan-500" onDragStart={(event) => onDragStart(event, 'runwayProcessor')} draggable title="Runway G3">
-                <Video size={14} className="text-cyan-500 shrink-0" /> <span className="text-cyan-600">Runway</span>
-                <TypeIndicators nodeType="runwayProcessor" />
-              </div>
-              <div className="dndnode border-cyan-500/10 hover:border-cyan-500" onDragStart={(event) => onDragStart(event, 'videoBackgroundRemoval')} draggable title="Video BG Removal">
-                <Scissors size={14} className="text-cyan-500 shrink-0" /> <span className="text-cyan-600">VideoBG</span>
-                <TypeIndicators nodeType="videoBackgroundRemoval" />
-              </div>
             </div>
           </div>
 
@@ -183,6 +175,10 @@ const Sidebar = () => {
               <div className="dndnode border-amber-500/10 hover:border-amber-500" onDragStart={(event) => onDragStart(event, 'crop')} draggable title="Crop Asset">
                 <Crop size={14} className="text-amber-500 shrink-0" /> <span className="text-amber-600">Crop</span>
                 <TypeIndicators nodeType="crop" />
+              </div>
+              <div className="dndnode border-amber-500/10 hover:border-amber-500" onDragStart={(event) => onDragStart(event, 'bezierMask')} draggable title="Bezier Mask">
+                <Scissors size={14} className="text-amber-500 shrink-0" /> <span className="text-amber-600">Bezier</span>
+                <TypeIndicators nodeType="bezierMask" />
               </div>
             </div>
           </div>

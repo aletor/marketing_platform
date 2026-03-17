@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
-import axios from 'axios';
+
 
 export async function POST(req: NextRequest) {
   let layersJson = '[]';
@@ -65,15 +65,15 @@ export async function POST(req: NextRequest) {
             imageBuffer = Buffer.from(base64Data, 'base64');
           } else {
             console.log(`[Layer ${idx}] Fetching URL: ${layer.value}`);
-            // Use axios with a real-looking User-Agent to avoid blocks
-            const res = await axios.get(layer.value, { 
-              responseType: 'arraybuffer',
-              timeout: 10000,
+            const fetchRes = await fetch(layer.value, {
               headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-              }
+              },
+              signal: AbortSignal.timeout(10000)
             });
-            imageBuffer = Buffer.from(res.data);
+            if (!fetchRes.ok) throw new Error(`HTTP ${fetchRes.status}`);
+            const arrayBuffer = await fetchRes.arrayBuffer();
+            imageBuffer = Buffer.from(arrayBuffer);
           }
           
           // Determine Target Width

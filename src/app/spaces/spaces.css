@@ -34,6 +34,22 @@
   box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.12);
 }
 
+/* ── Node selection (click / Shift+click) ─────────────────────────── */
+.react-flow__node.selected .custom-node {
+  border-color: rgba(74, 222, 128, 0.7);     /* green-400 */
+  box-shadow:
+    0 0 0 2px rgba(74, 222, 128, 0.25),       /* soft aura */
+    0 20px 40px -4px rgba(0, 0, 0, 0.10);
+  transform: translateY(-2px) scale(1.005);
+}
+
+/* Remove ReactFlow's default blue outline on selected nodes */
+.react-flow__node.selected {
+  outline: none !important;
+}
+
+
+
 .node-header {
   padding: 16px 20px;
   display: flex;

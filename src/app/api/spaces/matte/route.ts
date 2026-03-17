@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sharp from 'sharp';
 import Replicate from 'replicate';
-import axios from 'axios';
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN || '',
@@ -29,15 +28,17 @@ export async function POST(req: NextRequest) {
 
     if (image.startsWith('http')) {
       console.log(`[Background Remover] Pre-fetching image to bypass potential 403: ${image}`);
-      const imgRes = await axios.get(image, { 
-        responseType: 'arraybuffer',
+      const imgFetchRes = await fetch(image, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
+        },
+        signal: AbortSignal.timeout(15000)
       });
-      imageBuffer = Buffer.from(imgRes.data);
-      console.log(`[Background Remover] Image download status: ${imgRes.status}. First 10 bytes: ${imageBuffer.slice(0, 10).toString('hex')}`);
-      const mime = imgRes.headers['content-type'] || 'image/png';
+      if (!imgFetchRes.ok) throw new Error(`Image fetch failed: ${imgFetchRes.status}`);
+      const arrBuf = await imgFetchRes.arrayBuffer();
+      imageBuffer = Buffer.from(arrBuf);
+      console.log(`[Background Remover] Image download status: ${imgFetchRes.status}. First 10 bytes: ${imageBuffer.slice(0, 10).toString('hex')}`);
+      const mime = imgFetchRes.headers.get('content-type') || 'image/png';
       imageInputForReplicate = `data:${mime};base64,${imageBuffer.toString('base64')}`;
     } else {
       imageBuffer = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64');
@@ -87,9 +88,9 @@ export async function POST(req: NextRequest) {
 
     // 2. Fetch Mask (Image buffer already available)
     console.log(`[Background Remover] Downloading mask: ${maskUrl}`);
-    const maskRes = await axios.get(maskUrl, { responseType: 'arraybuffer' });
-    if (maskRes.status !== 200) throw new Error(`Failed to download mask: ${maskRes.status}`);
-    const maskBuffer = Buffer.from(maskRes.data);
+    const maskFetchRes = await fetch(maskUrl, { signal: AbortSignal.timeout(15000) });
+    if (!maskFetchRes.ok) throw new Error(`Failed to download mask: ${maskFetchRes.status}`);
+    const maskBuffer = Buffer.from(await maskFetchRes.arrayBuffer());
     console.log(`[Background Remover] Mask downloaded. First 10 bytes: ${maskBuffer.slice(0, 10).toString('hex')}`);
     console.log(`[Background Remover] Processing buffers... (Mask size: ${maskBuffer.length})`);
 

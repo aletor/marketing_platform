@@ -40,7 +40,8 @@ import {
   MousePointer2,
   Sparkles,
   Eraser,
-  Crop
+  Crop,
+  Check
 } from 'lucide-react';
 import './spaces.css';
 
@@ -946,90 +947,54 @@ const loadCanvasImage = async (url: string): Promise<HTMLImageElement> => {
 export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
   const nodes = useNodes();
   const edges = useEdges();
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportPreview, setExportPreview] = useState<string | null>(null);
   const [format, setFormat] = useState<'png' | 'jpeg'>('png');
+  const [isExporting, setIsExporting] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Create a hidden form for downloads (guarantees filename preservation)
-  const downloadFormRef = useRef<HTMLFormElement>(null);
-  const [downloadFormData, setDownloadFormData] = useState({ base64: '', filename: '', format: '' });
-
-  useEffect(() => {
-    if (downloadFormData.base64 && downloadFormRef.current) {
-      downloadFormRef.current.submit();
-      // Clear after submit to prevent re-submission
-      setDownloadFormData({ base64: '', filename: '', format: '' });
-    }
-  }, [downloadFormData]);
-
-  // Helper for "contain" logic
-  const drawImageContain = (ctx: CanvasRenderingContext2D, img: HTMLImageElement, w: number, h: number) => {
-    const imgAspect = img.width / img.height;
-    const canvasAspect = w / h;
-    let dx, dy, dw, dh;
-
-    if (imgAspect > canvasAspect) {
-      dw = w;
-      dh = w / imgAspect;
-      dx = 0;
-      dy = (h - dh) / 2;
-    } else {
-      dh = h;
-      dw = h * imgAspect;
-      dx = (w - dw) / 2;
-      dy = 0;
-    }
-    ctx.drawImage(img, dx, dy, dw, dh);
-  };
+  // Refs for synchronous form-based download (bypasses Chrome async security blocks)
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const layersInputRef = useRef<HTMLInputElement>(null);
+  const filenameInputRef = useRef<HTMLInputElement>(null);
+  const formatInputRef = useRef<HTMLInputElement>(null);
 
   // Find the single source connected to this node
   const sourceEdge = edges.find(e => e.target === id);
   const sourceNode = sourceEdge ? nodes.find(n => n.id === sourceEdge.source) : null;
 
-  // Map handles to actual layer data (supports both ImageComposer and direct single connections)
+  // Map handles to actual layer data
   const layers = useMemo(() => {
     if (!sourceNode) return [];
 
-    // Case 1: Source is a Composer (multiple layers)
+    // Case 1: Source is a Composer
     if (sourceNode.type === 'imageComposer') {
-      // If the composer already has a flattened 'value', use it as a single layer
       if (sourceNode.data.value) {
         return [{
           type: 'flattened',
           value: sourceNode.data.value as string,
-          x: 0,
-          y: 0,
-          scale: 1,
-          width: 1920,
-          height: 1080
+          x: 0, y: 0, scale: 1, width: 1920, height: 1080
         }];
       }
-
-      // Fallback: Reconstruct (for compatibility during transition)
+      // Fallback: reconstruct from edges
       const composerEdges = edges.filter(e => e.target === sourceNode.id)
         .sort((a: any, b: any) => (a.targetHandle || '').localeCompare(b.targetHandle || ''));
-      
       const layersConfig: Record<string, any> = sourceNode.data.layersConfig || {};
-      
       return composerEdges.map(edge => {
         const node = nodes.find(n => n.id === edge.source);
         const hId = edge.targetHandle || 'layer-0';
         const config = (layersConfig as any)[hId] || { x: 0, y: 0, scale: 1 };
-        
         return {
           type: node?.type,
           value: (node?.data?.value || ((node?.data as any)?.urls && (node?.data as any)?.urls[(node?.data as any)?.selectedIndex || 0])) as string | undefined,
           color: node?.data?.color as string | undefined,
           width: node?.data?.width as number || 0,
           height: node?.data?.height as number || 0,
-          x: config.x,
-          y: config.y,
-          scale: config.scale
+          x: config.x, y: config.y, scale: config.scale
         };
       }).filter(l => (l.value as string) || (l.color as string));
     }
 
-    // Case 2: Source is a direct Node (MediaInput, Background, etc)
+    // Case 2: Direct image node (NanoBanana, urlImage, backgroundRemover, etc.)
     return [{
       type: sourceNode.type,
       value: sourceNode.data.value as string | undefined,
@@ -1039,97 +1004,76 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
     }].filter(l => l.value || l.color);
   }, [sourceNode, edges, nodes]);
 
-  // Determine export dimensions intelligently
-  const getDimensions = () => {
-    // 1. Try to find a background node in the layers
-    const bgLayer = layers.find(l => l.type === 'background');
-    if (bgLayer && bgLayer.width && bgLayer.height) {
-      return { w: bgLayer.width, h: bgLayer.height };
-    }
-    // 2. Default to 1920x1080 or the first layer's dimension
-    return { w: 1920, h: 1080 };
-  };
-
-  const handleExport = async () => {
+  const handleExport = () => {
     if (!sourceNode) return alert("Connect an image first!");
-    
+    if (!formRef.current || !layersInputRef.current || !filenameInputRef.current || !formatInputRef.current) return;
+
+    const extension = format === 'jpeg' ? 'jpg' : 'png';
+    const filename = `AI_Space_Output_${Date.now()}.${extension}`;
+
+    console.log(`[Export] Submitting form for ${filename}, layers: ${layers.length}`);
+
+    // Populate form inputs SYNCHRONOUSLY (before any awaits)
+    layersInputRef.current.value = JSON.stringify(layers);
+    filenameInputRef.current.value = filename;
+    formatInputRef.current.value = format;
+
+    // SYNCHRONOUS form submit → browser handles Content-Disposition: attachment natively
+    formRef.current.submit();
+
     setIsExporting(true);
-    try {
-      const { w, h } = getDimensions();
-      const extension = format === 'jpeg' ? 'jpg' : 'png';
-      const filename = `AI_Space_Output_${new Date().getTime()}.${extension}`;
 
-      console.log(`[Export] Requesting Lambda-style composition for ${filename}...`);
+    // Also fetch async for PREVIEW only (not download)
+    const formData = new FormData();
+    formData.append('layers', JSON.stringify(layers));
+    formData.append('filename', filename);
+    formData.append('format', format);
+    formData.append('width', '1920');
+    formData.append('height', '1080');
+    formData.append('previewWidth', '1920');
+    formData.append('previewHeight', '1080');
 
-      const formData = new FormData();
-      formData.append('layers', JSON.stringify(layers));
-      formData.append('filename', filename);
-      formData.append('format', format);
-      formData.append('width', w.toString());
-      formData.append('height', h.toString());
-      
-      // Coordinate Remapping Metadata
-      // If we are coming from a Composer, our coordinates are already normalized to 1920x1080
-      if (sourceNode.type === 'imageComposer') {
-        formData.append('previewWidth', '1920');
-        formData.append('previewHeight', '1080');
-      } else {
-        const composerPreview = document.querySelector(`[data-id="${sourceNode.id}"] .aspect-video`);
-        if (composerPreview) {
-          formData.append('previewWidth', composerPreview.clientWidth.toString());
-          formData.append('previewHeight', composerPreview.clientHeight.toString());
-        }
-      }
-
-      const res = await fetch('/api/spaces/compose', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || "Server composition failed");
-      }
-
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = filename; // This is the gold standard for filename preservation
-      document.body.appendChild(link);
-      link.click();
-      
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(blobUrl);
-      }, 1500);
-
-    } catch (error: any) {
-      console.error("Export error details:", error);
-      alert(`Export failed: ${error.message || "Unknown error"}`);
-    } finally {
-      // Small timeout to show the "Building" state briefly
-      setTimeout(() => setIsExporting(false), 1500);
-    }
+    fetch('/api/spaces/compose', { method: 'POST', body: formData })
+      .then(r => r.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        setPreviewUrl(url);
+      })
+      .catch(err => console.error('[Export] Preview fetch error:', err))
+      .finally(() => setTimeout(() => setIsExporting(false), 500));
   };
+
+
 
   return (
     <div className="custom-node export-node border-rose-500/30">
       <NodeLabel id={id} label={data.label} defaultLabel="Export" />
-      {/* Hidden form for server-side Lambda-style Composition & Download */}
-      <form 
-        ref={downloadFormRef} 
-        action="/api/spaces/compose" 
-        method="POST" 
+
+      {/* Hidden iframe — receives the form POST response (Content-Disposition: attachment) */}
+      <iframe
+        ref={iframeRef}
+        name="export-download-frame"
+        title="download"
+        style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', opacity: 0 }}
+      />
+
+      {/* Hidden form — submitted synchronously when user clicks Export */}
+      <form
+        ref={formRef}
+        action="/api/spaces/compose"
+        method="POST"
+        target="export-download-frame"
         style={{ display: 'none' }}
       >
-        <input type="hidden" name="layers" />
-        <input type="hidden" name="filename" />
-        <input type="hidden" name="format" />
-        <input type="hidden" name="width" />
-        <input type="hidden" name="height" />
+        <input ref={layersInputRef} type="hidden" name="layers" />
+        <input ref={filenameInputRef} type="hidden" name="filename" />
+        <input ref={formatInputRef} type="hidden" name="format" />
+        <input type="hidden" name="width" value="1920" />
+        <input type="hidden" name="height" value="1080" />
+        <input type="hidden" name="previewWidth" value="1920" />
+        <input type="hidden" name="previewHeight" value="1080" />
       </form>
+
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="image" className="handle-image" />
         <span className="handle-label">Image Input</span>
@@ -1139,17 +1083,17 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
       </div>
       <div className="node-content">
         <div className="flex gap-2 mb-3">
-          <button 
+          <button
             onClick={() => setFormat('png')}
             className={`flex-1 py-1 rounded text-[10px] font-bold transition-all ${format === 'png' ? 'bg-rose-500 text-white' : 'bg-white/5 text-gray-400 border border-white/10'}`}
           >PNG</button>
-          <button 
+          <button
             onClick={() => setFormat('jpeg')}
             className={`flex-1 py-1 rounded text-[10px] font-bold transition-all ${format === 'jpeg' ? 'bg-rose-500 text-white' : 'bg-white/5 text-gray-400 border border-white/10'}`}
           >JPG</button>
         </div>
 
-        <button 
+        <button
           className={`execute-btn w-full justify-center mb-4 ${isExporting ? 'opacity-50' : 'bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30'}`}
           onClick={handleExport}
           disabled={isExporting}
@@ -1162,13 +1106,15 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
         </button>
 
         <div className="mb-2 flex justify-between items-center text-[8px] font-mono text-gray-500 uppercase">
-          <span>{layers[0]?.width || 1920}x{layers[0]?.height || 1080} PX</span>
+          <span>1920x1080 PX</span>
           <span>COMPOSITION MODE</span>
         </div>
 
         <div className="relative w-full aspect-video bg-slate-50 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
-          {exportPreview || (sourceNode?.data.value && sourceNode.type !== 'imageComposer') ? (
-            <img src={exportPreview || (sourceNode?.data.value as string)} className="w-full h-full object-contain" alt="Export Preview" />
+          {previewUrl ? (
+            <img src={previewUrl} className="w-full h-full object-contain" alt="Export Preview" />
+          ) : (sourceNode?.data.value && sourceNode.type !== 'imageComposer') ? (
+            <img src={sourceNode?.data.value as string} className="w-full h-full object-contain" alt="Export Preview" />
           ) : sourceNode?.type === 'imageComposer' ? (
              <div className="flex flex-col items-center gap-2 text-rose-500/50">
                <Layers size={32} />
@@ -1185,6 +1131,7 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
     </div>
   );
 });
+
 
 // --- UNIVERSAL MEDIA INPUT NODE ---
 
@@ -1565,69 +1512,6 @@ export const EnhancerNode = memo(({ id, data }: NodeProps<any>) => {
 
 // --- GENERATOR NODES ---
 
-export const RunwayNode = memo(({ id, data }: NodeProps<any>) => {
-  const nodeData = data as BaseNodeData;
-  const { setNodes } = useReactFlow();
-  const nodes = useNodes();
-  const edges = useEdges();
-  const [status, setStatus] = useState('idle');
-  const [result, setResult] = useState<string | null>(null);
-
-  const onRun = async () => {
-    const video = nodes.find(n => n.id === edges.find(e => e.target === id && e.targetHandle === 'video')?.source)?.data.value;
-    const prompt = nodes.find(n => n.id === edges.find(e => e.target === id && e.targetHandle === 'prompt')?.source)?.data.value;
-    if (!prompt) return alert("Need prompt!");
-    
-    setStatus('running');
-    try {
-      const res = await fetch('/api/runway/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ promptText: prompt, videoUrl: video, duration: nodeData.duration || 5 })
-      });
-      const json = await res.json();
-      if (json.taskId) {
-        // Simple polling simulation for spaces
-        const check = setInterval(async () => {
-          const sRes = await fetch(`/api/runway/status/${json.taskId}`);
-          const sJson = await sRes.json();
-          if (sJson.status === 'SUCCEEDED') {
-            setResult(sJson.output?.[0]);
-            setStatus('success');
-            clearInterval(check);
-          }
-        }, 3000);
-      }
-    } catch (e) { setStatus('error'); }
-  };
-
-  return (
-    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}>
-      <NodeLabel id={id} label={nodeData.label} defaultLabel="Runway Gen-3" />
-      <div className="handle-wrapper handle-left" style={{ top: '30%' }}>
-        <Handle type="target" position={Position.Left} id="video" className="handle-video" />
-        <span className="handle-label">Video in</span>
-      </div>
-      <div className="handle-wrapper handle-left" style={{ top: '70%' }}>
-        <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
-        <span className="handle-label">Prompt in</span>
-      </div>
-      <div className="node-header"><Film size={16} /> RUNWAYML</div>
-      <div className="node-content">
-        <select className="node-input mb-3" value={nodeData.duration || 5} onChange={(e) => setNodes((nds: any) => nds.map((n: any) => n.id === id ? {...n, data: {...n.data, duration: parseInt(e.target.value)}} : n))}>
-          <option value={5}>5 Seconds</option>
-          <option value={10}>10 Seconds</option>
-        </select>
-        <button className="execute-btn w-full justify-center" onClick={onRun}>{status === 'running' ? 'PROCESSING...' : 'RUN GENERATION'}</button>
-        {result && <video src={result} className="mt-4 rounded-lg w-full" controls />}
-      </div>
-      <div className="handle-wrapper handle-right">
-        <span className="handle-label">Video out</span>
-        <Handle type="source" position={Position.Right} id="video" className="handle-video" />
-      </div>
-    </div>
-  );
-});
 
 export const GrokNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
@@ -1704,12 +1588,41 @@ export const GrokNode = memo(({ id, data }: NodeProps<any>) => {
   );
 });
 
+
+// ── NANO BANANA NODE ─────────────────────────────────────────────────────────
+const NB_MODELS = [
+  { id: 'flash31', label: 'Flash 3.1', badge: 'SPEED+', color: 'text-cyan-400', borderColor: 'border-cyan-500/40', bg: 'bg-cyan-500/10' },
+  { id: 'pro3',    label: 'Pro 3',     badge: 'PRO',     color: 'text-violet-400', borderColor: 'border-violet-500/40', bg: 'bg-violet-500/10' },
+  { id: 'flash25', label: 'Flash 2.5', badge: 'FAST',    color: 'text-emerald-400', borderColor: 'border-emerald-500/40', bg: 'bg-emerald-500/10' },
+] as const;
+
+const ASPECT_RATIOS = [
+  { value: '1:1',  label: '1:1',  icon: '⬛', category: 'standard' },
+  { value: '16:9', label: '16:9', icon: '▬', category: 'standard' },
+  { value: '9:16', label: '9:16', icon: '▮', category: 'standard' },
+  { value: '3:2',  label: '3:2',  icon: '▬', category: 'standard' },
+  { value: '4:3',  label: '4:3',  icon: '▬', category: 'standard' },
+  { value: '2:3',  label: '2:3',  icon: '▮', category: 'standard' },
+  { value: '3:4',  label: '3:4',  icon: '▮', category: 'standard' },
+  { value: '4:1',  label: '4:1',  icon: '━', category: 'extreme' },
+  { value: '1:4',  label: '1:4',  icon: '┃', category: 'extreme' },
+  { value: '8:1',  label: '8:1',  icon: '━', category: 'extreme' },
+  { value: '1:8',  label: '1:8',  icon: '┃', category: 'extreme' },
+] as const;
+
+const REF_SLOTS = [
+  { id: 'image',  label: 'Ref 1', top: '15%' },
+  { id: 'image2', label: 'Ref 2', top: '32%' },
+  { id: 'image3', label: 'Ref 3', top: '49%' },
+  { id: 'image4', label: 'Ref 4', top: '66%' },
+] as const;
+
 export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
-  const nodeData = data as BaseNodeData & { 
-    aspect_ratio?: string; 
-    guidance_scale?: number; 
-    num_inference_steps?: number;
-    quality?: 'draft' | 'final';
+  const nodeData = data as BaseNodeData & {
+    aspect_ratio?: string;
+    resolution?: string;
+    modelKey?: string;
+    thinking?: boolean;
   };
   const nodes = useNodes();
   const edges = useEdges();
@@ -1717,179 +1630,341 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
   const [status, setStatus] = useState('idle');
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<string | null>(null);
+  const [showFullSize, setShowFullSize] = useState(false);
 
-  // Auto-detect if we have an image input
-  const imageInput = useMemo(() => 
-    edges.find(e => e.target === id && e.targetHandle === 'image'),
-    [edges, id]
+  const selectedModel = nodeData.modelKey || 'flash31';
+  const modelInfo = NB_MODELS.find(m => m.id === selectedModel) || NB_MODELS[0];
+  const isPro = selectedModel === 'pro3';
+  const isFlash25 = selectedModel === 'flash25';
+
+  const updateData = (key: string, val: any) =>
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
+
+  // Collect all connected reference images
+  const getRefImages = () => {
+    const imgs: (string | null)[] = [];
+    for (const slot of REF_SLOTS) {
+      const edge = edges.find(e => e.target === id && e.targetHandle === slot.id);
+      const srcNode = edge ? nodes.find(n => n.id === edge.source) : null;
+      imgs.push(srcNode?.data?.value || null);
+    }
+    return imgs;
+  };
+
+  // Check which handles have connections
+  const connectedSlots = REF_SLOTS.map(slot =>
+    edges.some(e => e.target === id && e.targetHandle === slot.id)
   );
 
   const onRun = async () => {
-    const prompt = nodes.find(n => n.id === edges.find(e => e.target === id && e.targetHandle === 'prompt')?.source)?.data.value;
-    const image = nodes.find(n => n.id === imageInput?.source)?.data.value;
-    
-    if (!prompt) return alert("Need prompt!");
+    const promptEdge = edges.find(e => e.target === id && e.targetHandle === 'prompt');
+    const prompt = nodes.find(n => n.id === promptEdge?.source)?.data?.value;
+    if (!prompt) return alert("Connect a prompt node!");
+
+    const refImages = getRefImages().filter(Boolean) as string[];
 
     setStatus('running');
     setProgress(0);
-    
+
     const progressInterval = setInterval(() => {
-      setProgress((prev: number) => {
-        const newProgress = prev + 1;
-        if (newProgress > 95) {
-          clearInterval(progressInterval);
-          return 95;
-        }
-        return newProgress;
+      setProgress(p => {
+        const next = p + (isPro ? 0.6 : 1.2); // thinking takes longer
+        return next > 92 ? 92 : next;
       });
-    }, 300);
+    }, 400);
 
     try {
-      // Use logical defaults or nodeData values
-      const inputParams: any = {
-        prompt,
-        image,
-        aspect_ratio: nodeData.aspect_ratio || "1:1",
-        resolution: nodeData.resolution || "1k",
-      };
-
-      const imageStr = typeof image === 'string' ? image : '';
-      console.log("[NanoBanana] Triggering API with params:", { 
-        ...inputParams, 
-        image: imageStr ? `${imageStr.substring(0, 50)}... (${imageStr.length} chars)` : 'none' 
-      });
-
       const res = await fetch('/api/gemini/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(inputParams)
+        body: JSON.stringify({
+          prompt,
+          images: refImages,
+          aspect_ratio: nodeData.aspect_ratio || '1:1',
+          resolution: isFlash25 ? '1k' : (nodeData.resolution || '1k'),
+          model: selectedModel,
+          thinking: nodeData.thinking && isPro,
+        }),
       });
 
-      console.log("[NanoBanana] Response status:", res.status);
+      clearInterval(progressInterval);
+      setProgress(100);
 
       if (!res.ok) {
-        const errJson = await res.json();
-        const fullError = errJson.details ? `${errJson.error}\n\nDetalles: ${errJson.details}` : errJson.error;
-        throw new Error(fullError || `HTTP Error ${res.status}`);
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
       }
 
       const json = await res.json();
-      console.log("[NanoBanana] API Result received");
-      
       if (json.output) {
-        const outUrl = json.output;
-        setResult(outUrl);
-        setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, value: outUrl, type: 'image' } } : n)));
+        setResult(json.output);
+        setNodes(nds => nds.map(n =>
+          n.id === id ? { ...n, data: { ...n.data, value: json.output, type: 'image' } } : n
+        ));
         setStatus('success');
-      } else {
-        throw new Error("No output received from API");
-      }
-    } catch (e: any) { 
+      } else throw new Error("No output received");
+    } catch (e: any) {
       clearInterval(progressInterval);
       console.error("[NanoBanana] Error:", e.message);
-      alert("Nano Banana 2 Error:\n" + e.message);
-      setStatus('error'); 
+      alert("Nano Banana Error:\n" + e.message);
+      setStatus('error');
+    } finally {
+      setTimeout(() => setProgress(0), 1000);
     }
   };
 
-  const updateData = (key: string, val: any) => {
-    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
-  };
-
   return (
-    <div className={`custom-node processor-node w-[320px] ${status === 'running' ? 'node-glow-running' : ''}`}>
+    <div className={`custom-node processor-node w-[340px] ${status === 'running' ? 'node-glow-running' : ''}`}
+         style={{ minHeight: 0 }}>
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana 2" />
-      
-      <div className="handle-wrapper handle-left !top-[20%]">
-        <Handle type="target" position={Position.Left} id="image" className="handle-image" />
-        <span className="handle-label">Reference Img</span>
-      </div>
-      <div className="handle-wrapper handle-left !top-[40%]">
+
+      {/* ── Reference image handles (4 slots) ─── */}
+      {REF_SLOTS.map((slot, i) => (
+        <div key={slot.id} className="handle-wrapper handle-left"
+             style={{ top: slot.top, opacity: i === 0 || connectedSlots[i - 1] ? 1 : 0.35 }}>
+          <Handle type="target" position={Position.Left} id={slot.id} className="handle-image" />
+          <span className="handle-label" style={{
+            color: connectedSlots[i] ? '#f59e0b' : undefined,
+            fontWeight: connectedSlots[i] ? '900' : undefined,
+          }}>
+            {connectedSlots[i] ? `✓ ${slot.label}` : slot.label}
+          </span>
+        </div>
+      ))}
+
+      {/* ── Prompt handle ─── */}
+      <div className="handle-wrapper handle-left" style={{ top: '83%' }}>
         <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
-        <span className="handle-label">Creative Prompt</span>
+        <span className="handle-label">Prompt</span>
       </div>
 
+      {/* ── Node header ─── */}
       <div className="node-header bg-gradient-to-r from-yellow-600/20 to-orange-600/20">
-        <Sparkles size={16} className="text-yellow-400" />
-        <span>Nano Banana 1</span>
-        <div className="node-badge">IMAGEN 3</div>
+        <Sparkles size={15} className="text-yellow-400" />
+        <span>Nano Banana</span>
+        <div className={`node-badge ${modelInfo.bg} ${modelInfo.color} border ${modelInfo.borderColor}`}>
+          {modelInfo.badge}
+        </div>
       </div>
 
       <div className="node-content space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Layout</span>
-             <select 
-               className="node-input text-[10px]" 
-               value={nodeData.aspect_ratio || '1:1'} 
-               onChange={(e) => updateData('aspect_ratio', e.target.value)}
-             >
-               <option value="1:1">1:1 Square</option>
-               <option value="16:9">16:9 Wide</option>
-               <option value="9:16">9:16 Story</option>
-               <option value="3:2">3:2 Classic</option>
-               <option value="4:3">4:3 Photo</option>
-             </select>
+
+        {/* ── Model selector ─── */}
+        <div className="space-y-1.5">
+          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Model</span>
+          <div className="grid grid-cols-3 gap-1.5">
+            {NB_MODELS.map(m => (
+              <button
+                key={m.id}
+                onClick={() => updateData('modelKey', m.id)}
+                className={`py-1.5 px-2 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all
+                  ${selectedModel === m.id
+                    ? `${m.bg} ${m.color} ${m.borderColor} shadow-sm`
+                    : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:border-white/15 hover:text-zinc-400'
+                  }`}
+              >
+                {m.label}
+              </button>
+            ))}
           </div>
-          <div className="space-y-1">
-             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Quality / Res</span>
-             <select 
-               className="node-input text-[10px] !border-cyan-500/30" 
-               value={nodeData.resolution || '1k'} 
-               onChange={(e) => updateData('resolution', e.target.value)}
-             >
-               <option value="0.5k">0.5k (Fast)</option>
-               <option value="1k">1k (Normal)</option>
-               <option value="2k">2k (High)</option>
-               <option value="4k">4k (Ultra)</option>
-             </select>
+          {isPro && (
+            <p className="text-[8px] text-violet-400/70 font-medium leading-tight">
+              Pro 3: professional quality, slower. Supports thinking mode.
+            </p>
+          )}
+        </div>
+
+        {/* ── Aspect ratio grid ─── */}
+        <div className="space-y-1.5">
+          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Aspect Ratio</span>
+          {/* Standard */}
+          <div className="grid grid-cols-7 gap-1">
+            {ASPECT_RATIOS.filter(r => r.category === 'standard').map(r => (
+              <button
+                key={r.value}
+                onClick={() => updateData('aspect_ratio', r.value)}
+                title={r.value}
+                className={`py-1 rounded text-[7px] font-black text-center border transition-all
+                  ${nodeData.aspect_ratio === r.value
+                    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
+                    : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:border-white/15 hover:text-zinc-400'
+                  }`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          {/* Extreme — only for flash31 and pro3 */}
+          <div className="grid grid-cols-4 gap-1">
+            {ASPECT_RATIOS.filter(r => r.category === 'extreme').map(r => (
+              <button
+                key={r.value}
+                onClick={() => !isFlash25 && updateData('aspect_ratio', r.value)}
+                disabled={isFlash25}
+                title={isFlash25 ? `${r.value} — not available on Flash 2.5` : r.value}
+                className={`py-1 rounded text-[7px] font-black text-center border transition-all
+                  ${isFlash25 ? 'opacity-25 cursor-not-allowed bg-white/[0.01] text-zinc-700 border-white/5' :
+                    nodeData.aspect_ratio === r.value
+                      ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
+                      : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:border-white/15 hover:text-zinc-400'
+                  }`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          {isFlash25 && (
+            <p className="text-[7px] text-zinc-700 font-bold">Extreme ratios only on Flash 3.1 / Pro 3</p>
+          )}
+        </div>
+
+        {/* ── Resolution ─── */}
+        {!isFlash25 && (
+          <div className="space-y-1.5">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resolution</span>
+            <div className="grid grid-cols-4 gap-1">
+              {[
+                { v: '0.5k', l: '0.5K', hint: 'Draft' },
+                { v: '1k',   l: '1K',   hint: 'Normal' },
+                { v: '2k',   l: '2K',   hint: 'High' },
+                { v: '4k',   l: '4K',   hint: 'Ultra' },
+              ].map(({ v, l, hint }) => (
+                <button
+                  key={v}
+                  onClick={() => updateData('resolution', v)}
+                  title={hint}
+                  className={`py-1 rounded text-[8px] font-black border transition-all
+                    ${nodeData.resolution === v || (!nodeData.resolution && v === '1k')
+                      ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
+                      : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:border-white/15 hover:text-zinc-400'
+                    }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Thinking mode ─── */}
+        <div className={`flex items-center justify-between p-3 rounded-xl border transition-all
+          ${isPro
+            ? 'bg-violet-500/5 border-violet-500/20 cursor-pointer hover:bg-violet-500/10'
+            : 'bg-white/[0.02] border-white/5 opacity-35 cursor-not-allowed'
+          }`}
+          onClick={() => isPro && updateData('thinking', !nodeData.thinking)}
+        >
+          <div className="space-y-0.5">
+            <p className="text-[9px] font-black text-zinc-300 uppercase tracking-widest flex items-center gap-1.5">
+              <span>🧠</span> Thinking Mode
+            </p>
+            <p className="text-[7px] text-zinc-600 font-medium">
+              {isPro ? 'Deep reasoning before generation (+30s)' : 'Pro 3 model required'}
+            </p>
+          </div>
+          <div className={`w-8 h-4 rounded-full border transition-all flex items-center px-0.5
+            ${isPro && nodeData.thinking
+              ? 'bg-violet-500 border-violet-500 justify-end'
+              : 'bg-white/5 border-white/10 justify-start'
+            }`}>
+            <div className={`w-3 h-3 rounded-full transition-all
+              ${isPro && nodeData.thinking ? 'bg-white' : 'bg-zinc-600'}`} />
           </div>
         </div>
 
-        <button 
-          className="execute-btn w-full" 
-          onClick={onRun} 
+        {/* ── Reference images connected indicator ─── */}
+        {connectedSlots.some(Boolean) && (
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/15">
+            <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">Ref Images</span>
+            <div className="flex gap-1.5 ml-auto">
+              {REF_SLOTS.map((slot, i) => (
+                <div key={slot.id}
+                  className={`w-4 h-4 rounded border text-[6px] font-black flex items-center justify-center transition-all
+                    ${connectedSlots[i]
+                      ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                      : 'bg-white/[0.02] border-white/5 text-zinc-700'
+                    }`}
+                >
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Generate button ─── */}
+        <button
+          className="execute-btn w-full !py-3 !text-xs"
+          onClick={onRun}
           disabled={status === 'running'}
         >
-          {status === 'running' ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-          <span className="ml-2">
-            {status === 'running' ? 'THINKING...' : 'GENERATE FROM FLASH'}
-          </span>
+          {status === 'running'
+            ? <><Loader2 size={12} className="animate-spin" /><span className="ml-2">{isPro && nodeData.thinking ? 'THINKING...' : 'GENERATING...'}</span></>
+            : <><Sparkles size={12} /><span className="ml-2">GENERATE IMAGE</span></>
+          }
         </button>
 
+        {/* ── Progress bar ─── */}
         {status === 'running' && (
-          <div className="space-y-2">
-            <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-cyan-500 transition-all duration-300 shadow-[0_0_8px_rgba(6,182,212,0.5)]"
+          <div className="space-y-1">
+            <div className="w-full bg-white/5 h-0.5 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-[7px] text-cyan-500/60 font-medium animate-pulse text-center uppercase tracking-tighter">
-              Generating High Quality Nano Banana 2 (20-40s)...
+            <p className="text-[7px] text-yellow-500/50 font-medium text-center uppercase tracking-widest animate-pulse">
+              {isPro && nodeData.thinking
+                ? `Nano Banana Pro · Thinking → Generating (40-90s)... ${Math.round(progress)}%`
+                : `Flash ${selectedModel === 'flash31' ? '3.1' : '2.5'} · Generating (15-35s)... ${Math.round(progress)}%`
+              }
             </p>
           </div>
         )}
 
+        {/* ── Result preview ─── */}
         <div className="drop-zone overflow-hidden bg-slate-50 min-h-[160px] border-slate-200/60 group/media relative">
           {result ? (
-            <img src={result} className="w-full h-full object-cover group-hover/media:scale-105 transition-transform duration-700" alt="Result" />
+            <>
+              <img src={result} className="w-full h-full object-cover group-hover/media:scale-105 transition-transform duration-700" alt="Result" />
+              <button
+                onClick={() => setShowFullSize(true)}
+                className="absolute bottom-2 right-2 bg-black/60 hover:bg-black/80 text-white text-[8px] font-black px-2 py-1 rounded-lg flex items-center gap-1 opacity-0 group-hover/media:opacity-100 transition-opacity"
+              >
+                <Maximize2 size={10} /> FULLSCREEN
+              </button>
+            </>
           ) : (
             <div className="flex flex-col items-center gap-2 opacity-20">
               <ImageIcon className="text-zinc-400" size={32} />
-              <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">No content generated</span>
+              <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">No image generated</span>
             </div>
           )}
         </div>
       </div>
 
+      {/* ── Output handle ─── */}
       <div className="handle-wrapper handle-right">
-        <span className="handle-label">Asset out</span>
+        <span className="handle-label">Image out</span>
         <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
+
+      {/* ── Fullscreen overlay ─── */}
+      {showFullSize && result && (
+        <div
+          className="fixed inset-0 z-[9999] bg-black/92 flex items-center justify-center p-10 cursor-zoom-out nodrag nopan"
+          onClick={() => setShowFullSize(false)}
+        >
+          <div className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors">
+            <X size={36} strokeWidth={2} />
+          </div>
+          <img src={result} className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain" alt="Full size" />
+        </div>
+      )}
     </div>
   );
 });
+
 
 export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { 
@@ -2077,7 +2152,7 @@ export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
                     type="range" min="0" max="1" step="0.01"
                     value={nodeData.threshold ?? 0.9}
                     onChange={(e) => updateNestedData('threshold', parseFloat(e.target.value))}
-                    className="node-slider accent-pink-500"
+                    className="node-slider nodrag accent-pink-500"
                   />
                </div>
 
@@ -2090,7 +2165,7 @@ export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
                     type="range" min="-10" max="10" step="1"
                     value={nodeData.expansion ?? 0}
                     onChange={(e) => updateNestedData('expansion', parseInt(e.target.value))}
-                    className="node-slider accent-cyan-500"
+                    className="node-slider nodrag accent-cyan-500"
                   />
                </div>
 
@@ -2103,7 +2178,7 @@ export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
                     type="range" min="0" max="2" step="0.1"
                     value={nodeData.feather ?? 0.6}
                     onChange={(e) => updateNestedData('feather', parseFloat(e.target.value))}
-                    className="node-slider accent-blue-400"
+                    className="node-slider nodrag accent-blue-400"
                   />
                </div>
             </div>
@@ -2632,84 +2707,6 @@ export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
     </div>
   );
 });
-export const VideoBackgroundRemovalNode = memo(({ id, data }: NodeProps<any>) => {
-  const nodeData = data as any;
-  const { setNodes } = useReactFlow();
-  const [status, setStatus] = useState('idle');
-
-  const onRun = async () => {
-    const sourceEdge = (window as any).edges?.find((e: any) => e.target === id && e.targetHandle === 'video');
-    const sourceNode = (window as any).nodes?.find((n: any) => n.id === sourceEdge?.source);
-    const video = sourceNode?.data.value;
-
-    if (!video) return alert("Need video input!");
-
-    setStatus('running');
-    try {
-      const res = await fetch('/api/spaces/video-matte', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ video })
-      });
-
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
-
-      setNodes((nds: any) => nds.map((n: any) => n.id === id ? { 
-        ...n, 
-        data: { 
-          ...n.data, 
-          mask: json.mask_url,
-          rgba: json.rgba_url,
-          green: json.green_url,
-          value: json.rgba_url,
-          type: 'video'
-        } 
-      } : n));
-      setStatus('done');
-    } catch (err) {
-      console.error(err);
-      setStatus('error');
-    }
-  };
-
-  return (
-    <div className="custom-node video-removal-node">
-      <div className="node-header bg-gradient-to-r from-purple-600 to-indigo-600">
-        <Video size={16} className="text-white" />
-        <div className="node-title text-white">Quick Matte Mask</div>
-        <div className="node-type-tag bg-white/20 text-white/80">851-labs / SAM2</div>
-      </div>
-
-      <div className="p-4 space-y-4">
-        <div className="handle-wrapper handle-left">
-          <Handle type="target" position={Position.Left} id="video" className="handle-video" />
-          <span className="handle-label text-purple-400">Video In</span>
-        </div>
-
-        <button 
-          onClick={onRun}
-          disabled={status === 'running'}
-          className="run-button w-full py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-[10px] font-black uppercase tracking-widest text-white transition-all flex items-center justify-center gap-2"
-        >
-          {status === 'running' ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
-          {status === 'running' ? 'Processing...' : 'Remove Background'}
-        </button>
-
-        <div className="grid grid-cols-2 gap-2 mt-2">
-          <div className="handle-wrapper handle-right">
-            <span className="handle-label text-emerald-400">Mask</span>
-            <Handle type="source" position={Position.Right} id="mask" className="handle-mask" />
-          </div>
-          <div className="handle-wrapper handle-right">
-            <span className="handle-label text-purple-400">RGBA</span>
-            <Handle type="source" position={Position.Right} id="rgba" className="handle-video" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-});
 
 const CameraMotionSelector = ({ value, onChange }: { value: string, onChange: (val: string) => void }) => {
   const motions = [
@@ -3092,8 +3089,8 @@ export const PainterNode = memo(({ id, data }: NodeProps<any>) => {
         <span className="handle-label text-emerald-500">Base Image</span>
       </div>
 
-      <div className="node-content p-3 space-y-3">
-        <div ref={containerRef} className="nodrag nopan bg-[#000000] rounded-lg overflow-hidden flex items-center justify-center relative touch-none border border-slate-700">
+      <div className="node-content p-3 space-y-3 flex flex-col items-center">
+        <div ref={containerRef} className="nodrag nopan bg-[#000000] rounded-2xl overflow-hidden flex items-center justify-center relative touch-none border border-slate-700 w-full shadow-inner">
           <canvas
             ref={canvasRef}
             width={width}
@@ -3332,7 +3329,7 @@ export const CropNode = memo(({ id, data }: NodeProps<any>) => {
       <div className="node-content p-3 space-y-3 flex flex-col items-center">
         <div 
           ref={containerRef}
-          className="relative bg-black rounded-lg border border-white/10 overflow-hidden flex items-center justify-center min-h-[150px] w-full touch-none select-none nodrag nopan flex-1"
+          className="relative bg-black rounded-2xl border border-white/10 overflow-hidden flex items-center justify-center min-h-[150px] w-full touch-none select-none nodrag nopan flex-1 shadow-inner"
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
@@ -3421,3 +3418,545 @@ export const CropNode = memo(({ id, data }: NodeProps<any>) => {
     </div>
   );
 });
+
+// --- BEZIER MASK NODE ---
+export const BezierMaskNode = memo(({ id, data }: NodeProps<any>) => {
+  const { setNodes } = useReactFlow();
+  const edges = useEdges();
+  const nodes = useNodes();
+  
+  const nodeData = data as BaseNodeData & { 
+    points?: any[]; 
+    closed?: boolean;
+    invert?: boolean;
+    result_mask?: string;
+    result_rgba?: string;
+  };
+
+  const [points, setPoints] = useState<any[]>(nodeData.points || []);
+  const [closed, setClosed] = useState<boolean>(nodeData.closed || false);
+  const [invert, setInvert] = useState<boolean>(nodeData.invert || false);
+  const [mode, setMode] = useState<'draw' | 'edit'>('draw');
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'original' | 'mask' | 'cutout'>('cutout');
+  
+  // Interaction State
+  const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
+  const [activeHandle, setActiveHandle] = useState<'anchor' | 'in' | 'out' | null>(null);
+  
+  // Zoom/Pan State for Fullscreen Editor
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0, px: 0, py: 0 });
+  
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // Retrieve Source Image
+  const inputEdge = edges.find(e => e.target === id);
+  const inputNode = nodes.find(n => n.id === inputEdge?.source);
+  const rawValue = inputNode?.data?.value;
+  const sourceImage = typeof rawValue === 'string' ? rawValue : undefined;
+
+  const updateData = (key: string, val: any) => {
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
+  };
+
+  // Convert client coords to 0-100% relative to SVG, accounting for zoom/pan
+  const getCoords = (e: React.PointerEvent) => {
+    if (!svgRef.current) return { x: 0, y: 0 };
+    const rect = svgRef.current.getBoundingClientRect();
+    // Coords in SVG space (in pixels)
+    const svgX = (e.clientX - rect.left);
+    const svgY = (e.clientY - rect.top);
+    // Convert to 0-100 (unzoomed)
+    const x = ((svgX / zoom - pan.x / zoom) / (rect.width / zoom)) * 100;
+    const y = ((svgY / zoom - pan.y / zoom) / (rect.height / zoom)) * 100;
+    return { x, y };
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    
+    // Middle mouse or Alt+click = pan
+    if (e.button === 1 || (e.button === 0 && e.altKey)) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY, px: pan.x, py: pan.y });
+      return;
+    }
+
+    if (closed && mode === 'draw') return;
+    const { x, y } = getCoords(e);
+
+    if (mode === 'draw') {
+      if (points.length > 2) {
+        const first = points[0];
+        const dist = Math.hypot(first.anchor.x - x, first.anchor.y - y);
+        if (dist < 3 / zoom) {
+          const newPoints = [...points];
+          setClosed(true);
+          setPoints(newPoints);
+          updateData('points', newPoints);
+          updateData('closed', true);
+          generateMaskFromPoints(newPoints, true);
+          return;
+        }
+      }
+      const newPoint = { anchor: { x, y }, hIn: { x, y }, hOut: { x, y } };
+      const newPoints = [...points, newPoint];
+      setPoints(newPoints);
+      setActivePointIndex(newPoints.length - 1);
+      setActiveHandle('out');
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    
+    if (isPanning) {
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      setPan({ x: panStart.px + dx, y: panStart.py + dy });
+      return;
+    }
+
+    if (activePointIndex === null || activeHandle === null) return;
+    const { x, y } = getCoords(e);
+    const pts = [...points];
+    const pt = pts[activePointIndex];
+
+    if (activeHandle === 'anchor') {
+      const dx = x - pt.anchor.x;
+      const dy = y - pt.anchor.y;
+      pt.anchor = { x, y };
+      pt.hIn = { x: pt.hIn.x + dx, y: pt.hIn.y + dy };
+      pt.hOut = { x: pt.hOut.x + dx, y: pt.hOut.y + dy };
+    } else if (activeHandle === 'out') {
+      pt.hOut = { x, y };
+      const dx = x - pt.anchor.x;
+      const dy = y - pt.anchor.y;
+      pt.hIn = { x: pt.anchor.x - dx, y: pt.anchor.y - dy };
+    } else if (activeHandle === 'in') {
+      pt.hIn = { x, y };
+      const dx = x - pt.anchor.x;
+      const dy = y - pt.anchor.y;
+      pt.hOut = { x: pt.anchor.x - dx, y: pt.anchor.y - dy };
+    }
+    setPoints(pts);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (isPanning) { setIsPanning(false); return; }
+    if (activePointIndex !== null) {
+      updateData('points', points);
+      setActivePointIndex(null);
+      setActiveHandle(null);
+    }
+  };
+
+  const deletePoint = (i: number) => {
+    const newPoints = points.filter((_, idx) => idx !== i);
+    if (closed && newPoints.length < 3) setClosed(false);
+    setPoints(newPoints);
+    updateData('points', newPoints);
+    if (newPoints.length < 3) { setClosed(false); updateData('closed', false); }
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.stopPropagation();
+    const delta = e.deltaY < 0 ? 1.15 : 0.87;
+    setZoom(z => Math.max(0.3, Math.min(10, z * delta)));
+  };
+
+  // Build SVG path data from points
+  const buildPath = (pts: any[], isClosed: boolean) => {
+    if (pts.length === 0) return '';
+    let d = `M ${pts[0].anchor.x} ${pts[0].anchor.y}`;
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1], curr = pts[i];
+      d += ` C ${prev.hOut.x} ${prev.hOut.y}, ${curr.hIn.x} ${curr.hIn.y}, ${curr.anchor.x} ${curr.anchor.y}`;
+    }
+    if (isClosed && pts.length > 2) {
+      const prev = pts[pts.length - 1], curr = pts[0];
+      d += ` C ${prev.hOut.x} ${prev.hOut.y}, ${curr.hIn.x} ${curr.hIn.y}, ${curr.anchor.x} ${curr.anchor.y} Z`;
+    }
+    return d;
+  };
+  const pathD = buildPath(points, closed);
+
+  // Helper: draws the bezier path on a 2d context (W x H canvas, pts in 0-100% space)
+  const drawBezierPath = (ctx: CanvasRenderingContext2D, pts: any[], isClosed: boolean, W: number, H: number) => {
+    ctx.beginPath();
+    ctx.moveTo((pts[0].anchor.x / 100) * W, (pts[0].anchor.y / 100) * H);
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], c = pts[i];
+      ctx.bezierCurveTo(
+        (p.hOut.x / 100) * W, (p.hOut.y / 100) * H,
+        (c.hIn.x / 100) * W, (c.hIn.y / 100) * H,
+        (c.anchor.x / 100) * W, (c.anchor.y / 100) * H
+      );
+    }
+    if (isClosed && pts.length > 2) {
+      const p = pts[pts.length - 1], c = pts[0];
+      ctx.bezierCurveTo(
+        (p.hOut.x / 100) * W, (p.hOut.y / 100) * H,
+        (c.hIn.x / 100) * W, (c.hIn.y / 100) * H,
+        (c.anchor.x / 100) * W, (c.anchor.y / 100) * H
+      );
+    }
+    ctx.closePath();
+  };
+
+  const generateMaskFromPoints = (pts: any[], isClosed: boolean) => {
+    if (!sourceImage || pts.length < 3) {
+      console.warn('[BezierMask] Cannot generate: sourceImage=', !!sourceImage, 'pts=', pts.length);
+      return;
+    }
+
+    const img = new Image();
+    // Do NOT set crossOrigin - it causes silent failures with blob/data URLs
+    
+    img.onerror = (e) => {
+      console.error('[BezierMask] Failed to load source image:', e);
+      alert('Bezier Mask: Error al cargar la imagen fuente. Intenta de nuevo.');
+    };
+
+    img.onload = () => {
+      try {
+        const W = img.naturalWidth || 1920;
+        const H = img.naturalHeight || 1080;
+        console.log('[BezierMask] Generating mask. Image size:', W, 'x', H, 'Points:', pts.length, 'Closed:', isClosed);
+
+        // --- MASK CANVAS (B/W) ---
+        const maskCanvas = document.createElement('canvas');
+        maskCanvas.width = W; maskCanvas.height = H;
+        const mCtx = maskCanvas.getContext('2d')!;
+        mCtx.fillStyle = invert ? '#ffffff' : '#000000';
+        mCtx.fillRect(0, 0, W, H);
+        drawBezierPath(mCtx, pts, isClosed, W, H);
+        mCtx.fillStyle = invert ? '#000000' : '#ffffff';
+        mCtx.fill();
+        const maskDataUrl = maskCanvas.toDataURL('image/png');
+
+        // --- RGBA CUTOUT using destination-in compositing (most reliable approach) ---
+        const rgbaCanvas = document.createElement('canvas');
+        rgbaCanvas.width = W; rgbaCanvas.height = H;
+        const rCtx = rgbaCanvas.getContext('2d')!;
+
+        if (invert) {
+          // Inverted: draw full image, then erase the bezier area
+          rCtx.drawImage(img, 0, 0);
+          rCtx.globalCompositeOperation = 'destination-out';
+          drawBezierPath(rCtx, pts, isClosed, W, H);
+          rCtx.fillStyle = 'black';
+          rCtx.fill();
+        } else {
+          // Normal: draw image, then use destination-in to keep only inside bezier area
+          rCtx.drawImage(img, 0, 0);
+          rCtx.globalCompositeOperation = 'destination-in';
+          drawBezierPath(rCtx, pts, isClosed, W, H);
+          rCtx.fillStyle = 'black'; // fill color doesn't matter, alpha does
+          rCtx.fill();
+        }
+
+        let rgbaDataUrl: string;
+        try {
+          rgbaDataUrl = rgbaCanvas.toDataURL('image/png');
+        } catch (corsErr) {
+          console.error('[BezierMask] Canvas tainted (CORS). Trying without transparency...', corsErr);
+          // Fallback: draw on white background if canvas is tainted
+          const fallback = document.createElement('canvas');
+          fallback.width = W; fallback.height = H;
+          const fCtx = fallback.getContext('2d')!;
+          fCtx.drawImage(img, 0, 0);
+          rgbaDataUrl = fallback.toDataURL('image/jpeg', 0.9);
+        }
+
+        console.log('[BezierMask] Generated RGBA. Length:', rgbaDataUrl.length);
+
+        setNodes((nds: any) => nds.map((n: any) => n.id === id ? {
+          ...n,
+          data: {
+            ...n.data,
+            mask: maskDataUrl,
+            result_mask: maskDataUrl,
+            rgba: rgbaDataUrl,
+            result_rgba: rgbaDataUrl,
+            value: rgbaDataUrl,
+            type: 'image'
+          }
+        } : n));
+      } catch (err) {
+        console.error('[BezierMask] Error generating mask:', err);
+        alert('Error al generar la máscara: ' + String(err));
+      }
+    };
+
+    img.src = sourceImage;
+  };
+
+  const generateMask = () => generateMaskFromPoints(points, closed);
+
+
+
+  const clearPath = () => {
+    setPoints([]);
+    setClosed(false);
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    updateData('points', []);
+    updateData('closed', false);
+    updateData('value', null);
+    updateData('result_mask', null);
+    updateData('result_rgba', null);
+  };
+
+  const getPreviewImage = () => {
+    switch (previewMode) {
+      case 'original': return sourceImage;
+      case 'mask': return nodeData.result_mask;
+      case 'cutout': return nodeData.result_rgba;
+      default: return sourceImage;
+    }
+  };
+
+  const svgTransform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
+  const hasMask = !!(nodeData.result_rgba);
+
+  return (
+    <div className={`custom-node mask-node w-[360px]`}>
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Bezier Mask" />
+      <div className="handle-wrapper handle-left">
+        <Handle type="target" position={Position.Left} id="image" className="handle-image" />
+        <span className="handle-label">Media Input</span>
+      </div>
+      
+      <div className="node-header bg-gradient-to-r from-cyan-600/20 to-indigo-600/20">
+        <Scissors size={16} className="text-cyan-400" />
+        <span>Bezier Mask</span>
+        <button 
+          onClick={() => setIsStudioOpen(true)}
+          className="ml-auto bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-tighter hover:bg-cyan-500/30 transition-all flex items-center gap-1.5"
+        >
+          <Maximize2 size={10} /> Studio Mode
+        </button>
+      </div>
+      
+      <div className="flex flex-col">
+        {/* PREVIEW AREA */}
+        <div className="relative group/preview overflow-hidden bg-slate-100/50 h-[220px] flex items-center justify-center border-b border-slate-200/60">
+          <div className="absolute top-2 left-2 z-10 flex gap-1 bg-slate-50/50 p-1 rounded-lg backdrop-blur-md border border-slate-200/60">
+            {(['original', 'mask', 'cutout'] as const).map(m => (
+              <button
+                key={m}
+                onClick={() => setPreviewMode(m)}
+                className={`px-2 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${previewMode === m ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+
+          {getPreviewImage() ? (
+            <img
+              src={getPreviewImage()}
+              className={`w-full h-full object-contain ${previewMode === 'mask' ? 'invert brightness-150' : ''}`}
+              alt="Bezier Preview"
+              style={{ backgroundImage: previewMode === 'cutout' ? 'conic-gradient(#444 25%, #666 25%, #666 50%, #444 50%, #444 75%, #666 75%)' : undefined, backgroundSize: previewMode === 'cutout' ? '16px 16px' : undefined }}
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-2 opacity-20">
+              <Scissors size={40} className="text-cyan-400" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">
+                {sourceImage ? 'Open Studio to Draw Mask' : 'Awaiting Input'}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Point count & clear status */}
+        <div className="px-4 py-3 flex items-center justify-between border-b border-slate-200/60">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${hasMask ? 'bg-cyan-500 shadow-[0_0_6px_rgba(6,182,212,0.7)]' : 'bg-white/10'}`} />
+            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+              {hasMask ? `${points.length} pts · Mask Ready` : points.length > 0 ? `${points.length} pts · Open Studio` : 'No Path'}
+            </span>
+          </div>
+          {points.length > 0 && (
+            <button onClick={clearPath} className="text-[8px] text-rose-500 hover:text-rose-400 font-black uppercase tracking-widest transition-colors">
+              Clear Path
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* OUTPUT HANDLES - Same absolute style as BackgroundRemoverNode */}
+      <div className="flex flex-col gap-2 absolute right-[-14px] top-[40px] nodrag">
+        <div className="relative group/h mb-4">
+          <Handle type="source" position={Position.Right} id="mask" className="handle-mask !right-0 shadow-[0_0_10px_rgba(148,163,184,0.5)] cursor-crosshair" />
+          <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[7px] font-black uppercase text-slate-400 bg-black/90 px-1 border border-slate-400/20 rounded opacity-0 group-hover/h:opacity-100 transition-opacity whitespace-nowrap">MASK</span>
+        </div>
+        <div className="relative group/h">
+          <Handle type="source" position={Position.Right} id="rgba" className="handle-image !right-0 shadow-[0_0_10px_rgba(6,182,212,0.5)] cursor-crosshair" />
+          <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[7px] font-black uppercase text-cyan-400 bg-black/90 px-1 border border-cyan-400/20 rounded opacity-0 group-hover/h:opacity-100 transition-opacity whitespace-nowrap">RGBA</span>
+        </div>
+      </div>
+
+      {/* FULLSCREEN STUDIO MODAL */}
+      {isStudioOpen && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-[#0a0a0a]/95 backdrop-blur-xl flex flex-col" onWheel={handleWheel}>
+          
+          {/* TOP BAR */}
+          <div className="h-14 bg-black/50 border-b border-white/10 flex items-center justify-between px-6 shrink-0">
+            <div className="flex items-center gap-3">
+              <Scissors size={18} className="text-cyan-500" />
+              <span className="text-[14px] font-black uppercase tracking-[3px] text-white">Bezier Editor</span>
+              <div className="ml-4 flex items-center gap-1 bg-white/5 border border-white/10 rounded-lg p-1">
+                <button 
+                  onClick={() => setMode('draw')}
+                  className={`px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all ${mode === 'draw' ? 'bg-cyan-500 text-black shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                >
+                  <Scissors size={12} /> Draw
+                </button>
+                <button 
+                  onClick={() => setMode('edit')}
+                  className={`px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all ${mode === 'edit' ? 'bg-cyan-500 text-black shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                >
+                  <Compass size={12} /> Edit
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* ZOOM CONTROLS */}
+              <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-lg p-1">
+                <button onClick={() => setZoom(z => Math.max(0.3, z / 1.3))} className="w-8 h-8 flex items-center justify-center rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-all text-lg font-black">−</button>
+                <span className="text-[11px] font-mono text-cyan-400 px-2 min-w-[56px] text-center">{Math.round(zoom * 100)}%</span>
+                <button onClick={() => setZoom(z => Math.min(10, z * 1.3))} className="w-8 h-8 flex items-center justify-center rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-all text-lg font-black">+</button>
+                <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} className="px-2 h-8 rounded-md text-[9px] text-white/40 hover:text-white hover:bg-white/10 transition-all font-black uppercase">RESET</button>
+              </div>
+
+              <div className="w-px h-6 bg-white/10" />
+
+              <label className="flex items-center gap-2 text-[11px] text-gray-400 font-bold cursor-pointer hover:text-white">
+                <input type="checkbox" checked={invert} onChange={(e) => { setInvert(e.target.checked); updateData('invert', e.target.checked); }} className="accent-cyan-500 w-4 h-4 cursor-pointer" />
+                Invert Mask
+              </label>
+
+              <button onClick={clearPath} className="text-[11px] text-rose-500 hover:text-rose-400 font-bold uppercase transition-colors px-2">Clear</button>
+
+              <button 
+                onClick={() => { generateMask(); setIsStudioOpen(false); }}
+                className="bg-cyan-500 hover:bg-cyan-400 text-black font-black text-[11px] px-6 py-2 rounded-lg uppercase tracking-widest shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all flex items-center gap-2 hover:scale-105 disabled:opacity-40"
+                disabled={!closed || points.length < 3}
+              >
+                <Check size={14} /> Apply Mask
+              </button>
+
+              <button onClick={() => setIsStudioOpen(false)} className="p-2 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-lg transition-colors" title="Close">
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* CANVAS AREA */}
+          <div
+            className="flex-1 overflow-hidden relative flex items-center justify-center cursor-crosshair"
+            style={{ cursor: isPanning ? 'grab' : mode === 'draw' ? 'crosshair' : 'default' }}
+          >
+            {/* Checkerboard background */}
+            <div className="absolute inset-0" style={{ backgroundImage: 'conic-gradient(#1a1a1a 25%, #111 25%, #111 50%, #1a1a1a 50%, #1a1a1a 75%, #111 75%)', backgroundSize: '32px 32px' }} />
+            
+            {/* HELP TEXT */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 text-white/40 text-[9px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-full backdrop-blur-md border border-white/10 z-10 pointer-events-none">
+              {mode === 'draw' ? 'Click to add points · Click first point (red) to close path' : 'Drag anchors or handles · Right-click anchor to delete'}
+            </div>
+
+            {sourceImage ? (
+              <div
+                className="relative inline-block origin-top-left"
+                style={{ transform: svgTransform, willChange: 'transform' }}
+              >
+                <img
+                  src={sourceImage}
+                  alt="Reference"
+                  className="block pointer-events-none select-none"
+                  style={{ maxHeight: 'calc(100vh - 140px)', maxWidth: 'calc(100vw - 80px)', opacity: 0.65 }}
+                  draggable={false}
+                />
+                <svg
+                  ref={svgRef}
+                  className="absolute inset-0 w-full h-full"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onPointerLeave={handlePointerUp}
+                >
+                  {/* PATH FILL */}
+                  <path d={pathD} fill={closed ? 'rgba(6,182,212,0.15)' : 'none'} stroke="#06b6d4" strokeWidth={0.3 / zoom} strokeLinecap="round" strokeLinejoin="round" />
+                  
+                  {/* POINTS & HANDLES */}
+                  {points.map((pt, i) => (
+                    <g key={i}>
+                      {/* Handle Lines */}
+                      <line x1={pt.anchor.x} y1={pt.anchor.y} x2={pt.hIn.x} y2={pt.hIn.y} stroke="rgba(255,255,255,0.3)" strokeWidth={0.15 / zoom} strokeDasharray={`${0.4/zoom} ${0.2/zoom}`} />
+                      <line x1={pt.anchor.x} y1={pt.anchor.y} x2={pt.hOut.x} y2={pt.hOut.y} stroke="rgba(255,255,255,0.3)" strokeWidth={0.15 / zoom} strokeDasharray={`${0.4/zoom} ${0.2/zoom}`} />
+                      
+                      {/* Bezier Handles */}
+                      {mode === 'edit' && (
+                        <>
+                          <circle cx={pt.hIn.x} cy={pt.hIn.y} r={0.8/zoom} fill="rgba(255,255,255,0.8)" stroke="#06b6d4" strokeWidth={0.2/zoom} className="cursor-pointer"
+                            onPointerDown={(e) => { e.stopPropagation(); setActivePointIndex(i); setActiveHandle('in'); }} />
+                          <circle cx={pt.hOut.x} cy={pt.hOut.y} r={0.8/zoom} fill="rgba(255,255,255,0.8)" stroke="#06b6d4" strokeWidth={0.2/zoom} className="cursor-pointer"
+                            onPointerDown={(e) => { e.stopPropagation(); setActivePointIndex(i); setActiveHandle('out'); }} />
+                        </>
+                      )}
+                      
+                      {/* ANCHOR POINT */}
+                      <rect
+                        x={pt.anchor.x - 1/zoom} y={pt.anchor.y - 1/zoom} width={2/zoom} height={2/zoom}
+                        fill={i === 0 && !closed ? '#f43f5e' : (activePointIndex === i ? '#ffffff' : '#06b6d4')}
+                        stroke={i === 0 && !closed ? '#f87171' : 'rgba(255,255,255,0.5)'}
+                        strokeWidth={0.2/zoom}
+                        className="cursor-pointer"
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          if (mode === 'draw' && i === 0 && points.length > 2) {
+                            const newPts = [...points];
+                            setClosed(true);
+                            updateData('closed', true);
+                            generateMaskFromPoints(newPts, true);
+                          } else {
+                            setActivePointIndex(i);
+                            setActiveHandle('anchor');
+                            setMode('edit');
+                          }
+                        }}
+                        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); deletePoint(i); }}
+                      />
+                    </g>
+                  ))}
+                </svg>
+              </div>
+            ) : (
+              <div className="relative flex flex-col items-center gap-4 opacity-40">
+                <Scissors size={64} className="text-cyan-500" strokeWidth={1} />
+                <p className="text-white font-bold uppercase tracking-widest text-sm">Connect an image to the node first</p>
+              </div>
+            )}
+
+            {/* Pan hint */}
+            <div className="absolute bottom-4 right-4 text-[9px] text-white/20 font-bold uppercase tracking-widest pointer-events-none">
+              Alt+Drag or Middle Click to Pan · Scroll to Zoom · Right-click anchor to delete
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+});
+

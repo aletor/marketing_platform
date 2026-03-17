@@ -21,7 +21,6 @@ import '@xyflow/react/dist/style.css';
 import { 
   MediaInputNode, 
   PromptNode, 
-  RunwayNode, 
   GrokNode, 
   ConcatenatorNode, 
   EnhancerNode, 
@@ -35,10 +34,10 @@ import {
   SpaceNode,
   SpaceInputNode,
   SpaceOutputNode,
-  VideoBackgroundRemovalNode,
   GeminiVideoNode,
   PainterNode,
   CropNode,
+  BezierMaskNode,
   ButtonEdge 
 } from './CustomNodes';
 import Sidebar from './Sidebar';
@@ -75,7 +74,6 @@ const initialNodes: Node[] = [];
 const nodeTypes: any = {
   mediaInput: MediaInputNode,
   promptInput: PromptNode,
-  runwayProcessor: RunwayNode,
   grokProcessor: GrokNode,
   concatenator: ConcatenatorNode,
   enhancer: EnhancerNode,
@@ -89,10 +87,10 @@ const nodeTypes: any = {
   space: SpaceNode,
   spaceInput: SpaceInputNode,
   spaceOutput: SpaceOutputNode,
-  videoBackgroundRemoval: VideoBackgroundRemovalNode,
   geminiVideo: GeminiVideoNode,
   painter: PainterNode,
   crop: CropNode,
+  bezierMask: BezierMaskNode,
 };
 
 const edgeTypes = {
@@ -130,6 +128,149 @@ const SpacesContent = () => {
   const [projectToDelete, setProjectToDelete] = useState<any | null>(null);
   const [navigationStack, setNavigationStack] = useState<string[]>([]);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, nodeId?: string } | null>(null);
+
+  // ── Undo / Redo history ──────────────────────────────────────────────────
+  const MAX_HISTORY = 10;
+  const historyRef = useRef<Array<{ nodes: any[]; edges: any[] }>>([]);
+  const futureRef  = useRef<Array<{ nodes: any[]; edges: any[] }>>([]);
+
+  const pushHistory = useCallback((ns: any[], es: any[]) => {
+    historyRef.current = [...historyRef.current.slice(-(MAX_HISTORY - 1)), { nodes: [...ns], edges: [...es] }];
+    futureRef.current = []; // clear redo on new action
+  }, []);
+
+  const undo = useCallback(() => {
+    if (historyRef.current.length < 2) return;
+    const current = historyRef.current.pop()!;
+    futureRef.current.unshift(current);
+    const prev = historyRef.current[historyRef.current.length - 1];
+    setNodes([...prev.nodes]);
+    setEdges([...prev.edges]);
+  }, [setNodes, setEdges]);
+
+  const redo = useCallback(() => {
+    if (futureRef.current.length === 0) return;
+    const next = futureRef.current.shift()!;
+    historyRef.current.push(next);
+    setNodes([...next.nodes]);
+    setEdges([...next.edges]);
+  }, [setNodes, setEdges]);
+
+  // ── Add node + smart auto-connect ──────────────────────────────────────
+  const addNodeAtCenter = useCallback((type: string, extraData: Record<string, any> = {}) => {
+    const center = screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    const newId  = `${type}_${Date.now()}`;
+    const newNode = {
+      id: newId,
+      type,
+      position: { x: center.x - 160, y: center.y - 120 },
+      data: { label: '', ...extraData },
+    };
+
+    // ── Auto-connect selected nodes ──────────────────────────────────────
+    const selectedNodes = nodes.filter(n => n.selected);
+    const newMeta   = NODE_REGISTRY[type];
+    const autoEdges: any[] = [];
+
+    // Concatenator has dynamic handles p0-p7 (not stored in registry as p-n)
+    const CONCAT_SLOTS = ['p0','p1','p2','p3','p4','p5','p6','p7'];
+
+    if (newMeta && selectedNodes.length > 0) {
+      let concatSlot = 0; // track which slot for concatenator multi-input
+
+      for (const sel of selectedNodes) {
+        const selMeta = NODE_REGISTRY[sel.type];
+        if (!selMeta) continue;
+
+        let connected = false;
+
+        // ── Direction A: selected → new (selected as source) ──────────────
+        for (const out of selMeta.outputs) {
+          for (const inp of newMeta.inputs) {
+            if (out.type !== inp.type) continue;
+            // Special: concatenator uses real handles p0-p7
+            const targetHandle = (type === 'concatenator') ? CONCAT_SLOTS[concatSlot++] : inp.id;
+            if (type === 'concatenator' && concatSlot > CONCAT_SLOTS.length) break;
+            autoEdges.push({
+              id: `ae-${sel.id}-${newId}-${out.id}-${targetHandle}`,
+              source: sel.id,
+              sourceHandle: out.id,
+              target: newId,
+              targetHandle,
+              type: 'buttonEdge',
+              animated: true,
+            });
+            connected = true;
+            break;
+          }
+          if (connected) break;
+        }
+
+        if (!connected) {
+          // ── Direction B: new → selected (new as source) ─────────────────
+          for (const out of newMeta.outputs) {
+            for (const inp of selMeta.inputs) {
+              if (out.type !== inp.type) continue;
+              autoEdges.push({
+                id: `ae-${newId}-${sel.id}-${out.id}-${inp.id}`,
+                source: newId,
+                sourceHandle: out.id,
+                target: sel.id,
+                targetHandle: inp.id,
+                type: 'buttonEdge',
+                animated: true,
+              });
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    setNodes(nds => {
+      const next = [...nds, newNode];
+      pushHistory(next, [...edges, ...autoEdges]);
+      return next;
+    });
+    if (autoEdges.length > 0) {
+      setEdges(es => [...es, ...autoEdges]);
+    }
+  }, [screenToFlowPosition, nodes, edges, setNodes, setEdges, pushHistory]);
+
+
+  // ── Keyboard shortcuts ───────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const typing = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (typing) return;
+
+      // Undo / Redo
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+        return;
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'p': addNodeAtCenter('promptInput'); break;
+        case 'n': addNodeAtCenter('nanoBanana'); break;
+        case 'd': addNodeAtCenter('mediaDescriber'); break;
+        case 'c': addNodeAtCenter('imageComposer'); break;
+        case 'l': addNodeAtCenter('imageComposer'); break;   // alias: 'l' = composer
+        case 'q': addNodeAtCenter('concatenator'); break;
+        case 'e': addNodeAtCenter('imageExport'); break;
+        case 'v': addNodeAtCenter('geminiVideo'); break;
+        case 's': addNodeAtCenter('space', { label: 'Space', hasInput: true, hasOutput: true }); break;
+        case 'x': addNodeAtCenter('crop'); break;
+        case 'f': fitView({ padding: 0.2, duration: 800 }); break;
+        default: break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [addNodeAtCenter, undo, redo, fitView]);
   
   // Access Security
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -668,6 +809,14 @@ const SpacesContent = () => {
   }, [nodes, edges, setNodes, fitView]);
 
   const onGenerateAssistant = async (prompt: string) => {
+    // Client-side clear detection — no AI needed for simple canvas reset
+    const clearKeywords = ['clear', 'limpiar', 'reset', 'borrar', 'vaciar', 'limpia', 'elimina todo', 'nueva pizarra', 'start over', 'new canvas'];
+    if (clearKeywords.some(kw => prompt.toLowerCase().includes(kw))) {
+      setNodes([]);
+      setEdges([]);
+      return;
+    }
+
     setIsGeneratingAssistant(true);
     try {
       const res = await fetch('/api/spaces/assistant', {
@@ -691,11 +840,6 @@ const SpacesContent = () => {
         setNodes(validatedNodes);
         setEdges(data.edges);
         
-        // Remove the forced reset of IDs to maintain context inside spaces or projects
-        // setActiveProjectId(null);
-        // setActiveSpaceId(null);
-        // setCurrentName('');
-        
         // Smooth transition to center generated workflow
         setTimeout(() => {
           fitView({ padding: 0.2, duration: 800 });
@@ -709,9 +853,21 @@ const SpacesContent = () => {
     }
   };
 
+
+  const onNodeDragStop = useCallback((_: any, __: any, ns: any[]) => {
+    pushHistory(ns, edges);
+  }, [pushHistory, edges]);
+
   const onConnect: OnConnect = useCallback(
-    (params) => setEdges((eds) => addEdge({ ...params, type: 'buttonEdge' }, eds)),
-    [setEdges]
+    (params) => {
+      const edgeId = `e-${params.source}-${params.target}-${params.sourceHandle || 'def'}-${params.targetHandle || 'def'}-${Math.random().toString(36).substring(2, 6)}`;
+      setEdges((eds) => {
+        const next = addEdge({ ...params, id: edgeId, type: 'buttonEdge' }, eds);
+        pushHistory(nodes, next);
+        return next;
+      });
+    },
+    [setEdges, nodes, pushHistory]
   );
 
   const onPaneContextMenu = useCallback((event: any) => {
@@ -866,6 +1022,11 @@ const SpacesContent = () => {
        if (actualType === targetHandleType) return true;
     }
 
+    // Allow: mask nodes can connect their 'rgba' output (type image) to any image input
+    // This handles BackgroundRemover and BezierMask both having 'rgba' id with type 'image'
+    if (connection.sourceHandle === 'rgba' && targetHandleType === 'image') return true;
+    if (connection.sourceHandle === 'rgba' && targetHandleType === 'url') return true;
+
     // Match exact types or allow flexible 'url'
     if (sourceHandleType === 'url' || targetHandleType === 'url') return true;
     return sourceHandleType === targetHandleType;
@@ -978,6 +1139,8 @@ const SpacesContent = () => {
           onDragOver={onDragOver}
           onPaneContextMenu={onPaneContextMenu}
           onNodeContextMenu={onNodeContextMenu}
+          onNodeDragStop={onNodeDragStop}
+
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={defaultEdgeOptions}
@@ -987,7 +1150,9 @@ const SpacesContent = () => {
           minZoom={0.05}
           maxZoom={4}
           proOptions={{ hideAttribution: true }}
+          multiSelectionKeyCode="Shift"
           className="spaces-canvas"
+
         >
           <Background color="#111" gap={40} size={1} />
           
@@ -1234,72 +1399,86 @@ const SpacesContent = () => {
 
         {/* Modals */}
         {showSaveModal && (
-          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md bg-white border border-slate-200 shadow-2xl shadow-slate-200/50 relative overflow-hidden group">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-rose-500 to-transparent opacity-50" />
-              <button 
-                onClick={() => setShowSaveModal(false)}
-                className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors"
-              >
-                <X size={20} />
-              </button>
-              <h2 className="text-2xl font-black text-slate-900">Save Workspace</h2>
-              <p className="text-gray-400 text-xs mb-8">Give your AI pipeline a name to find it later in your hub.</p>
-              
-              <div className="relative mb-8">
-                <Settings2 className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-500" size={18} />
-                <input 
-                  type="text" 
-                  autoFocus
-                  placeholder="e.g., Cinematic Video Flow..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-4 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-rose-500/50 transition-colors"
-                  value={currentName}
-                  onChange={(e) => setCurrentName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && saveProject()}
-                />
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowSaveModal(false)}></div>
+            <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10 border border-slate-200">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-black text-slate-900 uppercase tracking-wide flex items-center gap-3">
+                  <Save size={20} className="text-cyan-500" /> Save Workspace
+                </h2>
+                <button 
+                  onClick={() => setShowSaveModal(false)}
+                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-full transition-colors"
+                >
+                  <X size={16} />
+                </button>
               </div>
-
-              <button 
-                onClick={() => saveProject()}
-                className="w-full py-4 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all shadow-lg shadow-rose-600/20"
-              >
-                CONFIRM AND SAVE
-              </button>
+              <input
+                type="text"
+                autoFocus
+                placeholder="Give your project a name..."
+                value={currentName}
+                onChange={(e) => setCurrentName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveProject();
+                  if (e.key === 'Escape') setShowSaveModal(false);
+                }}
+                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none transition-all placeholder:text-slate-400 mb-6"
+              />
+              <div className="flex gap-3 justify-end">
+                <button 
+                  onClick={() => setShowSaveModal(false)}
+                  className="px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest text-slate-500 hover:bg-slate-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => saveProject()}
+                  className="px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest bg-cyan-500 hover:bg-cyan-400 text-white shadow-lg shadow-cyan-500/30 transition-all flex items-center gap-2"
+                >
+                  {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save Project
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {showLoadModal && (
-          <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="w-full max-w-2xl bg-white border border-slate-200 shadow-2xl shadow-slate-200/50 relative max-h-[80vh] flex flex-col">
-              <button 
-                onClick={() => setShowLoadModal(false)}
-                className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors"
-              >
-                <X size={20} />
-              </button>
-              <h2 className="text-2xl font-black text-slate-900">Your Projects</h2>
-              <p className="text-gray-400 text-xs mb-8">Select a configuration to restore it to the canvas.</p>
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowLoadModal(false)}></div>
+            <div className="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl relative z-10 border border-slate-200 max-h-[80vh] flex flex-col">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-black text-slate-900 uppercase tracking-wide flex items-center gap-3">
+                  <FolderOpen size={20} className="text-rose-500" /> Your Projects
+                </h2>
+                <button 
+                  onClick={() => setShowLoadModal(false)}
+                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-full transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <p className="text-slate-500 text-sm mb-6">Select a configuration to restore it to the canvas.</p>
               
-              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto custom-scrollbar -mx-8 px-8 pb-8">
                 {savedProjects.length === 0 ? (
-                  <div className="text-center py-20 border border-dashed border-white/10 rounded-3xl">
-                    <FolderOpen className="mx-auto mb-4 text-gray-600" size={40} />
-                    <p className="text-gray-500 text-sm italic">No saved projects found yet.</p>
+                  <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-3xl">
+                    <FolderOpen className="mx-auto mb-4 text-slate-400" size={48} />
+                    <p className="text-slate-500 font-bold">No saved projects found yet.</p>
                   </div>
                 ) : (
                   <div className="grid gap-4">
                     {savedProjects.map((project) => (
-                      <div key={project.id} className="group/item flex items-center gap-4 p-4 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-2xl transition-all">
-                        <div className="w-12 h-12 bg-rose-500/20 rounded-xl flex items-center justify-center border border-rose-500/30">
-                          <Workflow size={20} className="text-rose-500" />
+                      <div key={project.id} className="group/item flex items-center gap-4 p-4 bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl transition-all shadow-sm hover:shadow-md">
+                        <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center border border-rose-100 shrink-0">
+                          <Workflow size={24} />
                         </div>
                         <div className="flex-1 min-w-0">
                           {editingId === project.id ? (
                             <input 
                               autoFocus
                               type="text"
-                              className="bg-white/10 border border-rose-500/50 rounded-lg px-2 py-1 text-sm font-bold text-white w-full focus:outline-none"
+                              className="bg-slate-50 border-2 border-rose-500 rounded-lg px-3 py-2 text-sm font-black text-slate-900 w-full focus:outline-none"
                               value={editingName}
                               onChange={(e) => setEditingName(e.target.value)}
                               onBlur={() => renameProject(project.id, editingName)}
@@ -1311,41 +1490,41 @@ const SpacesContent = () => {
                                 setEditingId(project.id);
                                 setEditingName(project.name);
                               }}
-                              className="text-sm font-bold text-slate-900 truncate uppercase tracking-tight cursor-pointer hover:text-rose-600 flex items-center gap-2 group/title"
+                              className="text-[15px] font-black text-slate-900 truncate tracking-tight cursor-pointer hover:text-rose-600 flex items-center gap-2 group/title"
                             >
                               {project.name}
-                              <Edit2 size={12} className="opacity-0 group-hover/title:opacity-50 transition-opacity" />
+                              <Edit2 size={12} className="opacity-0 group-hover/title:opacity-100 text-slate-400 transition-opacity" />
                             </h4>
                           )}
-                          <div className="flex items-center gap-3 mt-1">
-                             <div className="flex items-center gap-1 text-[9px] text-gray-500 uppercase font-black tracking-widest">
-                               <Calendar size={10} /> {new Date(project.updatedAt).toLocaleDateString()}
+                          <div className="flex items-center gap-4 mt-2">
+                             <div className="flex items-center gap-1.5 text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+                               <Calendar size={12} /> {new Date(project.updatedAt).toLocaleDateString()}
                              </div>
-                             <div className="flex items-center gap-1 text-[9px] text-gray-500 uppercase font-black tracking-widest">
-                               <Settings2 size={10} /> {Object.keys(project.spaces || {}).length} Spaces
+                             <div className="flex items-center gap-1.5 text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+                               <Settings2 size={12} /> {Object.keys(project.spaces || {}).length} Spaces
                              </div>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0">
                           <button 
                             onClick={() => duplicateProject(project)}
                             title="Duplicate Project"
-                            className="p-2.5 text-gray-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all"
+                            className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 bg-slate-100 rounded-xl transition-all"
                           >
                             <Copy size={16} />
                           </button>
                           <button 
                             onClick={() => setProjectToDelete(project)}
                             title="Delete Project"
-                            className="p-2.5 text-gray-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
+                            className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-50 bg-slate-100 rounded-xl transition-all"
                           >
                             <Trash2 size={16} />
                           </button>
                           <button 
                             onClick={() => loadProject(project)}
-                            className="px-4 py-2 bg-white/10 hover:bg-white text-gray-400 hover:text-black rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
+                            className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-slate-900/20"
                           >
-                            LOAD PROJECT
+                            LOAD
                           </button>
                         </div>
                       </div>
@@ -1359,23 +1538,22 @@ const SpacesContent = () => {
 
         {/* Delete Confirmation Modal */}
         {projectToDelete && (
-          <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-            <div className="w-full max-w-md bg-[#0a0a0a] border border-rose-500/30 rounded-3xl p-8 shadow-[0_0_50px_rgba(244,63,94,0.2)] relative overflow-hidden group">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-rose-500 to-transparent" />
+          <div className="absolute inset-0 z-[150] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+            <div className="w-full max-w-md bg-white border border-rose-200 rounded-3xl p-8 shadow-2xl relative overflow-hidden text-center">
               
-              <div className="w-16 h-16 bg-rose-500/10 rounded-2xl flex items-center justify-center border border-rose-500/20 mb-6 mx-auto">
-                <Trash2 size={32} className="text-rose-500 mr-0" />
+              <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mb-6 mx-auto">
+                <Trash2 size={36} className="text-rose-500" />
               </div>
 
-              <h2 className="text-2xl font-black text-slate-900 text-center">Delete Project?</h2>
-              <p className="text-gray-400 text-xs mb-8 text-center px-4 leading-relaxed">
-                This will permanently remove <span className="text-white font-bold">"{projectToDelete.name}"</span> and all its associated media assets from the server.
+              <h2 className="text-2xl font-black text-slate-900 mb-2">Delete Project?</h2>
+              <p className="text-slate-500 text-sm mb-8 leading-relaxed">
+                This will permanently remove <strong className="text-slate-900">"{projectToDelete.name}"</strong>. This action cannot be undone.
               </p>
               
-              <div className="flex gap-3">
+              <div className="flex gap-4">
                 <button 
                   onClick={() => setProjectToDelete(null)}
-                  className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all"
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-black uppercase text-[11px] tracking-widest transition-all"
                 >
                   CANCEL
                 </button>
@@ -1384,9 +1562,9 @@ const SpacesContent = () => {
                     deleteProject(projectToDelete.id);
                     setProjectToDelete(null);
                   }}
-                  className="flex-1 py-4 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-lg shadow-rose-600/20"
+                  className="flex-1 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black uppercase text-[11px] tracking-widest transition-all shadow-lg shadow-rose-600/20"
                 >
-                  DELETE ALL
+                  DELETE
                 </button>
               </div>
             </div>

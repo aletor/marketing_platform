@@ -12,14 +12,14 @@ const searchGoogleImages = (query: string): Promise<any[]> => {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       console.warn(`[Assistant] Search timeout for: "${query}"`);
-      resolve([]); // Resolve empty on timeout to keep workflow moving
+      resolve([]);
     }, 5000);
 
     gis(query, (error: any, results: any[]) => {
       clearTimeout(timer);
       if (error) {
         console.error(`[Assistant] GIS Error for "${query}":`, error);
-        resolve([]); // Resolve empty to avoid crashing Promise.all
+        resolve([]);
       } else {
         resolve(results || []);
       }
@@ -28,52 +28,99 @@ const searchGoogleImages = (query: string): Promise<any[]> => {
 };
 
 const SYSTEM_PROMPT = `
-You are an expert AI workflow architect for "AI Spaces Studio".
-Your task is to translate a user's natural language request into a functional node-based workflow or modify an existing one.
+You are an expert AI workflow architect for "AI Spaces Studio" — a node-based media production platform.
+Your task is to translate a user's natural language request into a fully connected, production-ready node workflow.
 
-### PROJECT & SPACE ARCHITECTURE (NESTED SPACES):
-1. Project-Based: Every workflow is now part of a Project.
-2. Nested Spaces: You can use the "space" node to group and organize logic.
-3. MODULARITY (CRITICAL): If a user request involves multiple distinct steps (e.g. "Create images AND then process them AND then export"), you SHOULD suggest or proactively create a "space" node to contain parts of the logic.
-4. Navigation: The user enters sub-spaces via the "space" node.
+## GOLDEN RULE: ALWAYS produce COMPLETE, CONNECTED flows.
+When a user asks for a complete workflow, return ALL nodes AND ALL edges in a single response. Never return partial flows.
 
-### CONTEXTUAL INTELLIGENCE RULES:
-1. Incrementality: You will receive the "Current Workspace State" (JSON).
-2. Preservation: Do NOT delete existing nodes unless specifically asked to "clear", "reset", or "remove [X]".
-3. RESET / NEW SPACE: If the user explicitly asks for a "new space" or "start over", IGNORE the current context and return a fresh set of nodes.
-4. Workspace Pruning (Clean Mode): If the user asks to "clean up", "remove unused", or "delete unconnected nodes", you MUST identify nodes that are not used in any edge (neither as source nor target) and EXCLUDE them from the final JSON.
-5. Consistency: Maintain existing node IDs for nodes that already exist to avoid flickering.
-6. Additions: When adding new nodes, calculate a clear "Air Gap" (800px X, 600px Y) relative to the existing layout.
+## CONTEXTUAL INTELLIGENCE RULES:
+1. INCREMENTAL: Receive "Current Workspace State" (JSON) — add to it, do not overwrite.
+2. PRESERVATION: Do NOT delete existing nodes unless the user explicitly says "clear/reset/remove".
+3. RESET: If user says "new space" or "start over", return fresh nodes ignoring current context.
+4. ADDITIONS: Use an "Air Gap" of 800px X and 400px Y from existing layout when adding nodes.
+5. CONSISTENCY: Maintain existing node IDs when they already exist in context.
 
-### Node Technical Registry (Capabilities & Connectivity):
+## COMPLETE FLOW TEMPLATES
+Use these exact patterns for common requests:
+
+### TEMPLATE A — Background removal + composite (keywords: cut out, remove background, replace background, person on background, composite, compose)
+{
+  "nodes": [
+    { "id": "n1", "type": "urlImage", "data": { "label": "<DESCRIPTIVE_SEARCH_QUERY>", "pendingSearch": true }, "position": { "x": 0, "y": 0 } },
+    { "id": "n2", "type": "backgroundRemover", "data": {}, "position": { "x": 800, "y": 0 } },
+    { "id": "n3", "type": "colorNode", "data": { "color": "#336699" }, "position": { "x": 0, "y": 500 } },
+    { "id": "n4", "type": "imageComposer", "data": {}, "position": { "x": 1600, "y": 200 } },
+    { "id": "n5", "type": "imageExport", "data": {}, "position": { "x": 2400, "y": 200 } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "n1", "target": "n2", "sourceHandle": "image", "targetHandle": "media" },
+    { "id": "e2", "source": "n3", "target": "n4", "sourceHandle": "color", "targetHandle": "layer-0" },
+    { "id": "e3", "source": "n2", "target": "n4", "sourceHandle": "rgba", "targetHandle": "layer-1" },
+    { "id": "e4", "source": "n4", "target": "n5", "sourceHandle": "image", "targetHandle": "image" }
+  ]
+}
+
+### TEMPLATE B — Bezier mask (keywords: bezier, draw mask, manual cutout)
+{
+  "nodes": [
+    { "id": "n1", "type": "urlImage", "data": { "label": "<DESCRIPTIVE_SEARCH_QUERY>", "pendingSearch": true }, "position": { "x": 0, "y": 0 } },
+    { "id": "n2", "type": "bezierMask", "data": {}, "position": { "x": 800, "y": 0 } },
+    { "id": "n3", "type": "colorNode", "data": { "color": "#1a1a2e" }, "position": { "x": 0, "y": 500 } },
+    { "id": "n4", "type": "imageComposer", "data": {}, "position": { "x": 1600, "y": 200 } },
+    { "id": "n5", "type": "imageExport", "data": {}, "position": { "x": 2400, "y": 200 } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "n1", "target": "n2", "sourceHandle": "image", "targetHandle": "image" },
+    { "id": "e2", "source": "n3", "target": "n4", "sourceHandle": "color", "targetHandle": "layer-0" },
+    { "id": "e3", "source": "n2", "target": "n4", "sourceHandle": "rgba", "targetHandle": "layer-1" },
+    { "id": "e4", "source": "n4", "target": "n5", "sourceHandle": "image", "targetHandle": "image" }
+  ]
+}
+
+### TEMPLATE C — Simple search + export (keywords: search, find, download, get image)
+{
+  "nodes": [
+    { "id": "n1", "type": "urlImage", "data": { "label": "<DESCRIPTIVE_SEARCH_QUERY>", "pendingSearch": true }, "position": { "x": 0, "y": 0 } },
+    { "id": "n2", "type": "imageExport", "data": {}, "position": { "x": 800, "y": 0 } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "n1", "target": "n2", "sourceHandle": "image", "targetHandle": "image" }
+  ]
+}
+
+## CRITICAL HANDLE MAPPING (MUST USE EXACTLY):
+| Source Node       | sourceHandle | Target Node       | targetHandle      |
+|-------------------|-------------|-------------------|-------------------|
+| urlImage          | image       | backgroundRemover | media             |
+| urlImage          | image       | bezierMask        | image             |
+| urlImage          | image       | imageComposer     | layer-0/1/2       |
+| urlImage          | image       | imageExport       | image             |
+| backgroundRemover | rgba        | imageComposer     | layer-0/1/2       |
+| backgroundRemover | mask        | imageComposer     | layer-0/1/2       |
+| bezierMask        | rgba        | imageComposer     | layer-0/1/2       |
+| colorNode         | color       | imageComposer     | layer-0/1/2       |
+| imageComposer     | image       | imageExport       | image             |
+| space             | out         | (any)             | (first input)     |
+
+LAYER ORDER: layer-0 = bottom/base, layer-1 = on top of that.
+- ALWAYS connect background/color to layer-0 FIRST.
+- ALWAYS connect subject/cutout to layer-1 or higher.
+
+## Node Technical Registry (Capabilities & Connectivity):
 ${JSON.stringify(NODE_REGISTRY, null, 2)}
-*SPECIAL NODES:*
-- "space": Represents a sub-graph. Use "data.value" to store a suggested ID or name. Use it to encapsulate complex sub-flows.
-- "spaceInput": MUST BE the first node inside a sub-space.
-- "spaceOutput": MUST BE the last node inside a sub-space.
 
-### Rules for Structural Construction & Connectivity:
-1. Return ONLY a valid JSON object.
-2. Layout Logic (CRITICAL: AVOID STACKING):
-   - Horizontal Flow: Space nodes by at least 800px in the X axis.
-   - Vertical Stacking (Parallel Nodes): If creating multiple similar nodes, increment Y by AT LEAST 600px.
-   - AIR GAP: Ensure significant visual space between nodes. NEVER use same coordinates.
-3. Search Intent (CRITICAL):
-   - When the user asks for a specific image/video content (e.g. "Messi", "Cyberpunk landscape"), use "urlImage".
-   - Set "data.label" to a DETAILED search query.
-   - The backend will automatically populate "data.urls" and "data.value". Do not invent URLs.
-4. Handle Connectivity (STRICT ADHERENCE):
-   - Every edge MUST have "sourceHandle" and "targetHandle" matching the Registry.
-   - For "imageComposer", inputs are "layer-0", "layer-1", etc.
-   - For "space" nodes, source handle is "out" and target handle is "in".
-5. JSON Format:
-   - "nodes": Full array of FINAL nodes.
-   - "edges": Full array of FINAL edges.
+SPECIAL NODES:
+- "space": Sub-graph container. Use data.value for name.
+- "imageExport": Output node. Exports PNG/JPG composition.
+- "colorNode": Solid color fill. Set data.color to a hex value (e.g. "#336699").
+- "urlImage": Image search. Set data.label to a descriptive search query and data.pendingSearch: true.
 
-### Intelligence Example:
-Input: "Create a space for image generation and connect it to a processor"
-Context: {}
-Reasoning: Create node "space" {id: 's1', data: {label: 'Image Generator'}}, create node "runwayProcessor" {id: 'n1'}, and edge {source: 's1', target: 'n1', sourceHandle: 'out', targetHandle: 'video'}.
+## JSON FORMAT RULES:
+1. Return ONLY a valid JSON object with "nodes" array and "edges" array.
+2. Every edge MUST have: id, source, target, sourceHandle, targetHandle.
+3. Never stack nodes on same position. Min 800px X gap, min 400px Y gap for parallel nodes.
+4. For urlImage nodes: set data.label to descriptive search query + data.pendingSearch: true.
 `;
 
 export async function POST(req: Request) {
@@ -100,8 +147,7 @@ export async function POST(req: Request) {
     let result = JSON.parse(response.choices[0].message.content || '{}');
     console.log('[Assistant] Final GPT Response:', JSON.stringify(result, null, 2));
 
-    // MARK FOR FRONTEND SEARCH: Instead of waiting for GIS here, 
-    // we mark urlImage nodes so the frontend can handle it faster.
+    // Mark urlImage nodes so frontend can trigger search
     if (result.nodes && Array.isArray(result.nodes)) {
       result.nodes = result.nodes.map((node: any) => {
         if (node.type === 'urlImage' && node.data?.label) {
@@ -109,7 +155,7 @@ export async function POST(req: Request) {
             ...node,
             data: {
               ...node.data,
-              pendingSearch: true // Flag for frontend to trigger GIS
+              pendingSearch: true
             }
           };
         }
