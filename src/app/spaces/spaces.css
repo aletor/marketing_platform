@@ -31,8 +31,8 @@
 }
 
 /* ── NodeResizer handles ── */
-.react-flow__resize-control {
-  border-radius: 2px !important;
+.react-flow__resize-control.handle {
+  border-radius: 0 !important;
   width: 7px !important;
   height: 7px !important;
   background: #333333 !important;
@@ -40,15 +40,15 @@
   box-shadow: none !important;
   transition: transform 0.15s, background 0.15s;
 }
-.react-flow__resize-control:hover {
+.react-flow__resize-control.handle:hover {
   transform: scale(1.4);
   background: #555555 !important;
 }
-/* Edge resize lines (middle-of-edge handles) */
+/* Line controls = invisible wider drag zone, no visual */
 .react-flow__resize-control.line {
-  border-radius: 2px !important;
-  background: #333333 !important;
+  background: transparent !important;
   border: none !important;
+  box-shadow: none !important;
 }
 
 
