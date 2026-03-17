@@ -1849,9 +1849,7 @@ const SpacesContent = () => {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={defaultEdgeOptions}
-          fitView
-          fitViewOptions={{ padding: 0.8 }}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.3 }}
+          defaultViewport={{ x: -700, y: 50, zoom: 0.7 }}
           minZoom={0.05}
           maxZoom={4}
           proOptions={{ hideAttribution: true }}
