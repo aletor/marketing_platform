@@ -41,7 +41,8 @@ import {
   Sparkles,
   Eraser,
   Crop,
-  Check
+  Check,
+  Pencil
 } from 'lucide-react';
 import './spaces.css';
 import { NODE_REGISTRY } from './nodeRegistry';
@@ -3666,9 +3667,54 @@ export const PainterNode = memo(({ id, data }: NodeProps<any>) => {
         <span className="text-[7px] font-black uppercase tracking-widest text-amber-600/60 ml-auto">{ratio.label}</span>
       </div>
 
-      {/* Canvas — ONLY render here when NOT fullscreen (same canvas element) */}
-      {!fullscreen && canvasJSX}
-      {!fullscreen && controlsJSX(true)}
+      {/* Small node: preview image only — no painting here */}
+      {!fullscreen && (
+        <>
+          {/* Hidden canvas (still mounts so init effect can run on fullscreen-close restore) */}
+          <div style={{ width: 0, height: 0, overflow: 'hidden', position: 'absolute' }}>
+            {canvasJSX}
+          </div>
+
+          {/* Preview area */}
+          <div className="relative w-full bg-[#0a0a0a]" style={{ height: 180 }}>
+            {data.value ? (
+              <img src={data.value} className="w-full h-full object-contain" alt="Drawing preview" />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full gap-2 opacity-30">
+                <Pencil size={28} className="text-amber-400" />
+                <span className="text-[8px] font-black uppercase tracking-widest text-amber-500">Open to paint</span>
+              </div>
+            )}
+
+            {/* Fullscreen button — center on hover, always accessible */}
+            <button
+              onClick={() => setFullscreen(true)}
+              className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-all group"
+            >
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 bg-amber-500 text-black px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg">
+                <Maximize2 size={12} />
+                Paint
+              </div>
+            </button>
+          </div>
+
+          {/* Mini footer: ratio badge only */}
+          <div className="flex items-center justify-between px-3 py-2 border-t border-white/5">
+            <div className="flex gap-1">
+              {PAINT_RATIOS.map(r => (
+                <span key={r.value}
+                  className={`px-1.5 py-0.5 rounded text-[6px] font-black border ${ratio.value === r.value ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'text-zinc-700 border-transparent'}`}>
+                  {r.label}
+                </span>
+              ))}
+            </div>
+            <button onClick={() => setFullscreen(true)}
+              className="p-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors">
+              <Maximize2 size={11} />
+            </button>
+          </div>
+        </>
+      )}
 
       <div className="handle-wrapper handle-right" style={{ top: '50%' }}>
         <span className="handle-label">Output</span>
