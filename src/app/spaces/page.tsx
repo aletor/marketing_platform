@@ -142,6 +142,25 @@ const SpacesContent = () => {
 
   // ── Window Viewer Mode ─────────────────────────────────────────────────────
   const [windowMode, setWindowMode] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
+
+  // On mount: position viewport so FINAL node is ~50px from right, vertically centered
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const zoom = 0.7;
+      const nodeX = 1400, nodeY = 200, nodeW = 260, nodeH = 180;
+      const marginRight = 50;
+      // Screen position of node's right edge = window.innerWidth - marginRight
+      const vpX = (window.innerWidth - marginRight) - (nodeX + nodeW) * zoom;
+      const vpY = window.innerHeight / 2 - (nodeY + nodeH / 2) * zoom;
+      setViewport({ x: vpX, y: vpY, zoom });
+    }, 50);
+    // Welcome splash disappears at 2.5s
+    const tw = setTimeout(() => setShowWelcome(false), 2500);
+    return () => { clearTimeout(t); clearTimeout(tw); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+
   const [viewerHeight, setViewerHeight] = useState(500); // safe SSR default; updated on mount
   const isDraggingViewer = useRef(false);
   const dragStartY = useRef(0);
@@ -1649,6 +1668,37 @@ const SpacesContent = () => {
   return (
     <div className="flex w-full h-full" ref={reactFlowWrapper} style={{ flexDirection: 'column' }}>
 
+      {/* ── WELCOME SPLASH ─────────────────────────────────────────────────── */}
+      {showWelcome && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 20000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
+          animation: 'welcomeFade 2.5s ease forwards',
+        }}>
+          <style>{`
+            @keyframes welcomeFade {
+              0%   { opacity: 0; transform: scale(0.92); }
+              20%  { opacity: 1; transform: scale(1); }
+              75%  { opacity: 1; transform: scale(1); }
+              100% { opacity: 0; transform: scale(1.04); }
+            }
+          `}</style>
+          <span style={{
+            fontSize: 'clamp(48px,8vw,96px)',
+            fontWeight: 900,
+            letterSpacing: '-0.04em',
+            color: 'transparent',
+            backgroundImage: 'linear-gradient(135deg,#fff 0%,rgba(255,255,255,0.35) 100%)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            userSelect: 'none',
+          }}>
+            Bienvenido
+          </span>
+        </div>
+      )}
+
       {/* ── WINDOW VIEWER PANEL ─────────────────────────────────────────────── */}
       {windowMode && (
         <div
@@ -1849,7 +1899,7 @@ const SpacesContent = () => {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={defaultEdgeOptions}
-          defaultViewport={{ x: -700, y: 50, zoom: 0.7 }}
+          defaultViewport={{ x: -559, y: 134, zoom: 0.7 }}
           minZoom={0.05}
           maxZoom={4}
           proOptions={{ hideAttribution: true }}
