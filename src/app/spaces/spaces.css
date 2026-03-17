@@ -34,28 +34,20 @@
 .react-flow__resize-control.handle {
   width: 16px !important;
   height: 16px !important;
-  background: transparent !important;
+  /* Tiny square rendered via background, centered in the larger hit area */
+  background-color: transparent !important;
+  background-image: linear-gradient(#aaaaaa, #aaaaaa) !important;
+  background-size: 4px 4px !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
   border: none !important;
   box-shadow: none !important;
   border-radius: 0 !important;
-  position: relative !important;
+  transition: background-image 0.15s;
 }
-/* Small visual square via pseudo-element */
-.react-flow__resize-control.handle::after {
-  content: '';
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  background: #aaaaaa;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  border-radius: 0;
-  transition: background 0.15s, transform 0.15s;
-}
-.react-flow__resize-control.handle:hover::after {
-  background: #666666;
-  transform: translate(-50%, -50%) scale(1.6);
+.react-flow__resize-control.handle:hover {
+  background-image: linear-gradient(#666666, #666666) !important;
+  background-size: 5px 5px !important;
 }
 /* Line controls = invisible wider drag zone, no visual */
 .react-flow__resize-control.line {
