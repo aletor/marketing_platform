@@ -32,17 +32,30 @@
 
 /* ── NodeResizer handles ── */
 .react-flow__resize-control.handle {
-  border-radius: 0 !important;
-  width: 7px !important;
-  height: 7px !important;
-  background: #333333 !important;
+  width: 16px !important;
+  height: 16px !important;
+  background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  transition: transform 0.15s, background 0.15s;
+  border-radius: 0 !important;
+  position: relative !important;
 }
-.react-flow__resize-control.handle:hover {
-  transform: scale(1.4);
-  background: #555555 !important;
+/* Small visual square via pseudo-element */
+.react-flow__resize-control.handle::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #aaaaaa;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 0;
+  transition: background 0.15s, transform 0.15s;
+}
+.react-flow__resize-control.handle:hover::after {
+  background: #666666;
+  transform: translate(-50%, -50%) scale(1.6);
 }
 /* Line controls = invisible wider drag zone, no visual */
 .react-flow__resize-control.line {
