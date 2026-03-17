@@ -1799,10 +1799,16 @@ const SpacesContent = () => {
           </div>
         )}
         
-        <AgentHUD onGenerate={onGenerateAssistant} isGenerating={isGeneratingAssistant} />
+        <AgentHUD onGenerate={onGenerateAssistant} isGenerating={isGeneratingAssistant} windowMode={windowMode} />
 
         {/* Action HUD - Consolidating Breadcrumbs & Actions on the Right */}
-        <div key="action-hud" className="absolute top-6 right-6 z-50 flex items-center gap-4">
+        <div
+          key="action-hud"
+          className="flex items-center gap-4"
+          style={windowMode
+            ? { position: 'fixed', top: 8, right: 16, zIndex: 10002 }
+            : { position: 'absolute', top: 24, right: 24, zIndex: 50 }}
+        >
             {/* Navigation & Project Context (Clean Ghost Style) */}
             <div className="flex items-center gap-3 pr-2 border-r border-white/10">
               <button 

@@ -11,9 +11,10 @@ import {
 interface AgentHUDProps {
   onGenerate: (prompt: string) => Promise<void>;
   isGenerating?: boolean;
+  windowMode?: boolean;
 }
 
-export const AgentHUD = ({ onGenerate, isGenerating = false }: AgentHUDProps) => {
+export const AgentHUD = ({ onGenerate, isGenerating = false, windowMode = false }: AgentHUDProps) => {
   const [prompt, setPrompt] = useState('');
 
   const handleGenerate = async () => {
@@ -23,7 +24,12 @@ export const AgentHUD = ({ onGenerate, isGenerating = false }: AgentHUDProps) =>
   };
 
   return (
-    <div className="absolute top-6 left-6 z-[100] flex flex-col gap-4 w-[240px] pointer-events-none">
+    <div
+      className="flex flex-col gap-4 w-[240px] pointer-events-none"
+      style={windowMode
+        ? { position: 'fixed', top: 8, left: 8, zIndex: 10002 }
+        : { position: 'absolute', top: 24, left: 24, zIndex: 100 }}
+    >
       {/* Branding Block - Minimalist version (no background) */}
       <div className="flex items-center gap-3 p-2.5 pointer-events-auto">
         <div className="relative w-8 h-8 flex items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl shadow-lg shadow-cyan-500/20 shrink-0">
