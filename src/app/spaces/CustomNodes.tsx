@@ -1143,10 +1143,13 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
   };
   const { setNodes } = useReactFlow();
   const [isUploadingLocal, setIsUploadingLocal] = useState(false);
-  const isUploading = isUploadingLocal || nodeData.loading;
-  const [activeTab, setActiveTab] = useState<'upload' | 'url'>(nodeData.source === 'url' ? 'url' : 'upload');
-  const [urlInput, setUrlInput] = useState(nodeData.source === 'url' ? nodeData.value : '');
   const [showFullSize, setShowFullSize] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const isUploading = isUploadingLocal || nodeData.loading;
+
 
   const updateNodeData = (updates: any) => {
     setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...updates } } : n)));
@@ -1172,25 +1175,14 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
         const type = getFileType(file.name, file.type);
         const mockMetadata = {
           size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-          resolution: (type === 'video' || type === 'image') ? '1920x1080' : '-',
-          duration: (type === 'video' || type === 'audio') ? '00:42' : '-',
+          resolution: (type === 'video' || type === 'image') ? '1920×1080' : '-',
+          duration: (type === 'video' || type === 'audio') ? '–' : '-',
           codec: file.type.split('/')[1]?.toUpperCase() || 'UNKNOWN'
         };
         updateNodeData({ value: json.url, type, source: 'upload', metadata: mockMetadata });
       }
     } catch (err) { console.error("Upload error:", err); } 
     finally { setIsUploadingLocal(false); }
-  };
-
-  const handleUrlSubmit = () => {
-    if (!urlInput) return;
-    const type = getFileType(urlInput, '');
-    updateNodeData({ 
-      value: urlInput, 
-      type, 
-      source: 'url',
-      metadata: { resolution: 'Remote URL', duration: 'Unknown' }
-    });
   };
 
   const getIcon = () => {
@@ -1207,160 +1199,232 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
       case 'video': return '#f43f5e';
       case 'image': return '#ec4899';
       case 'audio': return '#a855f7';
-      case 'pdf': return '#f97316';
-      case 'txt': return '#f59e0b';
-      case 'url': return '#10b981';
       default: return '#9ca3af';
     }
   };
 
   const handleClass = nodeData.type ? `handle-${nodeData.type}` : 'handle-video';
 
-  const getSmartDefaultLabel = () => {
-    if (nodeData.type === 'image') return "Image Input";
-    if (nodeData.type === 'video') return "Video Input";
-    if (nodeData.type === 'audio') return "Audio Input";
-    return "Media Input";
-  };
+  const hasMedia = !!nodeData.value;
+  const isVisual = nodeData.type === 'image' || nodeData.type === 'video';
 
   return (
-    <div className="custom-node media-node">
-      <NodeLabel id={id} label={nodeData.label} defaultLabel={getSmartDefaultLabel()} />
-      <div className="node-header flex-col items-start gap-0" style={{ color: getTitleColor() }}>
-        <div className="flex items-center gap-2">
-          {getIcon()}
-          <span className="font-black tracking-tighter uppercase">{nodeData.type || 'Media'} Input</span>
-        </div>
+    <div
+      className="custom-node"
+      style={{ padding: 0, minWidth: 260, borderRadius: 18, overflow: 'visible' }}
+    >
+      <NodeLabel id={id} label={nodeData.label} defaultLabel={nodeData.type ? `${nodeData.type.charAt(0).toUpperCase() + nodeData.type.slice(1)} Input` : 'Media Input'} />
+
+      {/* Persistent header */}
+      <div className="node-header" style={{ color: getTitleColor() }}>
+        {getIcon()}
+        <span className="font-black tracking-tighter uppercase">{nodeData.type || 'Media'} Input</span>
         {nodeData.type && (
-          <span className="text-[8px] bg-white/10 px-2 py-0.5 rounded-full font-black uppercase tracking-widest text-gray-400">
-            {nodeData.type}
+          <span className="ml-auto text-[8px] bg-white/10 px-2 py-0.5 rounded-full font-black uppercase tracking-widest text-gray-400">
+            {nodeData.source || 'upload'}
           </span>
         )}
       </div>
 
-      <div className="node-content">
-        {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-slate-50/50 rounded-xl mb-4">
-          <button 
-            onClick={() => setActiveTab('upload')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${activeTab === 'upload' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
-          >
-            <FilePlus size={12} /> Upload
-          </button>
-          <button 
-            onClick={() => setActiveTab('url')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${activeTab === 'url' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
-          >
-            <Link size={12} /> URL
-          </button>
-        </div>
+      {/* Full-bleed drop zone / preview */}
+      <div
+        className={`relative w-full ${hasMedia && isVisual ? 'aspect-video' : 'min-h-[160px] flex items-center justify-center'} bg-zinc-900 cursor-pointer transition-all overflow-hidden`}
+        style={{ outline: isDragOver ? '2px dashed #ec4899' : 'none', outlineOffset: '-2px' }}
+        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={(e) => { e.preventDefault(); setIsDragOver(false); const file = e.dataTransfer.files[0]; if (file) handleFileUpload(file); }}
+        onClick={() => !hasMedia && fileInputRef.current?.click()}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="video/*,image/*,audio/*,.pdf,.txt"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); }}
+        />
 
-        {activeTab === 'upload' ? (
-          <div className="flex flex-col items-center">
-            <div className="drop-zone min-h-[140px] w-full max-w-[250px]" onDrop={(e) => {
-              e.preventDefault();
-              const file = e.dataTransfer.files[0];
-              if (file) handleFileUpload(file);
-            }} onDragOver={(e) => e.preventDefault()}>
-              {isUploading ? <Loader2 className="animate-spin text-rose-500" /> : 
-               nodeData.value && nodeData.type === 'video' ? <video src={nodeData.value} className="video-preview !max-w-[250px]" muted /> : 
-               nodeData.value && nodeData.type === 'image' ? <img src={nodeData.value} className="video-preview object-contain !max-w-[250px]" alt="Preview" /> :
-               nodeData.value && nodeData.type === 'audio' ? (
-                 <div className="flex flex-col items-center gap-2">
-                   <Music size={32} className="text-rose-500" />
-                   <span className="text-[10px] text-gray-400">Audio Track Loaded</span>
-                 </div>
-               ) :
-               <div className="flex flex-col items-center gap-2">
-                 <FilePlus size={24} className="text-gray-700" />
-                 <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight text-center">Drag and drop file or click to choose</span>
-               </div>}
-            </div>
-            
-            {nodeData.value && (nodeData.type === 'video' || nodeData.type === 'image') && (
-              <button 
-                onClick={() => setShowFullSize(true)}
-                className="mt-2 flex items-center gap-2 text-[10px] font-bold text-gray-400 hover:text-white transition-colors py-1 px-3 bg-white/5 rounded-full"
-              >
-                <Maximize2 size={12} /> VER TAMAÑO COMPLETO
-              </button>
-            )}
+        {/* Preview */}
+        {isUploading ? (
+          <div className="flex flex-col items-center gap-2 text-rose-400">
+            <Loader2 size={28} className="animate-spin" />
+            <span className="text-[9px] font-bold uppercase tracking-widest">Uploading…</span>
+          </div>
+        ) : hasMedia && nodeData.type === 'video' ? (
+          <div className="relative w-full h-full">
+            <video
+              ref={videoRef}
+              src={nodeData.value}
+              className="w-full h-full object-cover"
+              muted
+              loop
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => setIsPlaying(false)}
+            />
+            {/* Play/pause overlay button */}
+            <button
+              className="absolute inset-0 flex items-center justify-center nodrag group"
+              onClick={(e) => {
+                e.stopPropagation();
+                const v = videoRef.current;
+                if (!v) return;
+                if (v.paused) { v.play(); } else { v.pause(); }
+              }}
+            >
+              {!isPlaying && (
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
+                  style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}
+                >
+                  <svg width="14" height="16" viewBox="0 0 14 16" fill="white">
+                    <path d="M0 0L14 8L0 16V0Z" />
+                  </svg>
+                </div>
+              )}
+              {isPlaying && (
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}
+                >
+                  <svg width="12" height="14" viewBox="0 0 12 14" fill="white">
+                    <rect x="0" y="0" width="4" height="14" />
+                    <rect x="8" y="0" width="4" height="14" />
+                  </svg>
+                </div>
+              )}
+            </button>
+          </div>
+
+        ) : hasMedia && nodeData.type === 'image' ? (
+          <img src={nodeData.value} className="w-full h-full object-cover" alt="Preview" />
+        ) : hasMedia && nodeData.type === 'audio' ? (
+          <div className="flex flex-col items-center gap-3 text-purple-400">
+            <Music size={36} />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Audio Loaded</span>
           </div>
         ) : (
-          <div className="space-y-3">
-             <div className="relative">
-               <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={14} />
-               <input 
-                 type="text"
-                 placeholder="Paste media link here..."
-                 className="node-input pl-9 text-xs"
-                 value={urlInput || ''}
-                 onChange={(e) => setUrlInput(e.target.value)}
-                 onKeyDown={(e) => e.key === 'Enter' && handleUrlSubmit()}
-               />
-             </div>
-             <button 
-               onClick={handleUrlSubmit}
-               className="execute-btn w-full justify-center"
-             >
-               FETCH MEDIA
-             </button>
-             {nodeData.value && (nodeData.type === 'video' || nodeData.type === 'image') && (
-               <div className="flex justify-center">
-                 <img src={nodeData.value} className="max-w-[250px] rounded-lg border border-white/10 mb-2" alt="Preview" />
-               </div>
-             )}
-             {nodeData.value && (nodeData.type === 'video' || nodeData.type === 'image') && (
-                <button 
-                  onClick={() => setShowFullSize(true)}
-                  className="w-full flex items-center justify-center gap-2 text-[10px] font-bold text-gray-400 hover:text-white transition-colors py-2 bg-white/5 rounded-lg border border-slate-200/60"
-                >
-                  <Maximize2 size={12} /> VER TAMAÑO COMPLETO
-                </button>
-             )}
+          <div className="flex flex-col items-center gap-3 select-none">
+            <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center">
+              <FilePlus size={22} className="text-gray-600" />
+            </div>
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight text-center px-6">
+              Drop file or click to upload
+            </span>
+            <span className="text-[8px] text-gray-700 uppercase tracking-widest">
+              video · image · audio · pdf
+            </span>
           </div>
         )}
 
-        {/* Fullsize Backdrop */}
-        {showFullSize && nodeData.value && (
-          <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-10 cursor-zoom-out nodrag nopan" onClick={() => setShowFullSize(false)}>
-            <div className="absolute top-10 right-10 text-white hover:scale-110 transition-transform">
-              <X size={40} strokeWidth={3} />
-            </div>
-            {nodeData.type === 'video' ? (
-              <video src={nodeData.value} className="max-w-full max-h-full rounded-2xl shadow-2xl" controls autoPlay />
-            ) : (
-              <img src={nodeData.value} className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain" alt="Full size" />
-            )}
+        {/* Drag-over replace hint */}
+        {isDragOver && hasMedia && (
+          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+            <span className="text-white font-black text-[11px] uppercase tracking-widest">Replace media</span>
           </div>
         )}
 
-        {/* Metadata section */}
-        {nodeData.metadata && (
-          <div className="mt-4 pt-4 border-t border-slate-200/60">
-            <div className="flex items-center gap-2 mb-2">
-              <Info size={10} className="text-gray-600" />
-              <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Asset Metadata</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries(nodeData.metadata).map(([key, val]) => (
-                <div key={key} className="bg-black/20 p-2 rounded-lg border border-white/[0.02]">
-                  <span className="block text-[8px] text-gray-600 uppercase font-bold mb-0.5">{key}</span>
-                  <span className="block text-[10px] text-gray-300 font-mono truncate">{val as string}</span>
-                </div>
-              ))}
-            </div>
+        {/* Metadata overlay strip */}
+        {hasMedia && nodeData.metadata && isVisual && (
+          <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-1.5"
+            style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)' }}>
+            <span className="text-[8px] font-mono text-white/60 uppercase">
+              {nodeData.metadata.resolution}
+            </span>
+            <span className="text-[8px] font-mono text-white/60 uppercase">
+              {nodeData.metadata.codec}
+            </span>
+            <span className="text-[8px] font-mono text-white/60 uppercase">
+              {nodeData.metadata.size}
+            </span>
           </div>
+        )}
+
+        {/* Header pill top-left */}
+        {hasMedia && (
+          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest"
+            style={{ background: 'rgba(0,0,0,0.55)', color: getTitleColor(), backdropFilter: 'blur(6px)' }}>
+            {getIcon()}
+            <span>{nodeData.type}</span>
+          </div>
+        )}
+
+        {/* Fullscreen button top-right */}
+        {hasMedia && isVisual && (
+          <button
+            className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110 nodrag"
+            style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
+            onClick={(e) => { e.stopPropagation(); setShowFullSize(true); }}
+            title="Ver tamaño completo"
+          >
+            <Maximize2 size={12} className="text-white/70" />
+          </button>
+        )}
+
+        {/* Replace hint when has media */}
+        {hasMedia && !isDragOver && (
+          <button
+            className="absolute bottom-8 right-2 w-6 h-6 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity nodrag"
+            style={{ background: 'rgba(0,0,0,0.55)' }}
+            onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+            title="Reemplazar archivo"
+          >
+            <FilePlus size={10} className="text-white/70" />
+          </button>
         )}
       </div>
 
-      <div className="handle-wrapper handle-right">
+      {/* Fullscreen portal overlay */}
+      {showFullSize && nodeData.value && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center nodrag nopan"
+          onClick={() => setShowFullSize(false)}
+          style={{ backdropFilter: 'blur(12px)' }}
+        >
+          <div className="absolute top-6 right-6 flex items-center gap-4">
+            <span className="text-white/40 text-[10px] uppercase tracking-widest">Click anywhere to close</span>
+            <button className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all" onClick={() => setShowFullSize(false)}>
+              <X size={20} className="text-white" />
+            </button>
+          </div>
+          {/* Metadata bar */}
+          {nodeData.metadata && (
+            <div className="absolute top-6 left-6 flex items-center gap-4">
+              {Object.entries(nodeData.metadata).map(([k,v]) => (
+                <div key={k} className="text-center">
+                  <div className="text-[8px] text-white/30 uppercase tracking-widest">{k}</div>
+                  <div className="text-[11px] text-white/70 font-mono">{v as string}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div onClick={(e) => e.stopPropagation()} className="max-w-[90vw] max-h-[85vh]">
+            {nodeData.type === 'video' ? (
+              <video
+                src={nodeData.value}
+                className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl"
+                controls
+                autoPlay
+              />
+            ) : (
+              <img
+                src={nodeData.value}
+                className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl object-contain"
+                alt="Full size"
+              />
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      <div className="handle-wrapper handle-right" style={{ top: '50%' }}>
         <span className="handle-label">Media Asset</span>
         <Handle type="source" position={Position.Right} id="media" className={handleClass} />
       </div>
     </div>
   );
 });
+
 
 export const PromptNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
@@ -1462,46 +1526,112 @@ export const EnhancerNode = memo(({ id, data }: NodeProps<any>) => {
   const { setNodes } = useReactFlow();
   const [loading, setLoading] = useState(false);
 
+  // Fixed 8 slots — always in DOM so ReactFlow can always draw edges to them
+  const ALL_HANDLES = ['p0','p1','p2','p3','p4','p5','p6','p7'];
+
+  // All edges targeting this node, sorted by handle id
+  const connectedEdges = useMemo(() =>
+    edges.filter((e: any) => e.target === id)
+         .sort((a: any, b: any) => (a.targetHandle || '').localeCompare(b.targetHandle || '')),
+    [edges, id]
+  );
+
+  const connectedHandleIds = new Set(connectedEdges.map((e: any) => e.targetHandle));
+  // How many handles to visually show (connected + 1 empty, min 1, max 8)
+  const visibleCount = Math.min(connectedEdges.length + 1, ALL_HANDLES.length);
+
+  // Live concatenation
+  const concatenated = useMemo(() =>
+    connectedEdges
+      .map((edge: any) => nodes.find((n: any) => n.id === edge.source)?.data.value || '')
+      .filter(Boolean)
+      .join('\n\n'),
+    [connectedEdges, nodes]
+  );
+
   const handleEnhance = async () => {
-    const connect = edges.find((e) => e.target === id);
-    const source = nodes.find((n) => n.id === connect?.source);
-    const input = source?.data.value;
-
-    if (!input) return alert("Connect a prompt first!");
-
+    const input = concatenated || nodeData.value;
+    if (!input) return alert('Connect at least one prompt!');
     setLoading(true);
     try {
       const res = await fetch('/api/openai/enhance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: input })
+        body: JSON.stringify({ prompt: input }),
       });
       const json = await res.json();
-      setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, value: json.enhanced } } : n));
+      setNodes((nds: any) =>
+        nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, value: json.enhanced } } : n)
+      );
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
 
   return (
-    <div className="custom-node tool-node">
+    <div className="custom-node tool-node min-w-[260px]">
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Enhancer" />
-      <div className="handle-wrapper handle-left">
-        <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
-        <span className="handle-label">Prompt in</span>
-      </div>
+
+      {/* Always render all 8 handles; hide extras beyond connected+1 */}
+      {ALL_HANDLES.map((hId, index) => {
+        const connected = connectedHandleIds.has(hId);
+        const visible = index < visibleCount;
+        return (
+          <div
+            key={hId}
+            className="handle-wrapper handle-left"
+            style={{
+              top: `${(index + 1) * (100 / (visibleCount + 1))}%`,
+              visibility: visible ? 'visible' : 'hidden',
+              pointerEvents: visible ? 'auto' : 'none',
+            }}
+          >
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={hId}
+              className={`handle-prompt ${connected ? '' : 'opacity-40'}`}
+            />
+            <span className="handle-label" style={{ fontSize: 7 }}>
+              {connected ? `P${index + 1} ✓` : `P${index + 1}`}
+            </span>
+          </div>
+        );
+      })}
+
       <div className="node-header bg-gradient-to-r from-purple-600/20 to-indigo-600/20">
         <Zap size={16} className="text-purple-400" />
         <span>Prompt Enhancer</span>
         <div className="node-badge">AI TOOL</div>
       </div>
-      <div className="node-content">
+
+      <div className="node-content space-y-3">
+        {concatenated ? (
+          <div className="p-2 rounded-lg border border-purple-500/20 bg-purple-500/5 text-[9px] text-purple-300 font-mono leading-relaxed max-h-[100px] overflow-y-auto whitespace-pre-wrap">
+            {concatenated}
+          </div>
+        ) : (
+          <div className="p-2 rounded-lg border border-white/5 bg-white/[0.02] text-[9px] text-zinc-600 italic">
+            Connect prompts to see concatenation…
+          </div>
+        )}
+
+        {connectedEdges.length > 0 && (
+          <div className="text-[8px] font-black text-purple-400/70 uppercase tracking-widest">
+            {connectedEdges.length} prompt{connectedEdges.length > 1 ? 's' : ''} connected
+          </div>
+        )}
+
         <button className="execute-btn w-full" onClick={handleEnhance} disabled={loading}>
-          {loading ? 'ENHANCING...' : 'ENHANCE WITH OPENAI'}
+          {loading ? <><Loader2 size={12} className="animate-spin" /> ENHANCING…</> : 'ENHANCE WITH OPENAI'}
         </button>
-        <div className="p-3 bg-slate-50/50 rounded-lg text-[11px] text-gray-300 italic min-h-[80px]">
-          {nodeData.value || 'Connect a prompt and click Enhance...'}
-        </div>
+
+        {nodeData.value && (
+          <div className="p-3 bg-slate-50/50 rounded-lg text-[10px] text-gray-300 italic min-h-[60px] max-h-[140px] overflow-y-auto">
+            {nodeData.value}
+          </div>
+        )}
       </div>
+
       <div className="handle-wrapper handle-right">
         <span className="handle-label">Enhanced</span>
         <Handle type="source" position={Position.Right} id="prompt" className="handle-prompt" />
@@ -1510,7 +1640,10 @@ export const EnhancerNode = memo(({ id, data }: NodeProps<any>) => {
   );
 });
 
+
 // --- GENERATOR NODES ---
+
+
 
 
 export const GrokNode = memo(({ id, data }: NodeProps<any>) => {
@@ -1965,11 +2098,260 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
   );
 });
 
+// ── TEXT OVERLAY NODE ────────────────────────────────────────────────────────
+const FONT_FAMILIES = [
+  { label: 'Inter',        value: 'Inter, sans-serif' },
+  { label: 'Serif',        value: 'Georgia, serif' },
+  { label: 'Mono',         value: 'monospace' },
+  { label: 'Display',      value: '"Bebas Neue", sans-serif' },
+  { label: 'Playfair',     value: '"Playfair Display", serif' },
+  { label: 'Roboto',       value: 'Roboto, sans-serif' },
+  { label: 'Oswald',       value: 'Oswald, sans-serif' },
+  { label: 'Lato',         value: 'Lato, sans-serif' },
+  { label: 'Montserrat',   value: 'Montserrat, sans-serif' },
+  { label: 'Comic',        value: '"Comic Sans MS", cursive' },
+];
+
+const FONT_WEIGHTS = [
+  { label: 'Thin',    value: '300' },
+  { label: 'Regular', value: '400' },
+  { label: 'Bold',    value: '700' },
+  { label: 'Black',   value: '900' },
+];
+
+export const TextOverlayNode = memo(({ id, data }: NodeProps<any>) => {
+  const nodeData = data as BaseNodeData & {
+    text?: string;
+    fontFamily?: string;
+    fontSize?: number;
+    color?: string;
+    fontWeight?: string;
+    textAlign?: CanvasTextAlign;
+    canvasW?: number;
+    canvasH?: number;
+  };
+  const { setNodes } = useReactFlow();
+  const previewRef = useRef<HTMLCanvasElement>(null);
+  const [rendered, setRendered] = useState(false);
+
+  const text       = nodeData.text      ?? 'Your text here';
+  const fontFamily = nodeData.fontFamily ?? 'Inter, sans-serif';
+  const fontSize   = nodeData.fontSize  ?? 72;
+  const color      = nodeData.color     ?? '#ffffff';
+  const fontWeight = nodeData.fontWeight ?? '700';
+  const textAlign  = (nodeData.textAlign ?? 'center') as CanvasTextAlign;
+  const canvasW    = nodeData.canvasW   ?? 1920;
+  const canvasH    = nodeData.canvasH   ?? 400;
+
+  const updateData = (key: string, val: any) =>
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
+
+  // Render text on canvas and push to output
+  const renderText = useCallback(() => {
+    const offscreen = document.createElement('canvas');
+    offscreen.width  = canvasW;
+    offscreen.height = canvasH;
+    const ctx = offscreen.getContext('2d')!;
+
+    // Transparent background
+    ctx.clearRect(0, 0, canvasW, canvasH);
+
+    ctx.font         = `${fontWeight} ${fontSize}px ${fontFamily}`;
+    ctx.fillStyle    = color;
+    ctx.textAlign    = textAlign;
+    ctx.textBaseline = 'middle';
+
+    const x = textAlign === 'left' ? 40 : textAlign === 'right' ? canvasW - 40 : canvasW / 2;
+
+    // Multi-line support (split by \n)
+    const lines = text.split('\n');
+    const lineH  = fontSize * 1.3;
+    const startY = canvasH / 2 - ((lines.length - 1) * lineH) / 2;
+    lines.forEach((line, i) => ctx.fillText(line, x, startY + i * lineH));
+
+    const dataUrl = offscreen.toDataURL('image/png');
+
+    // Show in preview
+    if (previewRef.current) {
+      const pCtx = previewRef.current.getContext('2d')!;
+      previewRef.current.width  = previewRef.current.offsetWidth  || 280;
+      previewRef.current.height = previewRef.current.offsetHeight || 80;
+      const scale = Math.min(previewRef.current.width / canvasW, previewRef.current.height / canvasH);
+      pCtx.clearRect(0, 0, previewRef.current.width, previewRef.current.height);
+      const img = new Image();
+      img.onload = () => {
+        pCtx.drawImage(img, 0, 0, canvasW * scale, canvasH * scale);
+        setRendered(true);
+      };
+      img.src = dataUrl;
+    }
+
+    // Push to output
+    setNodes((nds: any) => nds.map((n: any) =>
+      n.id === id ? { ...n, data: { ...n.data, value: dataUrl, type: 'image' } } : n
+    ));
+  }, [text, fontFamily, fontSize, color, fontWeight, textAlign, canvasW, canvasH, id, setNodes]);
+
+  return (
+    <div className="custom-node tool-node w-[320px]">
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Text Overlay" />
+
+      <div className="node-header bg-gradient-to-r from-purple-600/20 to-pink-600/20">
+        <Type size={14} className="text-purple-500" />
+        <span>Text Overlay</span>
+        <div className="node-badge bg-purple-500/10 text-purple-400 border border-purple-500/30">TEXT</div>
+      </div>
+
+      <div className="node-content space-y-3">
+
+        {/* Text input */}
+        <div className="space-y-1">
+          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Text</span>
+          <textarea
+            className="node-textarea w-full text-sm"
+            rows={3}
+            value={text}
+            placeholder="Your text here…"
+            onChange={e => updateData('text', e.target.value)}
+            style={{ fontFamily, fontSize: Math.min(fontSize, 16), color, fontWeight, resize: 'none' }}
+          />
+        </div>
+
+        {/* Font family */}
+        <div className="space-y-1">
+          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Font Family</span>
+          <div className="grid grid-cols-5 gap-1">
+            {FONT_FAMILIES.map(f => (
+              <button
+                key={f.value}
+                onClick={() => updateData('fontFamily', f.value)}
+                className={`py-1 rounded text-[7px] font-bold border transition-all truncate
+                  ${fontFamily === f.value
+                    ? 'bg-purple-500/20 text-purple-400 border-purple-500/40'
+                    : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:border-white/15 hover:text-zinc-400'
+                  }`}
+                style={{ fontFamily: f.value }}
+                title={f.label}
+              >{f.label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Font size + weight row */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Size: {fontSize}px</span>
+            <input
+              type="range" min={12} max={300} step={2} value={fontSize}
+              onChange={e => updateData('fontSize', Number(e.target.value))}
+              className="node-slider w-full"
+            />
+          </div>
+          <div className="space-y-1">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Weight</span>
+            <div className="grid grid-cols-4 gap-0.5">
+              {FONT_WEIGHTS.map(w => (
+                <button
+                  key={w.value}
+                  onClick={() => updateData('fontWeight', w.value)}
+                  className={`py-1 rounded text-[7px] border transition-all
+                    ${fontWeight === w.value
+                      ? 'bg-purple-500/20 text-purple-400 border-purple-500/40'
+                      : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:text-zinc-400'
+                    }`}
+                  style={{ fontWeight: w.value }}
+                >{w.label}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Color + align row */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Color</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="color" value={color}
+                onChange={e => updateData('color', e.target.value)}
+                className="w-8 h-8 rounded-lg border border-white/10 bg-transparent cursor-pointer"
+              />
+              <input
+                type="text" value={color} maxLength={7}
+                onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) updateData('color', e.target.value); }}
+                className="node-input text-[9px] !py-1 !px-2 font-mono uppercase"
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Align</span>
+            <div className="grid grid-cols-3 gap-1">
+              {(['left','center','right'] as CanvasTextAlign[]).map(a => (
+                <button
+                  key={a}
+                  onClick={() => updateData('textAlign', a)}
+                  className={`py-1 rounded text-[8px] font-black border transition-all
+                    ${textAlign === a
+                      ? 'bg-purple-500/20 text-purple-400 border-purple-500/40'
+                      : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:text-zinc-400'
+                    }`}
+                >{a === 'left' ? '⟵' : a === 'center' ? '≡' : '⟶'}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Canvas size (compact) */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-0.5">
+            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Canvas W</span>
+            <input type="number" value={canvasW} min={100} max={4000} step={10}
+              onChange={e => updateData('canvasW', Number(e.target.value))}
+              className="node-input text-[9px] !py-1 !px-2" />
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Canvas H</span>
+            <input type="number" value={canvasH} min={100} max={4000} step={10}
+              onChange={e => updateData('canvasH', Number(e.target.value))}
+              className="node-input text-[9px] !py-1 !px-2" />
+          </div>
+        </div>
+
+        {/* Render button */}
+        <button className="execute-btn w-full !py-2.5 !text-xs" onClick={renderText}>
+          <Type size={11} /> <span className="ml-2">RENDER TEXT → IMAGE</span>
+        </button>
+
+        {/* Preview canvas */}
+        <div className="w-full rounded-xl overflow-hidden border border-white/10 bg-gray-900"
+             style={{ height: 80 }}>
+          <canvas
+            ref={previewRef}
+            style={{ width: '100%', height: '100%' }}
+          />
+          {!rendered && (
+            <div className="flex items-center justify-center h-full opacity-25">
+              <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Preview after render</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Output handle */}
+      <div className="handle-wrapper handle-right">
+        <span className="handle-label">Image out</span>
+        <Handle type="source" position={Position.Right} id="image" className="handle-image" />
+      </div>
+    </div>
+  );
+});
+
 
 export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { 
     expansion?: number,
     feather?: number,
+
     threshold?: number,
     result_rgba?: string,
     result_mask?: string,
@@ -2432,7 +2814,26 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
   };
 
   return (
-    <div className="custom-node space-node border-cyan-500/30">
+    <div className="relative" style={{ isolation: 'isolate' }}>
+      {/* Ghost card layer 2 (furthest back) */}
+      <div className="absolute inset-0 rounded-[18px] border border-white/30"
+        style={{
+          transform: 'translate(6px, 6px) rotate(1.5deg)',
+          background: 'rgba(255,255,255,0.18)',
+          zIndex: -2,
+        }}
+      />
+      {/* Ghost card layer 1 */}
+      <div className="absolute inset-0 rounded-[18px] border border-white/40"
+        style={{
+          transform: 'translate(3px, 3px) rotate(0.7deg)',
+          background: 'rgba(255,255,255,0.25)',
+          zIndex: -1,
+        }}
+      />
+
+      {/* Main node card */}
+      <div className="custom-node space-node border-cyan-500/30" style={{ position: 'relative', zIndex: 0 }}>
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Space" />
       
       {/* Input handle only if space has an internal InputNode */}
@@ -2448,8 +2849,8 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
       </div>
       
       <div className="node-content">
-        {/* Internal Blueprint Summary - MORE PROMINENT */}
-        <div className="flex flex-col gap-1.5 mb-5 p-2 bg-slate-50/50 border border-slate-200/60 rounded-xl shadow-inner">
+        {/* Internal Blueprint Summary */}
+        <div className="flex flex-col gap-1.5 mb-3 p-2 bg-slate-50/50 border border-slate-200/60 rounded-xl shadow-inner">
           <div className="flex justify-between items-center px-1">
              <span className="text-[7.5px] font-black text-gray-500 uppercase tracking-widest">Internal Blueprint</span>
              <Layers size={10} className="text-gray-700" />
@@ -2462,6 +2863,22 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
             )}
           </div>
         </div>
+
+        {/* Output media preview */}
+        {nodeData.value && (nodeData.outputType === 'image' || nodeData.outputType === 'video') && (
+          <div className="relative w-full aspect-video overflow-hidden rounded-xl mb-3" style={{ background: '#0a0a0a' }}>
+            {nodeData.outputType === 'video' ? (
+              <video src={nodeData.value as string} className="w-full h-full object-cover" muted />
+            ) : (
+              <img src={nodeData.value as string} className="w-full h-full object-cover" alt="Space output" />
+            )}
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%)' }} />
+            <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest"
+              style={{ background: 'rgba(0,0,0,0.6)', color: nodeData.outputType === 'video' ? '#f43f5e' : '#ec4899', backdropFilter: 'blur(6px)' }}>
+              {nodeData.outputType} output
+            </div>
+          </div>
+        )}
         
         <button 
           onClick={onEnterSpace}
@@ -2471,6 +2888,7 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
         </button>
       </div>
 
+
       {/* Output handle only if space has an internal OutputNode */}
       {nodeData.hasOutput !== false && (
         <div className="handle-wrapper handle-right">
@@ -2479,8 +2897,10 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
         </div>
       )}
     </div>
+    </div>
   );
 });
+
 
 export const SpaceInputNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { inputType?: string };
@@ -2529,48 +2949,75 @@ export const SpaceInputNode = memo(({ id, data }: NodeProps<any>) => {
 
 export const SpaceOutputNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { outputType?: string };
-  
+  const nodes = useNodes();
+  const edges = useEdges();
+
+  // Find what's connected to the 'in' handle
+  const inputEdge = edges.find((e: any) => e.target === id && e.targetHandle === 'in');
+  const sourceNode = inputEdge ? nodes.find((n: any) => n.id === inputEdge.source) : null;
+  const sourceValue = sourceNode?.data?.value as string | undefined;
+  const sourceType: string = sourceNode?.data?.type || sourceNode?.type || '';
+  const isVisual = sourceType === 'image' || sourceType === 'video';
+
   const getHandleClass = () => {
-    switch (nodeData.outputType) {
-      case 'image': return 'handle-image';
-      case 'video': return 'handle-video';
-      case 'prompt': return 'handle-prompt';
-      case 'mask': return 'handle-mask';
-      case 'url': return 'handle-emerald';
-      case 'json': return 'handle-sound';
-      default: return 'handle-rose';
-    }
+    if (sourceType === 'image') return 'handle-image';
+    if (sourceType === 'video') return 'handle-video';
+    if (sourceType === 'prompt') return 'handle-prompt';
+    return 'handle-rose';
   };
 
   const getThemeColors = () => {
-    switch (nodeData.outputType) {
-      case 'prompt': return { border: 'border-blue-500/30', text: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20', icon: 'text-blue-500' };
-      case 'image': return { border: 'border-pink-500/30', text: 'text-pink-400', bg: 'bg-pink-500/10 border-pink-500/20', icon: 'text-pink-500' };
-      case 'video': return { border: 'border-rose-500/30', text: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20', icon: 'text-rose-500' };
-      default: return { border: 'border-rose-500/30', text: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20', icon: 'text-rose-500' };
-    }
+    if (sourceType === 'image') return { border: 'border-pink-500/30', text: 'text-pink-400', bg: 'bg-pink-500/10 border-pink-500/20', icon: 'text-pink-500' };
+    if (sourceType === 'video') return { border: 'border-rose-500/30', text: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20', icon: 'text-rose-500' };
+    if (sourceType === 'prompt') return { border: 'border-blue-500/30', text: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20', icon: 'text-blue-500' };
+    return { border: 'border-rose-500/30', text: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20', icon: 'text-rose-500' };
   };
 
   const theme = getThemeColors();
 
   return (
-    <div className={`custom-node space-io-node ${theme.border}`}>
+    <div className={`custom-node space-io-node ${theme.border}`} style={{ padding: 0, overflow: 'visible', minWidth: 200 }}>
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Output" />
+
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="in" className={getHandleClass()} />
       </div>
-      <div className="node-header">
-        <ChevronLeft size={16} className={theme.text} /> SPACE OUTPUT
+
+      {/* Header */}
+      <div className="node-header" style={{ padding: '10px 14px' }}>
+        <ChevronLeft size={16} className={theme.text} />
+        <span className="font-black tracking-tighter uppercase">Space Output</span>
       </div>
-      <div className="node-content text-center py-4">
-        <div className={`w-12 h-12 ${theme.bg} rounded-full flex items-center justify-center border mx-auto mb-2`}>
-          <CheckCircle size={24} className={theme.icon} />
+
+      {/* Media preview if connected visual node */}
+      {isVisual && sourceValue ? (
+        <div className="relative w-full aspect-video overflow-hidden" style={{ background: '#0a0a0a' }}>
+          {sourceType === 'video' ? (
+            <video src={sourceValue} className="w-full h-full object-cover" muted />
+          ) : (
+            <img src={sourceValue} className="w-full h-full object-cover" alt="Output preview" />
+          )}
+          {/* Type badge */}
+          <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest"
+            style={{ background: 'rgba(0,0,0,0.6)', color: sourceType === 'video' ? '#f43f5e' : '#ec4899', backdropFilter: 'blur(6px)' }}>
+            {sourceType}
+          </div>
         </div>
-        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Exit Point</span>
-      </div>
+      ) : (
+        <div className="node-content text-center py-4">
+          <div className={`w-12 h-12 ${theme.bg} rounded-full flex items-center justify-center border mx-auto mb-2`}>
+            <CheckCircle size={24} className={theme.icon} />
+          </div>
+          <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">
+            {inputEdge ? 'Connected' : 'Exit Point'}
+          </span>
+        </div>
+      )}
     </div>
   );
 });
+
+
 
 export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;

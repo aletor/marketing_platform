@@ -15,6 +15,7 @@ import {
   useReactFlow,
   useNodesState,
   useEdgesState,
+  SelectionMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -38,8 +39,11 @@ import {
   PainterNode,
   CropNode,
   BezierMaskNode,
+  TextOverlayNode,
   ButtonEdge 
 } from './CustomNodes';
+
+
 import Sidebar from './Sidebar';
 import { AgentHUD } from './AgentHUD';
 import './spaces.css';
@@ -91,7 +95,9 @@ const nodeTypes: any = {
   painter: PainterNode,
   crop: CropNode,
   bezierMask: BezierMaskNode,
+  textOverlay: TextOverlayNode,
 };
+
 
 const edgeTypes = {
   buttonEdge: ButtonEdge,
@@ -171,14 +177,38 @@ const SpacesContent = () => {
     const selectedNodes = nodes.filter(n => n.selected);
     const newMeta   = NODE_REGISTRY[type];
     const autoEdges: any[] = [];
+    const edgesToRemove = new Set<string>(); // for insert-between
 
-    // Concatenator has dynamic handles p0-p7 (not stored in registry as p-n)
-    const CONCAT_SLOTS = ['p0','p1','p2','p3','p4','p5','p6','p7'];
+    // Nodes that support multiple inputs of the same type via numbered slot handles
+    const MULTI_SLOT_NODES: Record<string, Record<string, string[]>> = {
+      concatenator: { prompt: ['p0','p1','p2','p3','p4','p5','p6','p7'] },
+      enhancer:     { prompt: ['p0','p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11','p12','p13','p14','p15'] },
+      imageComposer: { image: ['layer_0','layer_1','layer_2','layer_3','layer_4','layer_5','layer_6','layer_7'] },
+    };
+    // Per-handle-type slot counters, reset per new node creation
+    const slotCounters: Record<string, number> = {};
+    const getSlot = (nodeType: string, handleType: string, fallbackId: string): string => {
+      const slots = MULTI_SLOT_NODES[nodeType]?.[handleType];
+      if (!slots) return fallbackId;
+      const key = `${nodeType}:${handleType}`;
+      const idx = slotCounters[key] ?? 0;
+      slotCounters[key] = idx + 1;
+      return slots[idx] ?? fallbackId;
+    };
+
 
     if (newMeta && selectedNodes.length > 0) {
-      let concatSlot = 0; // track which slot for concatenator multi-input
+      const singleSelection = selectedNodes.length === 1;
 
-      for (const sel of selectedNodes) {
+      // For spaceOutput: only wire the last (rightmost) selected node
+      const nodesToConnect = type === 'spaceOutput'
+        ? [selectedNodes.reduce((prev, cur) =>
+            (cur.position.x > prev.position.x || (cur.position.x === prev.position.x && cur.position.y > prev.position.y))
+              ? cur : prev
+          )]
+        : selectedNodes;
+
+      for (const sel of nodesToConnect) {
         const selMeta = NODE_REGISTRY[sel.type];
         if (!selMeta) continue;
 
@@ -188,9 +218,13 @@ const SpacesContent = () => {
         for (const out of selMeta.outputs) {
           for (const inp of newMeta.inputs) {
             if (out.type !== inp.type) continue;
-            // Special: concatenator uses real handles p0-p7
-            const targetHandle = (type === 'concatenator') ? CONCAT_SLOTS[concatSlot++] : inp.id;
-            if (type === 'concatenator' && concatSlot > CONCAT_SLOTS.length) break;
+            const targetHandle = getSlot(type, inp.type, inp.id);
+            const slotExhausted = MULTI_SLOT_NODES[type]?.[inp.type]
+              ? (slotCounters[`${type}:${inp.type}`] ?? 1) > (MULTI_SLOT_NODES[type][inp.type].length)
+              : false;
+            if (slotExhausted) break;
+
+
             autoEdges.push({
               id: `ae-${sel.id}-${newId}-${out.id}-${targetHandle}`,
               source: sel.id,
@@ -201,6 +235,41 @@ const SpacesContent = () => {
               animated: true,
             });
             connected = true;
+
+            // ── Insert-between (only for single selected node) ──────────
+            // If the source handle already feeds a downstream node,
+            // bridge new→downstream and drop the original edge.
+            if (singleSelection) {
+              const downstreamEdge = edges.find(
+                (e: any) => e.source === sel.id && e.sourceHandle === out.id
+              );
+              if (downstreamEdge) {
+                // Find a matching output on the new node that connects to
+                // the downstream handle's type
+                const downTarget = nodes.find((n: any) => n.id === downstreamEdge.target);
+                const downTargetMeta = downTarget ? NODE_REGISTRY[downTarget.type] : null;
+                const downInpHandle = downTargetMeta?.inputs.find(
+                  (i: any) => i.id === downstreamEdge.targetHandle
+                ) ?? downTargetMeta?.inputs[0];
+                const bridgeOut = newMeta.outputs.find(
+                  (o: any) => o.type === (downInpHandle?.type ?? out.type)
+                );
+                if (bridgeOut && downInpHandle) {
+                  // Remove original edge
+                  edgesToRemove.add(downstreamEdge.id);
+                  // Add bridge edge: new → downstream
+                  autoEdges.push({
+                    id: `ae-bridge-${newId}-${downstreamEdge.target}-${bridgeOut.id}-${downInpHandle.id}`,
+                    source: newId,
+                    sourceHandle: bridgeOut.id,
+                    target: downstreamEdge.target,
+                    targetHandle: downInpHandle.id,
+                    type: 'buttonEdge',
+                    animated: true,
+                  });
+                }
+              }
+            }
             break;
           }
           if (connected) break;
@@ -229,16 +298,96 @@ const SpacesContent = () => {
 
     setNodes(nds => {
       const next = [...nds, newNode];
-      pushHistory(next, [...edges, ...autoEdges]);
+      pushHistory(next, [...edges.filter((e: any) => !edgesToRemove.has(e.id)), ...autoEdges]);
       return next;
     });
-    if (autoEdges.length > 0) {
-      setEdges(es => [...es, ...autoEdges]);
-    }
+    // Delay edge render so nodes with dynamic handles (Enhancer, etc.)
+    // have time to mount all their Handle components before ReactFlow draws curves.
+    setTimeout(() => {
+      setEdges(es => [
+        ...es.filter((e: any) => !edgesToRemove.has(e.id)),
+        ...autoEdges,
+      ]);
+    }, 50);
   }, [screenToFlowPosition, nodes, edges, setNodes, setEdges, pushHistory]);
 
 
+  // ── Auto-layout (A key) ──────────────────────────────────────────────────
+
+  const autoLayout = useCallback(() => {
+    const COL_GAP = 420; // horizontal distance between columns
+    const ROW_GAP = 280; // vertical distance between rows
+
+    const toArrange = nodes.some(n => n.selected)
+      ? nodes.filter(n => n.selected)
+      : [...nodes];
+
+    const ids = new Set(toArrange.map(n => n.id));
+
+    // Build adjacency: only edges between nodes being arranged
+    const inCount: Record<string, number> = {};
+    const children: Record<string, string[]> = {};
+    for (const n of toArrange) { inCount[n.id] = 0; children[n.id] = []; }
+
+    for (const e of edges) {
+      if (ids.has(e.source) && ids.has(e.target)) {
+        inCount[e.target] = (inCount[e.target] || 0) + 1;
+        children[e.source].push(e.target);
+      }
+    }
+
+    // Kahn's algorithm — assign each node to a column (pass)
+    const col: Record<string, number> = {};
+    let queue = toArrange.filter(n => inCount[n.id] === 0).map(n => n.id);
+    queue.forEach(id => { col[id] = 0; });
+
+    while (queue.length) {
+      const next: string[] = [];
+      for (const nodeId of queue) {
+        for (const childId of children[nodeId]) {
+          col[childId] = Math.max(col[childId] ?? 0, (col[nodeId] ?? 0) + 1);
+          inCount[childId]--;
+          if (inCount[childId] === 0) next.push(childId);
+        }
+      }
+      queue = next;
+    }
+
+    // Nodes not reached by Kahn (isolated / cycles) → put after last column
+    const maxCol = Math.max(0, ...Object.values(col));
+    for (const n of toArrange) {
+      if (col[n.id] === undefined) col[n.id] = maxCol + 1;
+    }
+
+    // Assign row positions within each column
+    const colRows: Record<number, number> = {};
+    const positioned: Record<string, { x: number; y: number }> = {};
+
+    // Sort toArrange so nodes in same column are ordered predictably
+    const sorted = [...toArrange].sort((a, b) => (col[a.id] ?? 0) - (col[b.id] ?? 0));
+    for (const n of sorted) {
+      const c = col[n.id] ?? 0;
+      const r = colRows[c] ?? 0;
+      positioned[n.id] = { x: c * COL_GAP, y: r * ROW_GAP };
+      colRows[c] = r + 1;
+    }
+
+    // Apply positions (don't touch nodes not being arranged)
+    setNodes(nds => {
+      const next = nds.map(n =>
+        positioned[n.id]
+          ? { ...n, position: positioned[n.id] }
+          : n
+      );
+      pushHistory(next, edges);
+      return next;
+    });
+
+    setTimeout(() => fitView({ padding: 0.2, duration: 600 }), 50);
+  }, [nodes, edges, setNodes, pushHistory, fitView]);
+
   // ── Keyboard shortcuts ───────────────────────────────────────────────────
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -251,27 +400,83 @@ const SpacesContent = () => {
         if (e.shiftKey) redo(); else undo();
         return;
       }
+      // Ctrl+D — duplicate selected nodes
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        setNodes(nds => {
+          const selected = nds.filter(n => n.selected);
+          if (selected.length === 0) return nds;
+          const clones = selected.map(n => ({
+            ...n,
+            id: `${n.type}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            position: { x: n.position.x + 30, y: n.position.y + 30 },
+            selected: true,
+            data: { ...n.data },
+          }));
+          const next = [...nds.map(n => ({ ...n, selected: false })), ...clones];
+          pushHistory(next, edges);
+          return next;
+        });
+        return;
+      }
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
+
       switch (e.key.toLowerCase()) {
+        // ── Ingesta ──────────────────────────────────────────────────────
         case 'p': addNodeAtCenter('promptInput'); break;
+        case 'm': addNodeAtCenter('mediaInput'); break;
+        case 'b': addNodeAtCenter('background'); break;
+        case 'u': addNodeAtCenter('urlImage'); break;
+        // ── Inteligencia ─────────────────────────────────────────────────
         case 'n': addNodeAtCenter('nanoBanana'); break;
         case 'd': addNodeAtCenter('mediaDescriber'); break;
-        case 'c': addNodeAtCenter('imageComposer'); break;
-        case 'l': addNodeAtCenter('imageComposer'); break;   // alias: 'l' = composer
-        case 'q': addNodeAtCenter('concatenator'); break;
-        case 'e': addNodeAtCenter('imageExport'); break;
+        case 'h': addNodeAtCenter('enhancer'); break;
+        case 'g': addNodeAtCenter('grokProcessor'); break;
+        case 'r': addNodeAtCenter('backgroundRemover'); break;
         case 'v': addNodeAtCenter('geminiVideo'); break;
+        // ── Lógica ───────────────────────────────────────────────────────
+        case 'q': addNodeAtCenter('concatenator'); break;
         case 's': addNodeAtCenter('space', { label: 'Space', hasInput: true, hasOutput: true }); break;
+        case 'i': addNodeAtCenter('spaceInput'); break;
+        case 'o': addNodeAtCenter('spaceOutput'); break;
+        // ── Composición ──────────────────────────────────────────────────
+        case 'c': addNodeAtCenter('imageComposer'); break;
+        case 'l': addNodeAtCenter('imageComposer'); break;   // alias
+        case 'e': addNodeAtCenter('imageExport'); break;
+        case 't': addNodeAtCenter('textOverlay'); break;
+        case 'w': addNodeAtCenter('painter'); break;
+
         case 'x': addNodeAtCenter('crop'); break;
+        case 'z': addNodeAtCenter('bezierMask'); break;
+        // ── Canvas actions ───────────────────────────────────────────────
         case 'f': fitView({ padding: 0.2, duration: 800 }); break;
+        case 'a': autoLayout(); break;
         default: break;
       }
+
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [addNodeAtCenter, undo, redo, fitView]);
+  }, [addNodeAtCenter, undo, redo, fitView, autoLayout]);
+
   
+  // ── Track Shift key for canvas pan ──────────────────────────────────────
+  const [shiftHeld, setShiftHeld] = useState(false);
+  useEffect(() => {
+    const onDown = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(true); };
+    const onUp   = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(false); };
+    const onBlur = () => setShiftHeld(false); // safety: reset if window loses focus
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup', onUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onDown);
+      window.removeEventListener('keyup', onUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
+
   // Access Security
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState('');
@@ -870,6 +1075,104 @@ const SpacesContent = () => {
     [setEdges, nodes, pushHistory]
   );
 
+  // ── Handle→Node type suggestions ─────────────────────────────────────────
+  // When a handle drag ends on the canvas, create the most useful connected node.
+  // key: `${handleDataType}:${fromDirection}` → nodeType to create
+  const HANDLE_DROP_MAP: Record<string, string> = {
+    'prompt:source':  'enhancer',       // dragging OUT a prompt → enhancer consumes it
+    'prompt:target':  'promptInput',    // dragging INTO a prompt input → provide a prompt
+    'image:source':   'imageExport',    // dragging OUT an image → export or compose
+    'image:target':   'nanoBanana',     // dragging INTO an image input → generate one
+    'video:source':   'imageExport',
+    'video:target':   'geminiVideo',
+    'mask:source':    'imageComposer',
+    'mask:target':    'backgroundRemover',
+    'url:source':     'mediaDescriber',
+    'url:target':     'mediaInput',
+    'audio:source':   'imageExport',
+    'audio:target':   'mediaInput',
+  };
+
+  const onConnectEnd = useCallback((event: any, connectionState: any) => {
+    // Only act when drop landed on the pane (no valid target node found)
+    if (connectionState?.isValid) return;
+
+    const fromNodeId   = connectionState?.fromNode?.id;
+    const fromHandleId = connectionState?.fromHandle?.id;
+    const fromType     = connectionState?.fromHandle?.type; // 'source' | 'target'
+    if (!fromNodeId || !fromHandleId) return;
+
+    // Check if this handle ALREADY has a connection — if so, skip
+    const alreadyConnected = edges.some((e: any) => {
+      if (fromType === 'source') return e.source === fromNodeId && e.sourceHandle === fromHandleId;
+      return e.target === fromNodeId && e.targetHandle === fromHandleId;
+    });
+    if (alreadyConnected) return;
+
+    // Determine handle data type from NODE_REGISTRY
+    const srcNodeType = nodes.find((n: any) => n.id === fromNodeId)?.type;
+    const meta = srcNodeType ? NODE_REGISTRY[srcNodeType] : null;
+    if (!meta) return;
+
+    const handleMeta =
+      fromType === 'source'
+        ? meta.outputs.find((o: any) => o.id === fromHandleId)
+        : meta.inputs.find((i: any) => i.id === fromHandleId);
+    if (!handleMeta) return;
+
+    const lookupKey  = `${handleMeta.type}:${fromType}`;
+    const newType    = HANDLE_DROP_MAP[lookupKey];
+    if (!newType) return;
+
+    // Convert mouse position to flow coords
+    const clientX = event.clientX ?? event.changedTouches?.[0]?.clientX ?? 0;
+    const clientY = event.clientY ?? event.changedTouches?.[0]?.clientY ?? 0;
+    const position  = screenToFlowPosition({ x: clientX, y: clientY });
+    const newNodeId = `${newType}_${Date.now()}`;
+    const newNode   = {
+      id:       newNodeId,
+      type:     newType,
+      position: { x: position.x - 160, y: position.y - 80 },
+      data:     { label: '' },
+    };
+
+    const edgeId = `ae-${fromNodeId}-${newNodeId}-${fromHandleId}-${Date.now()}`;
+    const newMeta  = NODE_REGISTRY[newType];
+
+    // Pick the connecting handle on the new node
+    let newHandle: string | undefined;
+    if (fromType === 'source') {
+      // new node should receive: find its input matching the handle type
+      newHandle = newMeta?.inputs.find((i: any) => i.type === handleMeta.type)?.id;
+    } else {
+      // new node should provide: find its output matching the handle type
+      newHandle = newMeta?.outputs.find((o: any) => o.type === handleMeta.type)?.id;
+    }
+    if (!newHandle) return;
+
+    const newEdge = {
+      id:           edgeId,
+      source:       fromType === 'source' ? fromNodeId  : newNodeId,
+      sourceHandle: fromType === 'source' ? fromHandleId : newHandle,
+      target:       fromType === 'source' ? newNodeId   : fromNodeId,
+      targetHandle: fromType === 'source' ? newHandle   : fromHandleId,
+      type:         'buttonEdge',
+      animated:     true,
+    };
+
+    setNodes((nds: any) => {
+      const next = [...nds, newNode];
+      pushHistory(next, [...edges, newEdge]);
+      return next;
+    });
+    // Delay edge slightly so ReactFlow's drag-cancel doesn't wipe it
+    setTimeout(() => {
+      setEdges((eds: any) => [...eds, newEdge]);
+    }, 30);
+  }, [edges, nodes, screenToFlowPosition, setNodes, setEdges, pushHistory]);
+
+
+
   const onPaneContextMenu = useCallback((event: any) => {
     event.preventDefault();
     setContextMenu({ x: event.clientX, y: event.clientY });
@@ -929,28 +1232,53 @@ const SpacesContent = () => {
       selected: false
     }));
 
-    // For initial structure analysis, we include a virtual 'out' node to help identify the output type
-    const virtualOutNode = { id: 'out', type: 'spaceOutput' };
-    const structure = analyzeSpaceStructure([...nestedNodes, virtualOutNode], internalEdges);
+    // Find the rightmost node to auto-connect to SpaceOutput
+    const lastNode = nestedNodes.reduce((prev: any, cur: any) =>
+      (cur.position.x > prev.position.x || (cur.position.x === prev.position.x && cur.position.y > prev.position.y))
+        ? cur : prev
+    );
+    const lastNodeMeta = NODE_REGISTRY[lastNode.type];
+    const lastNodeOutput = lastNodeMeta?.outputs?.[0];
+
+    // Build auto-edge FIRST so analyzeSpaceStructure can see it
+    const autoOutEdge = lastNodeOutput ? [{
+      id: `nested_auto_out_${Date.now()}`,
+      source: lastNode.id,
+      sourceHandle: lastNodeOutput.id,
+      target: 'out',
+      targetHandle: 'in',
+      type: 'buttonEdge',
+      animated: true,
+    }] : [];
+
+    const allInternalEdges = [
+      ...internalEdges.map((e: any) => ({ ...e, id: `nested_${e.id}` })),
+      ...autoOutEdge,
+    ];
+
+    // NOW analyze structure with the complete edge set
+    const virtualOutNode = { id: 'out', type: 'spaceOutput', data: {} };
+    const structure = analyzeSpaceStructure([...nestedNodes, virtualOutNode], allInternalEdges);
+
+    // Output type and value come from last node directly (most reliable)
+    const autoOutputType = lastNodeOutput?.type || structure.type;
+    const autoOutputValue = lastNode.data?.value || structure.value || null;
 
     newSpacesMap[spaceId] = {
       id: spaceId,
       name: `Grouped Space`,
       nodes: [
         { id: 'in', type: 'spaceInput', position: { x: 50, y: 250 }, data: { label: 'Input' } },
-        { id: 'out', type: 'spaceOutput', position: { x: 800, y: 250 }, data: { label: 'Output' } },
+        { id: 'out', type: 'spaceOutput', position: { x: Math.max(...nestedNodes.map((n: any) => n.position.x)) + 320, y: lastNode.position.y }, data: { label: 'Output', outputType: autoOutputType } },
         ...nestedNodes
       ],
-      edges: internalEdges.map(e => ({
-        ...e,
-        id: `nested_${e.id}`
-      })),
+      edges: allInternalEdges,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      outputType: structure.type,
-      outputValue: structure.value,
+      outputType: autoOutputType,
+      outputValue: autoOutputValue,
       hasInput: structure.hasInput,
-      hasOutput: structure.hasOutput,
+      hasOutput: true,
       internalCategories: structure.internalCategories
     };
 
@@ -961,13 +1289,15 @@ const SpacesContent = () => {
       position: { x: avgX, y: avgY },
       data: { 
         spaceId, 
-        label: 'Nested Group',
+        label: structure.label || 'Nested Group',
         hasInput: true,
         hasOutput: true,
-        outputType: structure.type,
+        outputType: autoOutputType,
+        value: autoOutputValue,
         internalCategories: structure.internalCategories
       },
     };
+
 
     const remainingNodes = nodes.filter(n => !selectedIds.has(n.id));
     const remainingEdges = edges.filter(e => !selectedIds.has(e.source) && !selectedIds.has(e.target));
@@ -1140,6 +1470,8 @@ const SpacesContent = () => {
           onPaneContextMenu={onPaneContextMenu}
           onNodeContextMenu={onNodeContextMenu}
           onNodeDragStop={onNodeDragStop}
+          onConnectEnd={onConnectEnd}
+
 
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
@@ -1151,7 +1483,13 @@ const SpacesContent = () => {
           maxZoom={4}
           proOptions={{ hideAttribution: true }}
           multiSelectionKeyCode="Shift"
+          panOnDrag={!shiftHeld}
+          selectionOnDrag={shiftHeld}
+          selectionMode={SelectionMode.Partial}
+          panOnScroll={false}
+
           className="spaces-canvas"
+
 
         >
           <Background color="#111" gap={40} size={1} />

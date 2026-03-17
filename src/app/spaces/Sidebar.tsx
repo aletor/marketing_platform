@@ -24,6 +24,31 @@ import {
 } from 'lucide-react';
 import { NODE_REGISTRY } from './nodeRegistry';
 
+// ── Key map: nodeType → shortcut key shown in the badge ──────────────────────
+const NODE_KEYS: Record<string, string> = {
+  mediaInput:        'm',
+  promptInput:       'p',
+  background:        'b',
+  urlImage:          'u',
+  backgroundRemover: 'r',
+  mediaDescriber:    'd',
+  enhancer:          'h',
+  grokProcessor:     'g',
+  nanoBanana:        'n',
+  geminiVideo:       'v',
+  concatenator:      'q',
+  space:             's',
+  spaceInput:        'i',
+  spaceOutput:       'o',
+  imageComposer:     'c',
+  imageExport:       'e',
+  painter:           'w',
+  textOverlay:       't',
+  crop:              'x',
+  bezierMask:        'z',
+};
+
+
 const Sidebar = () => {
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
@@ -58,6 +83,31 @@ const Sidebar = () => {
     );
   };
 
+  // Small key badge shown top-left of each node button
+  const KeyBadge = ({ nodeType }: { nodeType: string }) => {
+    const key = NODE_KEYS[nodeType];
+    if (!key) return null;
+    return (
+      <span
+        style={{
+          position: 'absolute',
+          top: '5px',
+          left: '6px',
+          fontSize: '7px',
+          fontWeight: 900,
+          color: '#94a3b8',
+          lineHeight: 1,
+          letterSpacing: '0.05em',
+          fontFamily: 'monospace',
+          userSelect: 'none',
+          pointerEvents: 'none',
+        }}
+      >
+        {key}
+      </span>
+    );
+  };
+
   return (
     <aside className="spaces-sidebar group/sidebar">
       {/* Expansion Indicator Arrow (Visible only when collapsed) */}
@@ -77,19 +127,23 @@ const Sidebar = () => {
               <Download size={11} className="shrink-0" /> <span>Ingesta</span>
             </h3>
             <div className="grid grid-cols-2 gap-3 transition-all duration-500">
-              <div className="dndnode border-emerald-500/10 hover:border-emerald-500" onDragStart={(event) => onDragStart(event, 'mediaInput')} draggable title="Media Asset">
+              <div className="dndnode border-emerald-500/10 hover:border-emerald-500 relative" onDragStart={(event) => onDragStart(event, 'mediaInput')} draggable title="Media Asset · M">
+                <KeyBadge nodeType="mediaInput" />
                 <FilePlus size={14} className="text-emerald-500 shrink-0" /> <span className="text-emerald-600">Asset</span>
                 <TypeIndicators nodeType="mediaInput" />
               </div>
-              <div className="dndnode border-emerald-500/10 hover:border-emerald-500" onDragStart={(event) => onDragStart(event, 'promptInput')} draggable title="Prompt Input">
+              <div className="dndnode border-emerald-500/10 hover:border-emerald-500 relative" onDragStart={(event) => onDragStart(event, 'promptInput')} draggable title="Prompt Input · P">
+                <KeyBadge nodeType="promptInput" />
                 <Type size={14} className="text-emerald-500 shrink-0" /> <span className="text-emerald-600">Prompt</span>
                 <TypeIndicators nodeType="promptInput" />
               </div>
-              <div className="dndnode border-emerald-500/10 hover:border-emerald-500" onDragStart={(event) => onDragStart(event, 'background')} draggable title="Canvas Base">
+              <div className="dndnode border-emerald-500/10 hover:border-emerald-500 relative" onDragStart={(event) => onDragStart(event, 'background')} draggable title="Canvas Base · B">
+                <KeyBadge nodeType="background" />
                 <Paintbrush size={14} className="text-emerald-500 shrink-0" /> <span className="text-emerald-600">Canvas</span>
                 <TypeIndicators nodeType="background" />
               </div>
-              <div className="dndnode border-emerald-500/10 hover:border-emerald-500" onDragStart={(event) => onDragStart(event, 'urlImage')} draggable title="Web Carousel">
+              <div className="dndnode border-emerald-500/10 hover:border-emerald-500 relative" onDragStart={(event) => onDragStart(event, 'urlImage')} draggable title="Web Carousel · U">
+                <KeyBadge nodeType="urlImage" />
                 <Globe size={14} className="text-emerald-500 shrink-0" /> <span className="text-emerald-600">Web</span>
                 <TypeIndicators nodeType="urlImage" />
               </div>
@@ -102,27 +156,33 @@ const Sidebar = () => {
               <Zap size={11} className="shrink-0" /> <span>Inteligencia</span>
             </h3>
             <div className="grid grid-cols-2 gap-3 transition-all">
-              <div className="dndnode border-cyan-500/10 hover:border-cyan-500" onDragStart={(event) => onDragStart(event, 'backgroundRemover')} draggable title="Human Matting">
+              <div className="dndnode border-cyan-500/10 hover:border-cyan-500 relative" onDragStart={(event) => onDragStart(event, 'backgroundRemover')} draggable title="Human Matting · R">
+                <KeyBadge nodeType="backgroundRemover" />
                 <Scissors size={14} className="text-cyan-500 shrink-0" /> <span className="text-cyan-600">Matting</span>
                 <TypeIndicators nodeType="backgroundRemover" />
               </div>
-              <div className="dndnode border-cyan-500/10 hover:border-cyan-500" onDragStart={(event) => onDragStart(event, 'mediaDescriber')} draggable title="Vision Eye">
+              <div className="dndnode border-cyan-500/10 hover:border-cyan-500 relative" onDragStart={(event) => onDragStart(event, 'mediaDescriber')} draggable title="Vision Eye · D">
+                <KeyBadge nodeType="mediaDescriber" />
                 <Eye size={14} className="text-cyan-500 shrink-0" /> <span className="text-cyan-600">Eye</span>
                 <TypeIndicators nodeType="mediaDescriber" />
               </div>
-              <div className="dndnode border-cyan-500/10 hover:border-cyan-500" onDragStart={(event) => onDragStart(event, 'enhancer')} draggable title="Enhancer">
+              <div className="dndnode border-cyan-500/10 hover:border-cyan-500 relative" onDragStart={(event) => onDragStart(event, 'enhancer')} draggable title="Enhancer · H">
+                <KeyBadge nodeType="enhancer" />
                 <Sparkles size={14} className="text-cyan-500 shrink-0" /> <span className="text-cyan-600">Enhance</span>
                 <TypeIndicators nodeType="enhancer" />
               </div>
-              <div className="dndnode border-cyan-500/10 hover:border-cyan-500" onDragStart={(event) => onDragStart(event, 'grokProcessor')} draggable title="Grok Studio">
+              <div className="dndnode border-cyan-500/10 hover:border-cyan-500 relative" onDragStart={(event) => onDragStart(event, 'grokProcessor')} draggable title="Grok Studio · G">
+                <KeyBadge nodeType="grokProcessor" />
                 <Compass size={14} className="text-cyan-500 shrink-0" /> <span className="text-cyan-600">Grok</span>
                 <TypeIndicators nodeType="grokProcessor" />
               </div>
-              <div className="dndnode border-cyan-500/10 hover:border-cyan-500" onDragStart={(event) => onDragStart(event, 'nanoBanana')} draggable title="Nano Node">
+              <div className="dndnode border-cyan-500/10 hover:border-cyan-500 relative" onDragStart={(event) => onDragStart(event, 'nanoBanana')} draggable title="Nano Node · N">
+                <KeyBadge nodeType="nanoBanana" />
                 <Sparkles size={14} className="text-cyan-500 shrink-0" /> <span className="text-cyan-600">Nano</span>
                 <TypeIndicators nodeType="nanoBanana" />
               </div>
-              <div className="dndnode border-cyan-500/10 hover:border-cyan-500" onDragStart={(event) => onDragStart(event, 'geminiVideo')} draggable title="Gemini Video">
+              <div className="dndnode border-cyan-500/10 hover:border-cyan-500 relative" onDragStart={(event) => onDragStart(event, 'geminiVideo')} draggable title="Gemini Video · V">
+                <KeyBadge nodeType="geminiVideo" />
                 <Video size={14} className="text-cyan-500 shrink-0" /> <span className="text-cyan-600">Veo 3.1</span>
                 <TypeIndicators nodeType="geminiVideo" />
               </div>
@@ -135,19 +195,23 @@ const Sidebar = () => {
               <PlusSquare size={11} className="shrink-0" /> <span>Lógica</span>
             </h3>
             <div className="grid grid-cols-2 gap-3 transition-all">
-              <div className="dndnode border-blue-500/10 hover:border-blue-500" onDragStart={(event) => onDragStart(event, 'concatenator')} draggable title="Concat">
+              <div className="dndnode border-blue-500/10 hover:border-blue-500 relative" onDragStart={(event) => onDragStart(event, 'concatenator')} draggable title="Concat · Q">
+                <KeyBadge nodeType="concatenator" />
                 <PlusSquare size={14} className="text-blue-500 shrink-0" /> <span className="text-blue-600">Concat</span>
                 <TypeIndicators nodeType="concatenator" />
               </div>
-              <div className="dndnode border-blue-500/10 hover:border-blue-500" onDragStart={(event) => onDragStart(event, 'space')} draggable title="Nested Space">
+              <div className="dndnode border-blue-500/10 hover:border-blue-500 relative" onDragStart={(event) => onDragStart(event, 'space')} draggable title="Nested Space · S">
+                <KeyBadge nodeType="space" />
                 <Layers size={14} className="text-blue-500 shrink-0" /> <span className="text-blue-600">Space</span>
                 <TypeIndicators nodeType="space" />
               </div>
-              <div className="dndnode border-blue-500/10 hover:border-blue-500" onDragStart={(event) => onDragStart(event, 'spaceInput')} draggable title="Entry">
+              <div className="dndnode border-blue-500/10 hover:border-blue-500 relative" onDragStart={(event) => onDragStart(event, 'spaceInput')} draggable title="Entry · I">
+                <KeyBadge nodeType="spaceInput" />
                 <ChevronRight size={14} className="text-blue-500 shrink-0" /> <span className="text-blue-600">Entry</span>
                 <TypeIndicators nodeType="spaceInput" />
               </div>
-              <div className="dndnode border-blue-500/10 hover:border-blue-500" onDragStart={(event) => onDragStart(event, 'spaceOutput')} draggable title="Exit">
+              <div className="dndnode border-blue-500/10 hover:border-blue-500 relative" onDragStart={(event) => onDragStart(event, 'spaceOutput')} draggable title="Exit · O">
+                <KeyBadge nodeType="spaceOutput" />
                 <ChevronLeft size={14} className="text-blue-500 shrink-0" /> <span className="text-blue-600">Exit</span>
                 <TypeIndicators nodeType="spaceOutput" />
               </div>
@@ -160,23 +224,33 @@ const Sidebar = () => {
               <Layers size={11} className="shrink-0" /> <span>Composición</span>
             </h3>
             <div className="grid grid-cols-2 gap-3 transition-all">
-              <div className="dndnode border-amber-500/10 hover:border-amber-500" onDragStart={(event) => onDragStart(event, 'imageComposer')} draggable title="Composer">
+              <div className="dndnode border-amber-500/10 hover:border-amber-500 relative" onDragStart={(event) => onDragStart(event, 'imageComposer')} draggable title="Composer · C">
+                <KeyBadge nodeType="imageComposer" />
                 <Layers size={14} className="text-amber-500 shrink-0" /> <span className="text-amber-600">Layout</span>
                 <TypeIndicators nodeType="imageComposer" />
               </div>
-              <div className="dndnode border-amber-500/10 hover:border-amber-500" onDragStart={(event) => onDragStart(event, 'imageExport')} draggable title="Exporter">
+              <div className="dndnode border-amber-500/10 hover:border-amber-500 relative" onDragStart={(event) => onDragStart(event, 'imageExport')} draggable title="Exporter · E">
+                <KeyBadge nodeType="imageExport" />
                 <Download size={14} className="text-amber-500 shrink-0" /> <span className="text-amber-600">Export</span>
                 <TypeIndicators nodeType="imageExport" />
               </div>
-              <div className="dndnode border-amber-500/10 hover:border-amber-500" onDragStart={(event) => onDragStart(event, 'painter')} draggable title="Painter">
+              <div className="dndnode border-amber-500/10 hover:border-amber-500 relative" onDragStart={(event) => onDragStart(event, 'painter')} draggable title="Painter · W">
+                <KeyBadge nodeType="painter" />
                 <Paintbrush size={14} className="text-amber-500 shrink-0" /> <span className="text-amber-600">Painter</span>
                 <TypeIndicators nodeType="painter" />
               </div>
-              <div className="dndnode border-amber-500/10 hover:border-amber-500" onDragStart={(event) => onDragStart(event, 'crop')} draggable title="Crop Asset">
+              <div className="dndnode border-amber-500/10 hover:border-amber-500 relative" onDragStart={(event) => onDragStart(event, 'textOverlay')} draggable title="Text Overlay · T">
+                <KeyBadge nodeType="textOverlay" />
+                <Type size={14} className="text-amber-500 shrink-0" /> <span className="text-amber-600">Text</span>
+                <TypeIndicators nodeType="textOverlay" />
+              </div>
+              <div className="dndnode border-amber-500/10 hover:border-amber-500 relative" onDragStart={(event) => onDragStart(event, 'crop')} draggable title="Crop Asset · X">
+                <KeyBadge nodeType="crop" />
                 <Crop size={14} className="text-amber-500 shrink-0" /> <span className="text-amber-600">Crop</span>
                 <TypeIndicators nodeType="crop" />
               </div>
-              <div className="dndnode border-amber-500/10 hover:border-amber-500" onDragStart={(event) => onDragStart(event, 'bezierMask')} draggable title="Bezier Mask">
+              <div className="dndnode border-amber-500/10 hover:border-amber-500 relative" onDragStart={(event) => onDragStart(event, 'bezierMask')} draggable title="Bezier Mask · Z">
+                <KeyBadge nodeType="bezierMask" />
                 <Scissors size={14} className="text-amber-500 shrink-0" /> <span className="text-amber-600">Bezier</span>
                 <TypeIndicators nodeType="bezierMask" />
               </div>

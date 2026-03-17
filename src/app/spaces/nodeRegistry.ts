@@ -210,11 +210,15 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
     label: 'Space Exit',
     description: 'The final point of a nested space.',
     inputs: [
-      { id: 'in', label: 'Exit Point', type: 'url' }
+      { id: 'in', label: 'Exit Point', type: 'image' },
+      { id: 'in', label: 'Exit Point', type: 'video' },
+      { id: 'in', label: 'Exit Point', type: 'url' },
+      { id: 'in', label: 'Exit Point', type: 'prompt' },
     ],
     outputs: [],
     dataSchema: {}
   },
+
   geminiVideo: {
     type: 'geminiVideo',
     label: 'Gemini Video',
@@ -282,5 +286,25 @@ export const NODE_REGISTRY: Record<string, NodeMetadata> = {
       result_mask: 'string (B&W mask data URL)',
       result_rgba: 'string (RGBA transparent cutout data URL)'
     }
-  }
+  },
+  textOverlay: {
+    type: 'textOverlay',
+    label: 'Text Overlay',
+    description: 'Renders styled text (font, size, color, weight, align) onto a transparent canvas and outputs it as a PNG image for use in compositions.',
+    inputs: [],
+    outputs: [
+      { id: 'image', label: 'Text Image', type: 'image' }
+    ],
+    dataSchema: {
+      text: 'string',
+      fontFamily: 'string (CSS font-family)',
+      fontSize: 'number (px)',
+      color: 'string (hex color)',
+      fontWeight: '300 | 400 | 700 | 900',
+      textAlign: 'left | center | right',
+      canvasW: 'number',
+      canvasH: 'number',
+    }
+  },
 };
+
