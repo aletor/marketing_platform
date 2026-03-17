@@ -1895,9 +1895,18 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
         <span className="handle-label">Prompt</span>
       </div>
 
+      {/* ── Standard node header ─── */}
+      <div className="node-header bg-gradient-to-r from-yellow-600/20 to-orange-600/20">
+        <Sparkles size={15} className="text-yellow-400" />
+        <span>Nano Banana</span>
+        <div className={`node-badge ${modelInfo.bg} ${modelInfo.color} border ${modelInfo.borderColor}`}>
+          {modelInfo.badge}
+        </div>
+      </div>
+
       {/* ── Result preview — FULL WIDTH, image-first ─── */}
       <div className="relative w-full bg-[#0a0a0a] group/media"
-           style={{ minHeight: result ? 'auto' : 180, aspectRatio: result ? 'auto' : '4/3' }}>
+           style={{ minHeight: result ? 'auto' : 180, aspectRatio: result ? 'auto' : '16/9' }}>
         {result ? (
           <>
             <img src={result} className="w-full h-full object-cover" alt="Result" />
@@ -1941,68 +1950,40 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
       {/* ── Controls panel ─── */}
       <div className="px-3 pt-3 pb-3 space-y-2.5">
 
-        {/* Header row: title + model pills */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Sparkles size={11} className="text-yellow-400" />
-            <span className="text-[9px] font-black text-yellow-300 uppercase tracking-widest">Nano Banana</span>
-          </div>
-          <div className="flex gap-1">
-            {NB_MODELS.map(m => (
-              <button
-                key={m.id}
-                onClick={() => updateData('modelKey', m.id)}
-                className={`px-2 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest border transition-all
-                  ${selectedModel === m.id
-                    ? `${m.bg} ${m.color} ${m.borderColor}`
-                    : 'bg-white/[0.03] text-zinc-600 border-white/5 hover:border-white/15 hover:text-zinc-400'
-                  }`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+        {/* Model pills row */}
+        <div className="flex gap-1">
+          {NB_MODELS.map(m => (
+            <button
+              key={m.id}
+              onClick={() => updateData('modelKey', m.id)}
+              className={`flex-1 py-1 rounded-md text-[7px] font-black uppercase tracking-widest border transition-all
+                ${selectedModel === m.id
+                  ? `${m.bg} ${m.color} ${m.borderColor}`
+                  : 'bg-white/[0.03] text-zinc-600 border-white/5 hover:border-white/15 hover:text-zinc-400'
+                }`}
+            >
+              {m.label}
+            </button>
+          ))}
         </div>
 
-        {/* Aspect ratio + Resolution in one compact row */}
-        <div className="flex gap-2">
-          {/* Aspect ratio — compact grid */}
+        {/* Aspect ratio dropdown + Resolution row */}
+        <div className="flex gap-2 items-end">
           <div className="flex-1 space-y-1">
             <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Ratio</span>
-            <div className="grid grid-cols-7 gap-0.5">
-              {ASPECT_RATIOS.filter(r => r.category === 'standard').map(r => (
-                <button
-                  key={r.value}
-                  onClick={() => updateData('aspect_ratio', r.value)}
-                  title={r.value}
-                  className={`py-0.5 rounded text-[6px] font-black text-center border transition-all
-                    ${nodeData.aspect_ratio === r.value
-                      ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
-                      : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:text-zinc-400'
-                    }`}
+            <select
+              value={nodeData.aspect_ratio || '16:9'}
+              onChange={e => updateData('aspect_ratio', e.target.value)}
+              className="w-full bg-[#1a1a1a] text-zinc-300 border border-white/10 rounded-lg px-2 py-1 text-[8px] font-black uppercase tracking-widest cursor-pointer hover:border-white/20 transition-colors"
+            >
+              {ASPECT_RATIOS.map(r => (
+                <option key={r.value} value={r.value}
+                  disabled={r.category === 'extreme' && isFlash25}
                 >
-                  {r.label}
-                </button>
+                  {r.value}{r.category === 'extreme' && isFlash25 ? ' (Flash 3.1+)' : ''}
+                </option>
               ))}
-            </div>
-            <div className="grid grid-cols-4 gap-0.5">
-              {ASPECT_RATIOS.filter(r => r.category === 'extreme').map(r => (
-                <button
-                  key={r.value}
-                  onClick={() => !isFlash25 && updateData('aspect_ratio', r.value)}
-                  disabled={isFlash25}
-                  title={r.value}
-                  className={`py-0.5 rounded text-[6px] font-black text-center border transition-all
-                    ${isFlash25 ? 'opacity-20 cursor-not-allowed text-zinc-700 border-white/5' :
-                      nodeData.aspect_ratio === r.value
-                        ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
-                        : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:text-zinc-400'
-                    }`}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
+            </select>
           </div>
 
           {/* Resolution + Thinking */}
