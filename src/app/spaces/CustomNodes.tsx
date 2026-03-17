@@ -3399,6 +3399,7 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
 
 // --- PAINTER NODE ---
 const PAINT_COLORS = [
+  { id: 'white',  hex: '#ffffff', label: 'White' },
   { id: 'black',  hex: '#111111', label: 'Black' },
   { id: 'blue',   hex: '#3b82f6', label: 'Blue' },
   { id: 'pink',   hex: '#ec4899', label: 'Pink' },
@@ -3431,7 +3432,7 @@ export const PainterNode = memo(({ id, data }: NodeProps<any>) => {
   const brushSizeRef = useRef(10);
 
   // UI state (controls panel) — these don't trigger canvas re-renders
-  const [colorId,    setColorId]    = useState<string>('black');
+  const [colorId,    setColorId]    = useState<string>('white');
   const [bgColor,    setBgColor]    = useState<'white'|'black'>(nodeData.bgColor === '#ffffff' ? 'white' : 'black');
   const [brushSize,  setBrushSize]  = useState(nodeData.brushSize || 10);
   const [mode,       setMode]       = useState<'brush'|'eraser'>('brush');
