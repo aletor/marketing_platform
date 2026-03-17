@@ -1872,7 +1872,7 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node processor-node w-[340px] ${status === 'running' ? 'node-glow-running' : ''}`}
-         style={{ minHeight: 0, padding: 0, overflow: 'hidden' }}>
+         style={{ minHeight: 0 }}>
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana 2" />
 
       {/* ── Ref image handles (4 slots) ─── */}
@@ -1904,9 +1904,8 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
         </div>
       </div>
 
-      {/* ── Result preview — FULL WIDTH, image-first ─── */}
-      <div className="relative w-full bg-[#0a0a0a] group/media"
-           style={{ minHeight: result ? 'auto' : 180, aspectRatio: result ? 'auto' : '16/9' }}>
+      {/* ── Result preview — fixed height ─── */}
+      <div className="relative w-full bg-[#0a0a0a] group/media" style={{ height: 160, overflow: 'hidden' }}>
         {result ? (
           <>
             <img src={result} className="w-full h-full object-cover" alt="Result" />
@@ -1967,68 +1966,61 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
           ))}
         </div>
 
-        {/* Aspect ratio dropdown + Resolution row */}
-        <div className="flex gap-2 items-end">
+        {/* Ratio + Resolution + Thinking in one compact row */}
+        <div className="flex gap-2 items-start">
+          {/* Ratio dropdown */}
           <div className="flex-1 space-y-1">
             <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Ratio</span>
             <select
               value={nodeData.aspect_ratio || '16:9'}
               onChange={e => updateData('aspect_ratio', e.target.value)}
-              className="w-full bg-[#1a1a1a] text-zinc-300 border border-white/10 rounded-lg px-2 py-1 text-[8px] font-black uppercase tracking-widest cursor-pointer hover:border-white/20 transition-colors"
+              className="w-full bg-[#1a1a1a] text-zinc-300 border border-white/10 rounded-lg px-2 py-1.5 text-[8px] font-black cursor-pointer hover:border-white/20 transition-colors"
             >
               {ASPECT_RATIOS.map(r => (
-                <option key={r.value} value={r.value}
-                  disabled={r.category === 'extreme' && isFlash25}
-                >
-                  {r.value}{r.category === 'extreme' && isFlash25 ? ' (Flash 3.1+)' : ''}
+                <option key={r.value} value={r.value} disabled={r.category === 'extreme' && isFlash25}>
+                  {r.value}{r.category === 'extreme' && isFlash25 ? ' (3.1+)' : ''}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Resolution + Thinking */}
-          <div className="w-[68px] space-y-1">
+          {/* Resolution */}
+          <div className="space-y-1">
             <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Res</span>
-            <div className="grid grid-cols-2 gap-0.5">
-              {[
-                { v: '0.5k', l: '0.5K' },
-                { v: '1k',   l: '1K'   },
-                { v: '2k',   l: '2K'   },
-                { v: '4k',   l: '4K'   },
-              ].map(({ v, l }) => (
-                <button
-                  key={v}
+            <div className="grid grid-cols-2 gap-0.5 w-[72px]">
+              {[{ v: '0.5k', l: '0.5K' }, { v: '1k', l: '1K' }, { v: '2k', l: '2K' }, { v: '4k', l: '4K' }].map(({ v, l }) => (
+                <button key={v}
                   onClick={() => !isFlash25 && updateData('resolution', v)}
                   disabled={isFlash25}
-                  title={l}
-                  className={`py-0.5 rounded text-[6px] font-black border transition-all
-                    ${isFlash25 ? 'opacity-20 cursor-not-allowed text-zinc-700 border-white/5' :
+                  className={`py-1 rounded text-[7px] font-black border transition-all
+                    ${isFlash25 ? 'opacity-25 cursor-not-allowed text-zinc-700 border-white/5' :
                       (nodeData.resolution === v || (!nodeData.resolution && v === '1k'))
                         ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
                         : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:text-zinc-400'
                     }`}
-                >
-                  {l}
-                </button>
+                >{l}</button>
               ))}
             </div>
+          </div>
 
-            {/* Thinking toggle — tiny */}
+          {/* Thinking toggle */}
+          <div className="space-y-1">
+            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Think</span>
             <button
               onClick={() => isPro && updateData('thinking', !nodeData.thinking)}
               title={isPro ? 'Thinking mode' : 'Pro 3 required'}
-              className={`w-full flex items-center justify-between px-1.5 py-1 rounded border transition-all mt-1
+              className={`w-full flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg border transition-all
                 ${isPro
                   ? nodeData.thinking
                     ? 'bg-violet-500/15 border-violet-500/40 text-violet-300'
-                    : 'bg-white/[0.03] border-white/5 text-zinc-600 hover:border-white/15'
-                  : 'opacity-20 cursor-not-allowed bg-white/[0.02] border-white/5 text-zinc-700'
+                    : 'bg-white/[0.03] border-white/5 text-zinc-500 hover:border-white/15'
+                  : 'opacity-25 cursor-not-allowed bg-white/[0.02] border-white/5 text-zinc-700'
                 }`}
             >
-              <span className="text-[6px] font-black uppercase tracking-widest">🧠 Think</span>
-              <div className={`w-5 h-2.5 rounded-full flex items-center px-0.5 transition-all
+              <span className="text-[10px]">🧠</span>
+              <div className={`w-6 h-3 rounded-full flex items-center px-0.5 transition-all
                 ${isPro && nodeData.thinking ? 'bg-violet-500 justify-end' : 'bg-white/10 justify-start'}`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${isPro && nodeData.thinking ? 'bg-white' : 'bg-zinc-600'}`} />
+                <div className={`w-2 h-2 rounded-full ${isPro && nodeData.thinking ? 'bg-white' : 'bg-zinc-600'}`} />
               </div>
             </button>
           </div>
