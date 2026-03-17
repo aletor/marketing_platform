@@ -17,16 +17,37 @@
   border-radius: 24px;
   padding: 0;
   color: #1a1a1b;
-  min-width: 320px;
-  max-width: 450px;
-  max-height: 550px;
+  /* width/height controlled by NodeResizer (min/max set per-node as props) */
   display: flex;
   flex-direction: column;
   box-shadow: 
     0 4px 6px -1px rgba(0, 0, 0, 0.05),
     0 20px 40px -4px rgba(0, 0, 0, 0.08);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s;
+  overflow: visible; /* handles must not be clipped */
 }
+
+/* ── NodeResizer handles ── */
+.react-flow__resize-control {
+  border-radius: 50% !important;
+  width: 9px !important;
+  height: 9px !important;
+  background: #ffffff !important;
+  border: 2px solid #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.25), 0 2px 4px rgba(0,0,0,0.15) !important;
+  transition: transform 0.15s;
+}
+.react-flow__resize-control:hover {
+  transform: scale(1.4);
+  border-color: #2563eb !important;
+}
+/* Edge resize lines (middle-of-edge handles) */
+.react-flow__resize-control.line {
+  border-radius: 3px !important;
+  background: rgba(59,130,246,0.5) !important;
+  border: none !important;
+}
+
 
 .custom-node:hover {
   border-color: rgba(0, 0, 0, 0.05);

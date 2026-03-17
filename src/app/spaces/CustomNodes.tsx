@@ -2,7 +2,7 @@
 
 import React, { memo, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Handle, Position, NodeProps, BaseEdge, EdgeLabelRenderer, getBezierPath, EdgeProps, useReactFlow, useNodes, useEdges } from '@xyflow/react';
+import { Handle, Position, NodeProps, BaseEdge, EdgeLabelRenderer, getBezierPath, EdgeProps, useReactFlow, useNodes, useEdges, NodeResizer } from '@xyflow/react';
 import { 
   Video, 
   Type, 
@@ -273,7 +273,7 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
   );
 });
 
-export const UrlImageNode = memo(({ id, data }: NodeProps<any>) => {
+export const UrlImageNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { 
     urls?: string[], 
     selectedIndex?: number,
@@ -350,7 +350,8 @@ export const UrlImageNode = memo(({ id, data }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node url-image-node border-cyan-500/30 ${loading ? 'node-glow-running' : ''}`}>
+    <div className={`custom-node url-image-node border-cyan-500/30 ${loading ? 'node-glow-running' : ''}`} style={{ minWidth: 280, minHeight: 320 }}>
+      <NodeResizer minWidth={280} minHeight={320} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Image Search" />
       <div className="node-header text-cyan-400">
         <Globe size={16} /> CAROUSEL {loading && <Loader2 size={12} className="animate-spin ml-auto" />}
@@ -1159,7 +1160,7 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
 
 // --- UNIVERSAL MEDIA INPUT NODE ---
 
-export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
+export const MediaInputNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { 
     type?: 'video' | 'image' | 'audio' | 'pdf' | 'txt' | 'url',
     source?: 'upload' | 'url' | 'asset',
@@ -1235,8 +1236,9 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
   return (
     <div
       className="custom-node"
-      style={{ padding: 0, minWidth: 260, borderRadius: 18, overflow: 'visible' }}
+      style={{ padding: 0, minWidth: 280, borderRadius: 18, overflow: 'visible' }}
     >
+      <NodeResizer minWidth={280} minHeight={320} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel={nodeData.type ? `${nodeData.type.charAt(0).toUpperCase() + nodeData.type.slice(1)} Input` : 'Media Input'} />
 
       {/* Persistent header */}
@@ -1450,11 +1452,12 @@ export const MediaInputNode = memo(({ id, data }: NodeProps<any>) => {
 });
 
 
-export const PromptNode = memo(({ id, data }: NodeProps<any>) => {
+export const PromptNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
   const { setNodes } = useReactFlow();
   return (
-    <div className="custom-node prompt-node">
+    <div className="custom-node prompt-node" style={{ minWidth: 280, minHeight: 160 }}>
+      <NodeResizer minWidth={280} minHeight={160} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Prompt" />
       <div className="node-header">
         <Type size={16} /> PROMPT
@@ -1478,7 +1481,7 @@ export const PromptNode = memo(({ id, data }: NodeProps<any>) => {
 
 // --- LOGIC NODES ---
 
-export const ConcatenatorNode = memo(({ id, data }: NodeProps<any>) => {
+export const ConcatenatorNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
   const nodes = useNodes();
   const edges = useEdges();
@@ -1507,7 +1510,8 @@ export const ConcatenatorNode = memo(({ id, data }: NodeProps<any>) => {
   const handleIds = ['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'];
 
   return (
-    <div className="custom-node tool-node min-w-[220px]">
+    <div className="custom-node tool-node" style={{ minWidth: 240, minHeight: 180 }}>
+      <NodeResizer minWidth={240} minHeight={180} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Concatenator" />
       {handleIds.map((hId: any, index: number) => (
         <div key={hId} className="handle-wrapper handle-left" style={{ top: `${(index + 1) * (100 / (handleIds.length + 1))}%` }}>
@@ -1543,7 +1547,7 @@ export const ConcatenatorNode = memo(({ id, data }: NodeProps<any>) => {
   );
 });
 
-export const EnhancerNode = memo(({ id, data }: NodeProps<any>) => {
+export const EnhancerNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
   const nodes = useNodes();
   const edges = useEdges();
@@ -1592,7 +1596,8 @@ export const EnhancerNode = memo(({ id, data }: NodeProps<any>) => {
   };
 
   return (
-    <div className="custom-node tool-node min-w-[260px]">
+    <div className="custom-node tool-node" style={{ minWidth: 280, minHeight: 200 }}>
+      <NodeResizer minWidth={280} minHeight={200} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Enhancer" />
 
       {/* Always render all 8 handles; hide extras beyond connected+1 */}
@@ -1670,7 +1675,7 @@ export const EnhancerNode = memo(({ id, data }: NodeProps<any>) => {
 
 
 
-export const GrokNode = memo(({ id, data }: NodeProps<any>) => {
+export const GrokNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
   const { setNodes } = useReactFlow();
   const nodes = useNodes();
@@ -1712,7 +1717,8 @@ export const GrokNode = memo(({ id, data }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}>
+    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`} style={{ minWidth: 300, minHeight: 280 }}>
+      <NodeResizer minWidth={300} minHeight={280} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Grok Imagine" />
       <div className="handle-wrapper handle-left" style={{ top: '30%' }}>
         <Handle type="target" position={Position.Left} id="video" className="handle-video" />
@@ -1774,7 +1780,7 @@ const REF_SLOTS = [
   { id: 'image4', label: 'Ref 4', top: '66%' },
 ] as const;
 
-export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
+export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & {
     aspect_ratio?: string;
     resolution?: string;
@@ -1872,8 +1878,9 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node processor-node w-[340px] ${status === 'running' ? 'node-glow-running' : ''}`}
-         style={{ minHeight: 0 }}>
+    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}
+         style={{ minWidth: 320, minHeight: 350 }}>
+      <NodeResizer minWidth={320} minHeight={350} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana 2" />
 
       {/* ── Ref image handles (4 slots) ─── */}
@@ -2103,7 +2110,7 @@ const FONT_WEIGHTS = [
   { label: 'Black',   value: '900' },
 ];
 
-export const TextOverlayNode = memo(({ id, data }: NodeProps<any>) => {
+export const TextOverlayNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & {
     text?: string;
     fontFamily?: string;
@@ -2177,7 +2184,8 @@ export const TextOverlayNode = memo(({ id, data }: NodeProps<any>) => {
   }, [text, fontFamily, fontSize, color, fontWeight, textAlign, canvasW, canvasH, id, setNodes]);
 
   return (
-    <div className="custom-node tool-node w-[320px]">
+    <div className="custom-node tool-node" style={{ minWidth: 300, minHeight: 280 }}>
+      <NodeResizer minWidth={300} minHeight={280} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Text Overlay" />
 
       <div className="node-header bg-gradient-to-r from-purple-600/20 to-pink-600/20">
@@ -2331,7 +2339,7 @@ export const TextOverlayNode = memo(({ id, data }: NodeProps<any>) => {
 });
 
 
-export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
+export const BackgroundRemoverNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { 
     expansion?: number,
     feather?: number,
@@ -2443,7 +2451,8 @@ export const BackgroundRemoverNode = memo(({ id, data }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node mask-node w-[360px] ${status === 'running' ? 'node-glow-running' : ''}`}>
+    <div className={`custom-node mask-node ${status === 'running' ? 'node-glow-running' : ''}`} style={{ minWidth: 320, minHeight: 320 }}>
+      <NodeResizer minWidth={320} minHeight={320} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Background Remover" />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="media" className="handle-image" />
@@ -3020,7 +3029,7 @@ export const SpaceOutputNode = memo(({ id, data }: NodeProps<any>) => {
 
 
 
-export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
+export const MediaDescriberNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
   const nodes = useNodes();
   const edges = useEdges();
@@ -3117,7 +3126,8 @@ export const MediaDescriberNode = memo(({ id, data }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node describer-node ${status === 'running' ? 'node-glow-running' : ''}`}>
+    <div className={`custom-node describer-node ${status === 'running' ? 'node-glow-running' : ''}`} style={{ minWidth: 300, minHeight: 300 }}>
+      <NodeResizer minWidth={300} minHeight={300} isVisible={selected} />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="media" />
         <span className="handle-label">Media in</span>
@@ -3209,7 +3219,7 @@ const CameraMotionSelector = ({ value, onChange }: { value: string, onChange: (v
   );
 };
 
-export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
+export const GeminiVideoNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as any;
   const { setNodes, getEdges, getNodes } = useReactFlow();
   const [status, setStatus] = useState('idle');
@@ -3293,7 +3303,8 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node processor-node w-[350px] ${status === 'running' ? 'node-glow-running' : ''}`}>
+    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`} style={{ minWidth: 320, minHeight: 320 }}>
+      <NodeResizer minWidth={320} minHeight={320} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Gemini Video (Veo 3.1)" />
       
       <div className="handle-wrapper handle-left !top-[20%]">
