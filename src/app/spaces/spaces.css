@@ -17,9 +17,12 @@
   border-radius: 24px;
   padding: 0;
   color: #1a1a1b;
-  /* width/height controlled by NodeResizer (min/max set per-node as props) */
+  /* Fill the ReactFlow node wrapper so NodeResizer can control height */
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
   box-shadow: 
     0 4px 6px -1px rgba(0, 0, 0, 0.05),
     0 20px 40px -4px rgba(0, 0, 0, 0.08);
@@ -107,6 +110,7 @@
   padding: 20px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0; /* crucial: allows flex child to shrink below its content size */
 }
 
 .node-content::-webkit-scrollbar {

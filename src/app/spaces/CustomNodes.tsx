@@ -1913,7 +1913,7 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
       </div>
 
       {/* ── Result preview — fixed height ─── */}
-      <div className="relative w-full bg-[#0a0a0a] group/media" style={{ height: 160, overflow: 'hidden' }}>
+      <div className="relative w-full bg-[#0a0a0a] group/media" style={{ flex: '1 1 0', minHeight: 120, overflow: 'hidden' }}>
         {result ? (
           <>
             <img src={result} className="w-full h-full object-cover" alt="Result" />
@@ -1955,7 +1955,7 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
       </div>
 
       {/* ── Controls panel ─── */}
-      <div className="px-3 pt-3 pb-3 space-y-2.5">
+      <div className="px-3 pt-3 pb-3 space-y-2.5" style={{ flexShrink: 0 }}>
 
         {/* Model pills row */}
         <div className="flex gap-1">
@@ -3330,7 +3330,7 @@ export const GeminiVideoNode = memo(({ id, data, selected }: NodeProps<any>) => 
         <div className="node-badge">VEO 3.1</div>
       </div>
 
-      <div className="node-content space-y-4">
+      <div className="node-content space-y-4" style={{ display: 'flex', flexDirection: 'column' }}>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resolution</span>
@@ -3381,7 +3381,7 @@ export const GeminiVideoNode = memo(({ id, data, selected }: NodeProps<any>) => 
           <span className="relative z-10">{status === 'running' ? `GENERATING ${Math.round(progress)}%` : 'GENERATE VIDEO'}</span>
         </button>
 
-        <div className="preview-container w-full min-h-[200px] bg-slate-50 rounded-xl border border-slate-200/60 overflow-hidden flex items-center justify-center relative group">
+        <div className="preview-container w-full bg-slate-50 rounded-xl border border-slate-200/60 overflow-hidden flex items-center justify-center relative group" style={{ flex: '1 1 0', minHeight: 160 }}>
           {result ? (
             <video 
               src={result} 
