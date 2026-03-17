@@ -282,30 +282,49 @@
 }
 
 .react-flow__handle {
-  width: 12px;
-  height: 12px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50% !important;
   background: #ffffff !important;
   border-width: 3px !important;
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   pointer-events: all;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
 .handle-prompt { border-color: #3b82f6 !important; }
-.handle-video { border-color: #f43f5e !important; }
-.handle-image { border-color: #ec4899 !important; }
-.handle-sound { border-color: #a855f7 !important; }
-.handle-mask { border-color: #06b6d4 !important; }
-.handle-pdf { border-color: #f97316 !important; }
-.handle-txt { border-color: #f59e0b !important; }
-.handle-url { border-color: #10b981 !important; }
-.handle-rose { border-color: #f43f5e !important; }
-.handle-emerald { border-color: #10b981 !important; }
+.handle-video  { border-color: #f43f5e !important; }
+.handle-image  { border-color: #ec4899 !important; }
+.handle-sound  { border-color: #a855f7 !important; }
+.handle-mask   { border-color: #06b6d4 !important; }
+.handle-pdf    { border-color: #f97316 !important; }
+.handle-txt    { border-color: #f59e0b !important; }
+.handle-url    { border-color: #10b981 !important; }
+.handle-rose   { border-color: #f43f5e !important; }
+.handle-emerald{ border-color: #10b981 !important; }
 
 .react-flow__handle:hover {
-  transform: scale(1.5);
+  transform: scale(1.4);
   background: #fff !important;
 }
+
+/* ── Collapsed node ── */
+.custom-node.node-collapsed {
+  overflow: hidden !important;
+}
+/* Hide everything except the header & handles when collapsed */
+.custom-node.node-collapsed > *:not(.node-header):not(.handle-wrapper) {
+  display: none !important;
+}
+.custom-node.node-collapsed .node-header {
+  display: flex !important;
+  border-radius: 20px !important;
+}
+/* Center all handles at 50% when collapsed so edges stay tidy */
+.custom-node.node-collapsed .handle-wrapper {
+  top: 50% !important;
+}
+
 
 /* Animations */
 @keyframes shimmer {
