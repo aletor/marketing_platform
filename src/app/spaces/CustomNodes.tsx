@@ -116,6 +116,24 @@ const NodeLabel = ({ id, label, defaultLabel }: { id: string, label?: string, de
   );
 };
 
+// ── Handle type → stroke color (mirrors spaces.css .handle-* classes) ──────
+const HANDLE_COLORS: Record<string, string> = {
+  prompt:   '#3b82f6',  // blue
+  video:    '#f43f5e',  // rose-red
+  image:    '#ec4899',  // pink
+  image2:   '#ec4899',
+  image3:   '#ec4899',
+  image4:   '#ec4899',
+  sound:    '#a855f7',  // purple
+  mask:     '#06b6d4',  // cyan
+  pdf:      '#f97316',  // orange
+  txt:      '#f59e0b',  // amber
+  url:      '#10b981',  // emerald
+  rose:     '#f43f5e',
+  emerald:  '#10b981',
+};
+const DEFAULT_EDGE_COLOR = '#94a3b8'; // neutral slate for unknown handles
+
 export const ButtonEdge = ({
   id,
   sourceX,
@@ -124,6 +142,7 @@ export const ButtonEdge = ({
   targetY,
   sourcePosition,
   targetPosition,
+  sourceHandleId,
   style = {},
   markerEnd,
 }: EdgeProps) => {
@@ -137,6 +156,10 @@ export const ButtonEdge = ({
     targetPosition,
   });
 
+  // Determine color from source handle type
+  const handleKey = (sourceHandleId || '').toLowerCase();
+  const strokeColor = HANDLE_COLORS[handleKey] ?? DEFAULT_EDGE_COLOR;
+
   const onEdgeClick = () => {
     setEdges((edges) => edges.filter((edge) => edge.id !== id));
   };
@@ -148,9 +171,8 @@ export const ButtonEdge = ({
         markerEnd={markerEnd} 
         style={{ 
           ...style, 
-          stroke: '#06b6d4', 
-          strokeWidth: 2.5,
-          filter: 'drop-shadow(0 0 5px rgba(6, 182, 212, 0.4))'
+          stroke: strokeColor,
+          strokeWidth: 2,
         }} 
       />
       <EdgeLabelRenderer>
@@ -4509,7 +4531,7 @@ export const FinalOutputNode = memo(({ id, data }: NodeProps<any>) => {
   // Normal mode: invisible node — large handles for edge routing/connection
   // The actual FINAL OUT UI card is rendered as position:fixed in page.tsx
   return (
-    <div style={{ width: 260, height: 200, overflow: 'visible', opacity: 0, pointerEvents: 'none' }}>
+    <div style={{ width: 260, height: 200, overflow: 'visible', opacity: 0, pointerEvents: 'auto' }}>
       {/* Image handle — large invisible hit area at 35% height */}
       <Handle type="target" position={Position.Left} id="image"
         style={{ left: -30, top: '35%', opacity: 0, pointerEvents: 'all', width: 60, height: 60, transform: 'translateY(-50%)' }} />
