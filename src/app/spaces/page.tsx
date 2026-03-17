@@ -1620,33 +1620,6 @@ const SpacesContent = () => {
             userSelect: 'none',
           }}
         >
-          {/* Window header */}
-          <div
-            className="flex items-center justify-between px-4 py-2 flex-shrink-0"
-            style={{ background: 'rgba(251,191,36,0.06)', borderBottom: '1px solid rgba(251,191,36,0.12)' }}
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">
-                Output Viewer
-                {finalMedia.value && (
-                  <span className="ml-2 text-amber-400/60">· {finalMedia.type} · {viewerHeight}px</span>
-                )}
-              </span>
-            </div>
-            <button
-              onClick={() => setWindowMode(false)}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95"
-              style={{
-                background: 'rgba(251,191,36,0.1)',
-                border: '1px solid rgba(251,191,36,0.25)',
-                color: '#fbbf24',
-              }}
-            >
-              <X size={12} />
-              <span>Close Window</span>
-            </button>
-          </div>
 
           {/* Media display area — pan/zoom/fit */}
           <div
