@@ -142,7 +142,7 @@ const SpacesContent = () => {
 
   // ── Window Viewer Mode ─────────────────────────────────────────────────────
   const [windowMode, setWindowMode] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false); // triggered after auth
 
   // On mount: position viewport so FINAL node is ~50px from right, vertically centered
   useEffect(() => {
@@ -678,6 +678,9 @@ const SpacesContent = () => {
     setPasscode(val);
     if (val === '6666') {
       setIsAuthenticated(true);
+      // Trigger welcome splash
+      setShowWelcome(true);
+      setTimeout(() => setShowWelcome(false), 2500);
     } else if (val.length === 4) {
       setPassError(true);
       setTimeout(() => {
