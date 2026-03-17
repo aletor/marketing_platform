@@ -139,14 +139,36 @@ const DEFAULT_EDGE_COLOR = '#94a3b8'; // neutral slate for unknown handles
 // ─────────────────────────────────────────────
 // Collapse helpers (shared across all nodes)
 // ─────────────────────────────────────────────
+const COLLAPSED_H = 44; // px — header-only height
+
 function useNodeCollapse(id: string, data: any) {
   const { setNodes } = useReactFlow();
   const collapsed = !!(data as any).collapsed;
+
   const toggle = useCallback(() => {
-    setNodes((nds: any) => nds.map((n: any) =>
-      n.id === id ? { ...n, data: { ...n.data, collapsed: !n.data.collapsed } } : n
-    ));
+    setNodes((nds: any) => nds.map((n: any) => {
+      if (n.id !== id) return n;
+      const isCurrentlyCollapsed = !!n.data.collapsed;
+      if (isCurrentlyCollapsed) {
+        // EXPAND: restore saved height (remove fixed height so it's auto again)
+        const savedH = n.data._savedH;
+        return {
+          ...n,
+          style: { ...n.style, height: savedH ?? undefined },
+          data: { ...n.data, collapsed: false, _savedH: undefined },
+        };
+      } else {
+        // COLLAPSE: save current height, set to header-only height
+        const currentH = n.style?.height ?? (n as any).measured?.height ?? 300;
+        return {
+          ...n,
+          style: { ...n.style, height: COLLAPSED_H },
+          data: { ...n.data, collapsed: true, _savedH: currentH },
+        };
+      }
+    }));
   }, [id, setNodes]);
+
   return { collapsed, toggle };
 }
 

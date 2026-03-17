@@ -308,6 +308,11 @@
   background: #fff !important;
 }
 
+/* ── Collapse transition on the ReactFlow node wrapper ── */
+.react-flow__node {
+  transition: height 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
 /* ── Collapsed node ── */
 .custom-node.node-collapsed {
   overflow: hidden !important;
@@ -320,11 +325,15 @@
   display: flex !important;
   border-radius: 20px !important;
 }
-/* Center all handles at 50% when collapsed so edges stay tidy */
+/* Center all handles at 50% when collapsed so they stay on the header */
 .custom-node.node-collapsed .handle-wrapper {
   top: 50% !important;
+  transition: top 0.2s ease;
 }
-
+/* Also ensure the RF node wrapper clips content during collapse */
+.react-flow__node:has(.node-collapsed) {
+  overflow: hidden !important;
+}
 
 /* Animations */
 @keyframes shimmer {
