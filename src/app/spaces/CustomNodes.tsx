@@ -4528,16 +4528,18 @@ export const FinalOutputNode = memo(({ id, data }: NodeProps<any>) => {
   }
 
 
-  // Normal mode: invisible node — large handles for edge routing/connection
-  // The actual FINAL OUT UI card is rendered as position:fixed in page.tsx
+  // Normal mode: invisible node — handles aligned exactly with the fixed overlay dots
+  // Node is anchored at screen (innerWidth-198, innerHeight/2).
+  // Dot img: innerHeight/2 - 15px  → handle at y = -15px relative to node origin → top:0 on a 30px-tall wrapper starting at -15px
+  // Dot vid: innerHeight/2 + 15px  → handle at y = +15px → bottom of the 30px wrapper
   return (
-    <div style={{ width: 260, height: 200, overflow: 'visible', opacity: 0, pointerEvents: 'auto' }}>
-      {/* Image handle — large invisible hit area at 35% height */}
+    <div style={{ width: 1, height: 30, overflow: 'visible', opacity: 0, pointerEvents: 'none', position: 'relative' }}>
+      {/* Image handle — top dot (15px above node center) */}
       <Handle type="target" position={Position.Left} id="image"
-        style={{ left: -30, top: '35%', opacity: 0, pointerEvents: 'all', width: 60, height: 60, transform: 'translateY(-50%)' }} />
-      {/* Video handle — large invisible hit area at 65% height */}
+        style={{ left: 0, top: -15, pointerEvents: 'all', width: 30, height: 30, opacity: 0 }} />
+      {/* Video handle — bottom dot (15px below node center) */}
       <Handle type="target" position={Position.Left} id="video"
-        style={{ left: -30, top: '65%', opacity: 0, pointerEvents: 'all', width: 60, height: 60, transform: 'translateY(-50%)' }} />
+        style={{ left: 0, top: 15, pointerEvents: 'all', width: 30, height: 30, opacity: 0 }} />
     </div>
   );
 });

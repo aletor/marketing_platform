@@ -168,18 +168,22 @@ const SpacesContent = () => {
   useEffect(() => { viewerHeightRef.current = viewerHeight; }, [viewerHeight]);
   useEffect(() => { windowModeRef.current = windowMode; }, [windowMode]);
 
-  // Compute canvas position for FINAL node so it stays screen-fixed
+  // Compute canvas position for FINAL node so handles align with visual dots
   const syncFinalNode = useCallback((vp: { x: number; y: number; zoom: number }) => {
-    const nodeW = 260, nodeH = 180, marginRight = 50;
     let screenX: number, screenY: number;
     if (windowModeRef.current) {
       // viewerMode: bottom-center of the viewer panel
       screenX = window.innerWidth / 2 - 16;
       screenY = viewerHeightRef.current - 48;
     } else {
-      // normal: right edge, vertically centered
-      screenX = window.innerWidth - marginRight - nodeW;
-      screenY = window.innerHeight / 2 - nodeH / 2;
+      // Card: right:50, width:130 → card left edge = innerWidth - 50 - 130 = innerWidth - 180
+      // Dots: left:-18 from card edge → dot screen X = innerWidth - 180 - 18 = innerWidth - 198
+      // Card top = innerHeight/2 - 50 (centered, height=100)
+      // Dot img: cardTop + 100*0.35 = innerHeight/2 - 50 + 35 = innerHeight/2 - 15
+      // Dot vid: cardTop + 100*0.65 = innerHeight/2 - 50 + 65 = innerHeight/2 + 15
+      // Node placed at midpoint between both dots:
+      screenX = window.innerWidth - 198; // dot X
+      screenY = window.innerHeight / 2;  // midpoint between img(-15) and vid(+15)
     }
     const canvasX = (screenX - vp.x) / vp.zoom;
     const canvasY = (screenY - vp.y) / vp.zoom;
