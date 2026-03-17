@@ -34,6 +34,8 @@ import {
   Paintbrush,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Plus,
   Move,
   Maximize,
@@ -42,7 +44,10 @@ import {
   Eraser,
   Crop,
   Check,
-  Pencil
+  Pencil,
+  Square,
+  Trash2,
+  EyeOff
 } from 'lucide-react';
 import './spaces.css';
 import { NODE_REGISTRY } from './nodeRegistry';
@@ -55,6 +60,24 @@ interface BaseNodeData {
   aspect_ratio?: string;
   label?: string;
   loading?: boolean;
+}
+
+interface ComposerLayer {
+  id: string;
+  type: 'image' | 'color' | 'rect' | 'text';
+  label: string;
+  x: number; y: number; w: number; h: number;
+  opacity: number;
+  visible: boolean;
+  locked: boolean;
+  // type-specific
+  src?: string;    // image
+  color?: string;  // color fill / solid bg
+  fill?: string;   // rect fill
+  radius?: number; // rect border-radius
+  text?: string;   // text layer
+  fontSize?: number;
+  fontColor?: string;
 }
 
 const NodeLabel = ({ id, label, defaultLabel }: { id: string, label?: string, defaultLabel: string }) => {
@@ -529,492 +552,568 @@ export const UrlImageNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
 // --- IMAGE COMPOSER NODE ---
 
-export const ImageComposerNode = ({ id, data }: NodeProps<any>) => {
+export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodes = useNodes();
   const edges = useEdges();
   const { setNodes } = useReactFlow();
-  const previewRef = useRef<HTMLDivElement>(null);
-  
-  const nodeData = data as BaseNodeData & { 
-    layersConfig?: Record<string, { x: number, y: number, scale: number }>,
-    selectedLayerId?: string
-  };
 
-  const layersConfig: Record<string, { x: number, y: number, scale: number }> = nodeData.layersConfig || {};
-  const selectedLayerId = nodeData.selectedLayerId || null;
+  const nodeData = data as BaseNodeData & {
+    layers?: ComposerLayer[];          // internal layers (rects, colors, texts)
+    legacyLayersConfig?: Record<string, any>;
+    selectedLayerId?: string | null;
+    value?: string;
+  };
+  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
+
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
 
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
-  // Dragging State (local for performance)
-  const [dragInfo, setDragInfo] = useState<{ 
-    handleId: string, 
-    startX: number, 
-    startY: number, 
-    initialX: number, 
-    initialY: number, 
-    initialScale: number, 
-    mode: 'move' | 'scale-br' | 'scale-bl' | 'scale-tr' | 'scale-tl' 
-  } | null>(null);
+  // ── Internal layers stored in node data ──────────────────────────────
+  const internalLayers: ComposerLayer[] = nodeData.layers ?? [];
 
-  // Find all edges connected TO this node, sorted by handle ID (layer-0, layer-1...)
-  const connectedInputs = useMemo(() => 
-    edges.filter((e: any) => e.target === id).sort((a: any, b: any) => (a.targetHandle || '').localeCompare(b.targetHandle || '')),
+  const updateNodeLayers = useCallback((updater: (prev: ComposerLayer[]) => ComposerLayer[]) => {
+    setNodes((nds: any) => nds.map((n: any) => {
+      if (n.id !== id) return n;
+      const newLayers = updater(n.data.layers ?? []);
+      return { ...n, data: { ...n.data, layers: newLayers } };
+    }));
+  }, [id, setNodes]);
+
+  const updateData = useCallback((updates: any) => {
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, ...updates } } : n));
+  }, [id, setNodes]);
+
+  // ── Input image handles (from connected nodes) ───────────────────────
+  const connectedInputs = useMemo(() =>
+    edges.filter((e: any) => e.target === id)
+      .sort((a: any, b: any) => (a.targetHandle || '').localeCompare(b.targetHandle || '')),
     [edges, id]
   );
 
-  // Map handles to actual layer data
-  const layers = useMemo(() => {
+  const imageLayersFromInputs = useMemo(() => {
     return connectedInputs.map(edge => {
-      const sourceNode = nodes.find(n => n.id === edge.source);
-      const hId = edge.targetHandle || 'layer-0';
-      const config = layersConfig[hId] || { x: 0, y: 0, scale: 1 };
-      
-      const sourceHandle = (edge as any).sourceHandle;
-      // Robust value extraction: prioritize current handle, then common keys, then generic value
-      const value = sourceHandle 
-        ? (sourceNode?.data[sourceHandle] || sourceNode?.data[`result_${sourceHandle}`] || sourceNode?.data.value) 
-        : sourceNode?.data.value;
-      
+      const srcNode = nodes.find(n => n.id === edge.source);
+      const hId = edge.targetHandle || 'slot-0';
+      const srcHandle = (edge as any).sourceHandle;
+      const value = srcHandle
+        ? (srcNode?.data[srcHandle] || srcNode?.data[`result_${srcHandle}`] || srcNode?.data.value)
+        : srcNode?.data.value;
+      const layerCfg = internalLayers.find(l => l.id === hId);
       return {
-        id: sourceNode?.id,
+        id: hId,
         edgeId: edge.id,
-        handleId: hId,
-        type: sourceNode?.data.type,
-        value: value as string | undefined,
-        color: sourceNode?.data.color as string | undefined,
-        width: sourceNode?.data.width as number || 1920,
-        height: sourceNode?.data.height as number || 1080,
-        ...config
+        type: 'image' as const,
+        src: value as string | undefined,
+        color: srcNode?.data.color as string | undefined,
+        x: layerCfg?.x ?? 0,
+        y: layerCfg?.y ?? 0,
+        w: layerCfg?.w ?? 960,
+        h: layerCfg?.h ?? 540,
+        opacity: layerCfg?.opacity ?? 1,
+        visible: layerCfg?.visible !== false,
+        locked: layerCfg?.locked ?? false,
+        label: `Input ${connectedInputs.indexOf(edge) + 1}`,
       };
-    }).filter(l => l.value || l.color);
-  }, [connectedInputs, nodes, layersConfig]);
+    }).filter(l => l.src || l.color);
+  }, [connectedInputs, nodes, internalLayers]);
 
-  const updateData = (updates: any) => {
-    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, ...updates } } : n));
-  };
-
-  // --- Real-time Composition Engine ---
-  useEffect(() => {
-    const renderFlattened = async () => {
-      if (layers.length === 0) return;
-
-      const canvas = document.createElement('canvas');
-      canvas.width = 1920;
-      canvas.height = 1080;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      for (const layer of layers) {
-        if (layer.color) {
-          ctx.fillStyle = layer.color;
-          ctx.fillRect(0, 0, 1920, 1080);
-        } else if (layer.value) {
-          try {
-            const img = await loadCanvasImage(layer.value);
-            const scale = layer.scale || 1;
-            
-            // Smarter dimension handling
-            let targetW, targetH;
-            if (layer.color || (layers.indexOf(layer) === 0 && layer.scale === 1 && layer.x === 0 && layer.y === 0)) {
-               targetW = 1920;
-               targetH = 1080;
-            } else {
-               targetW = 1920 * 0.4 * scale;
-               targetH = (targetW / img.naturalWidth) * img.naturalHeight;
-            }
-            
-            ctx.drawImage(img, layer.x, layer.y, targetW, targetH);
-          } catch (e) {
-            console.warn("[Composer] Failed to load layer:", layer.value, e);
-          }
-        }
-      }
-
-      const flattenedUrl = canvas.toDataURL('image/png', 0.9);
-      // Only update if value changed significantly and canvas is not empty (black)
-      if (nodeData.value !== flattenedUrl && canvas.width > 0) {
-         updateData({ value: flattenedUrl });
-      }
-    };
-
-    const timer = setTimeout(renderFlattened, 300); // Debounce for performance
-    return () => clearTimeout(timer);
-  }, [layers, nodeData.value]);
-
-  // Dynamic Handle IDs
   const handleIds = useMemo(() => {
-    const ids = connectedInputs.map((e: any) => e.targetHandle || 'layer-0');
-    const lastNum = ids.length > 0 ? parseInt(ids[ids.length - 1].replace('layer-', '')) : -1;
-    return [...new Set([...ids, `layer-${lastNum + 1}`])];
+    const ids = connectedInputs.map((e: any) => e.targetHandle || 'slot-0');
+    const lastNum = ids.length > 0 ? parseInt(ids[ids.length - 1].replace('slot-', '')) : -1;
+    return [...new Set([...ids, `slot-${lastNum + 1}`])];
   }, [connectedInputs]);
 
+  // All layers for rendering (internal first = bottom, image inputs on top)
+  const allLayersForRender = useMemo(() => {
+    const int = internalLayers.filter(l => l.visible !== false);
+    const img = imageLayersFromInputs.filter(l => l.visible !== false);
+    return [...int, ...img];
+  }, [internalLayers, imageLayersFromInputs]);
+
+  // ── Real-time flatten ─────────────────────────────────────────────────
+  useEffect(() => {
+    const render = async () => {
+      if (allLayersForRender.length === 0) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = 1920; canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.clearRect(0, 0, 1920, 1080);
+
+      for (const layer of allLayersForRender) {
+        ctx.globalAlpha = layer.opacity ?? 1;
+        if (layer.type === 'color' || (layer.type === 'image' && layer.color)) {
+          ctx.fillStyle = (layer as any).color || '#000';
+          ctx.fillRect(layer.x ?? 0, layer.y ?? 0, layer.w ?? 1920, layer.h ?? 1080);
+        } else if (layer.type === 'rect') {
+          ctx.fillStyle = (layer as any).fill || '#ffffff';
+          if ((layer as any).radius) {
+            const r = (layer as any).radius;
+            const x = layer.x ?? 0, y = layer.y ?? 0, w = layer.w ?? 200, h = layer.h ?? 100;
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+            ctx.fill();
+          } else {
+            ctx.fillRect(layer.x ?? 0, layer.y ?? 0, layer.w ?? 200, layer.h ?? 100);
+          }
+        } else if (layer.type === 'image' && (layer as any).src) {
+          try {
+            const img = await loadCanvasImage((layer as any).src);
+            ctx.drawImage(img, layer.x ?? 0, layer.y ?? 0, layer.w ?? img.naturalWidth, layer.h ?? img.naturalHeight);
+          } catch (e) { console.warn('[Composer] layer load fail', e); }
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      const url = canvas.toDataURL('image/png', 0.9);
+      if (nodeData.value !== url) updateData({ value: url, type: 'image' });
+    };
+    const t = setTimeout(render, 350);
+    return () => clearTimeout(t);
+  }, [allLayersForRender]);
+
+  // ── Add internal layer helpers ────────────────────────────────────────
+  const addRect = () => updateNodeLayers(prev => [...prev, {
+    id: `rect-${Date.now()}`, type: 'rect', label: 'Rectangle',
+    x: 200, y: 200, w: 400, h: 200, fill: '#3b82f6', opacity: 1, visible: true, locked: false, radius: 0,
+  }]);
+
+  const addColor = () => updateNodeLayers(prev => [...prev, {
+    id: `color-${Date.now()}`, type: 'color', label: 'Solid Color',
+    x: 0, y: 0, w: 1920, h: 1080, color: '#1e293b', opacity: 1, visible: true, locked: false,
+  }]);
+
+  const deleteLayer = (layerId: string) => updateNodeLayers(prev => prev.filter(l => l.id !== layerId));
+  const toggleVisible = (layerId: string) => updateNodeLayers(prev =>
+    prev.map(l => l.id === layerId ? { ...l, visible: !l.visible } : l)
+  );
+  const moveLayerUp = (layerId: string) => updateNodeLayers(prev => {
+    const i = prev.findIndex(l => l.id === layerId);
+    if (i >= prev.length - 1) return prev;
+    const n = [...prev]; [n[i], n[i+1]] = [n[i+1], n[i]]; return n;
+  });
+  const moveLayerDown = (layerId: string) => updateNodeLayers(prev => {
+    const i = prev.findIndex(l => l.id === layerId);
+    if (i <= 0) return prev;
+    const n = [...prev]; [n[i], n[i-1]] = [n[i-1], n[i]]; return n;
+  });
+
+  const selectedId = nodeData.selectedLayerId;
 
   return (
-    <div className={`custom-node composer-node min-w-[340px] ${_nc ? 'node-collapsed' : ''}` }>
-      {handleIds.map((hId: any, index: number) => (
+    <div className={`custom-node composer-node ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 340, minHeight: 300 }}>
+      <NodeResizer minWidth={340} minHeight={300} isVisible={selected && !_nc} />
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Composer" />
+
+      {/* Input handles */}
+      {handleIds.map((hId: string, index: number) => (
         <div key={hId} className="handle-wrapper handle-left" style={{ top: `${(index + 1) * (100 / (handleIds.length + 1))}%` }}>
           <Handle type="target" position={Position.Left} id={hId} className="handle-image" />
           <span className="handle-label">Layer {index + 1}</span>
         </div>
       ))}
 
-      <div className="node-header flex-col items-start gap-0">
+      {/* Header */}
+      <div className="node-header bg-gradient-to-r from-cyan-600/20 to-indigo-600/20">
         <CollapseBtn collapsed={_nc} onToggle={_nct} />
-        <NodeLabel id={id} label={nodeData.label} defaultLabel="Composer" />
-        <div className="flex items-center w-full gap-2">
-          <Layers size={14} /> IMAGE COMPOSER
-          <button 
-            onClick={() => setIsStudioOpen(true)}
-            className="ml-auto bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-tighter hover:bg-cyan-500/30 transition-all flex items-center gap-1.5"
-          >
-            <Maximize2 size={10} /> Studio Mode
+        <Layers size={14} className="text-cyan-400" />
+        <span>Composer</span>
+        <div className="node-badge">{allLayersForRender.length} layers</div>
+        <button
+          onClick={() => setIsStudioOpen(true)}
+          className="ml-auto nodrag bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-tight hover:bg-cyan-500/30 transition-all flex items-center gap-1"
+        >
+          <Maximize2 size={8} /> Studio
+        </button>
+      </div>
+
+      {/* Mini canvas preview */}
+      <div className="relative w-full bg-[#080808]" style={{ flex: '1 1 0', minHeight: 120, overflow: 'hidden' }}>
+        {nodeData.value ? (
+          <img src={nodeData.value} className="w-full h-full object-contain" alt="composition" />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full gap-2 opacity-20">
+            <Layers size={28} className="text-zinc-400" />
+            <span className="text-[7px] font-black uppercase tracking-widest text-zinc-500">Connect layers or add shapes</span>
+          </div>
+        )}
+      </div>
+
+      {/* Layer panel */}
+      <div className="px-3 pt-2 pb-1" style={{ flexShrink: 0 }}>
+        {/* Toolbar */}
+        <div className="flex items-center gap-1.5 mb-2">
+          <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest flex-1">Layers</span>
+          <button onClick={addColor} className="nodrag text-[7px] font-black px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors flex items-center gap-0.5">
+            <span>+ Color</span>
+          </button>
+          <button onClick={addRect} className="nodrag text-[7px] font-black px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors flex items-center gap-0.5">
+            <Square size={7} /> Rect
           </button>
         </div>
-      </div>
-      
-      <div className="node-content">
-        <div className="mb-3 flex justify-between items-center text-[9px] font-bold text-gray-400 uppercase tracking-widest px-1">
-          <div className="flex items-center gap-1.5"><Move size={12} className="text-cyan-500" /> Interactive Canvas</div>
-          <span className="bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full text-cyan-400">{layers.length} Layers</span>
-        </div>
-        
-        {/* COMPOSITION CANVAS */}
-        <div 
-          ref={previewRef}
-          className="relative w-full aspect-video bg-[#0a0a0a] rounded-xl overflow-hidden border border-white/10 group shadow-2xl select-none" 
-          style={{ backgroundImage: 'radial-gradient(#1a1a1a 1px, transparent 1px)', backgroundSize: '16px 16px' }}
-        >
-          {layers.length === 0 ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-800 gap-2">
-              <Layers size={40} strokeWidth={1} />
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Connect layers to compose</span>
-            </div>
-          ) : (
-            layers.map((layer, idx) => {
-              const isSelected = selectedLayerId === layer.handleId;
-              return (
-                <div 
-                  key={`${layer.handleId}-${layer.edgeId}-${idx}`} 
-                  data-layer-id={layer.handleId}
-                  className={`absolute transition-shadow transition-[border-color] ${isSelected ? 'ring-2 ring-cyan-500/50 z-50' : 'hover:ring-1 hover:ring-white/30'}`}
-                  style={{ 
-                    zIndex: idx,
-                    left: `${(layer.x / 1920) * 100}%`,
-                    top: `${(layer.y / 1080) * 100}%`,
-                    width: (layer.color || (idx === 0 && layer.scale === 1 && layer.x === 0 && layer.y === 0)) ? '100%' : `${40 * (layer.scale || 1)}%`,
-                    height: (layer.color || (idx === 0 && layer.scale === 1 && layer.x === 0 && layer.y === 0)) ? '100%' : 'auto',
-                    pointerEvents: 'none' // Static preview
-                  }}
-                >
-                  <div className="relative group/layer w-full h-full">
-                    {layer.color ? (
-                      <div className="w-full h-full rounded" style={{ backgroundColor: layer.color }}></div>
-                    ) : (
-                      <img 
-                        src={layer.value} 
-                        className="w-full h-auto block pointer-events-none" 
-                        onLoad={(e) => {
-                          // Ensure image is loaded before claiming success
-                          (e.target as any).classList.add('opacity-100');
-                        }}
-                        onError={(e) => {
-                          console.error("Layer Image Failed:", layer.id);
-                        }}
-                        alt={`Layer ${idx}`} 
-                      />
-                    )}
-                    
-                    {isSelected && (
-                      <div className="absolute top-2 left-2 bg-cyan-600/90 text-[7px] text-white px-1.5 py-0.5 rounded font-black uppercase shadow-sm">
-                         L{idx+1}
-                      </div>
-                    )}
-                  </div>
+
+        {/* Layer list — all layers combined */}
+        <div className="space-y-1 max-h-[120px] overflow-y-auto custom-scrollbar pr-0.5">
+          {/* Image input layers */}
+          {imageLayersFromInputs.slice().reverse().map((layer, idx) => {
+            const isSelected = selectedId === layer.id;
+            return (
+              <div
+                key={layer.id}
+                onClick={() => updateData({ selectedLayerId: layer.id })}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border cursor-pointer transition-all ${isSelected ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}
+              >
+                <div className={`w-4 h-4 rounded text-[6px] font-black flex items-center justify-center ${isSelected ? 'bg-cyan-500 text-white' : 'bg-white/10 text-slate-400'}`}>
+                  <ImageIcon size={8} />
                 </div>
-              );
-            })
+                <span className={`text-[7px] font-bold flex-1 truncate ${isSelected ? 'text-cyan-300' : 'text-slate-400'}`}>{layer.label}</span>
+                <button onClick={(e) => { e.stopPropagation(); toggleVisible(layer.id); }} className="nodrag opacity-40 hover:opacity-100">
+                  {layer.visible ? <Eye size={8} className="text-slate-300" /> : <EyeOff size={8} className="text-slate-500" />}
+                </button>
+              </div>
+            );
+          })}
+
+          {/* Internal layers */}
+          {internalLayers.slice().reverse().map((layer) => {
+            const isSelected = selectedId === layer.id;
+            const color = (layer as any).fill || (layer as any).color || '#888';
+            return (
+              <div
+                key={layer.id}
+                onClick={() => updateData({ selectedLayerId: layer.id })}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border cursor-pointer transition-all group/layer ${isSelected ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-white/[0.02] border-white/5 hover:bg-white/5'}`}
+              >
+                <div className="w-4 h-4 rounded flex-shrink-0 border border-white/10" style={{ backgroundColor: color }} />
+                <span className={`text-[7px] font-bold flex-1 truncate ${isSelected ? 'text-indigo-300' : 'text-slate-400'}`}>{layer.label}</span>
+                <div className="flex items-center gap-0.5 opacity-0 group-hover/layer:opacity-100 transition-opacity">
+                  <button onClick={(e) => { e.stopPropagation(); moveLayerUp(layer.id); }} className="nodrag p-0.5 hover:text-white text-slate-500"><ChevronUp size={8} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); moveLayerDown(layer.id); }} className="nodrag p-0.5 hover:text-white text-slate-500"><ChevronDown size={8} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); toggleVisible(layer.id); }} className="nodrag p-0.5">
+                    {layer.visible !== false ? <Eye size={7} className="text-slate-400" /> : <EyeOff size={7} className="text-slate-600" />}
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }} className="nodrag p-0.5 hover:text-rose-400 text-slate-600"><Trash2 size={7} /></button>
+                </div>
+              </div>
+            );
+          })}
+
+          {internalLayers.length === 0 && imageLayersFromInputs.length === 0 && (
+            <div className="text-center py-2 text-[7px] text-slate-600 font-bold">No layers yet</div>
           )}
         </div>
 
-        {/* LAYER MANAGER LIST */}
-        <div className="mt-4 border-t border-slate-200/60 pt-3">
-          <div className="text-[8px] font-black text-gray-500 uppercase mb-2 tracking-widest flex items-center gap-2 px-1">
-             <MousePointer2 size={10} /> Selection Manager
-          </div>
-          <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar">
-            {layers.slice().reverse().map((l, i) => {
-              const actualIdx = layers.length - 1 - i;
-              const isSelected = selectedLayerId === l.handleId;
-              return (
-                <div 
-                  key={actualIdx} 
-                  onClick={() => updateData({ selectedLayerId: l.handleId })}
-                  className={`group flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer ${isSelected ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/[0.03] border-slate-200/60 hover:bg-white/10 hover:border-white/10'}`}
-                >
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black ${isSelected ? 'bg-cyan-500 text-white' : 'bg-white/10 text-gray-500'}`}>
-                    {actualIdx + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className={`text-[9px] font-bold truncate ${isSelected ? 'text-cyan-400' : 'text-gray-400'}`}>
-                      {l.color ? `Canvas Layer` : `Source Asset`}
-                    </div>
-                    <div className="text-[7px] text-gray-600 font-mono truncate">
-                       X: {Math.round(l.x)} | S: {l.scale.toFixed(2)} {l.value ? `| ${Math.round(l.value.length / 1024)}KB` : ''}
-                    </div>
-                  </div>
-                  <div className={`w-2 h-2 rounded-full ${l.color ? 'bg-amber-500' : 'bg-cyan-500'} ${isSelected ? 'animate-pulse' : 'opacity-40'}`}></div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* RENDER COMPOSITION BUTTON */}
-        <button 
+        {/* Render button */}
+        <button
           onClick={async () => {
-            if (layers.length === 0) return alert("Add layers before rendering!");
+            if (allLayersForRender.length === 0) return;
             setIsRendering(true);
             try {
               const formData = new FormData();
-              formData.append('layers', JSON.stringify(layers));
+              formData.append('layers', JSON.stringify(allLayersForRender));
               formData.append('format', 'jpeg');
               formData.append('width', '1920');
               formData.append('height', '1080');
-              formData.append('previewWidth', '1920');
-              formData.append('previewHeight', '1080');
-
               const res = await fetch('/api/spaces/compose', { method: 'POST', body: formData });
-              if (!res.ok) throw new Error("Server composition failed");
-
+              if (!res.ok) throw new Error('Render failed');
               const blob = await res.blob();
-              const base64Url = await new Promise<string>((resolve, reject) => {
+              const url = await new Promise<string>((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onloadend = () => resolve(reader.result as string);
                 reader.onerror = reject;
                 reader.readAsDataURL(blob);
               });
-
-              updateData({ value: base64Url, type: 'image' });
-            } catch (e: any) {
-              console.error(e);
-              alert("Render failed: " + e.message);
-            } finally {
-              setIsRendering(false);
-            }
+              updateData({ value: url, type: 'image' });
+            } catch (e: any) { console.error(e); }
+            finally { setIsRendering(false); }
           }}
-          disabled={isRendering || layers.length === 0}
-          className="execute-btn w-full justify-center mt-4 gap-2"
+          disabled={isRendering || allLayersForRender.length === 0}
+          className="execute-btn w-full !py-2 !text-[9px] justify-center mt-2 gap-1.5"
         >
-          {isRendering ? 'RENDERING...' : 'RENDER COMPOSITION'}
+          <Zap size={9} className={isRendering ? 'animate-pulse' : ''} />
+          {isRendering ? 'RENDERING...' : 'RENDER'}
         </button>
       </div>
-      
-      <div className="handle-wrapper handle-right">
-        <span className="handle-label">Result</span>
+
+      <div className="handle-wrapper handle-right" style={{ top: '50%' }}>
+        <span className="handle-label">Output</span>
         <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
 
       {isStudioOpen && createPortal(
-        <ComposerStudio 
-          layers={layers}
-          layersConfig={layersConfig}
-          onSave={(newConfig) => {
-            updateData({ layersConfig: newConfig });
-            setIsStudioOpen(false);
-          }}
+        <ComposerStudio
+          layers={internalLayers}
+          imageLayers={imageLayersFromInputs}
+          onUpdateLayers={(newLayers) => updateData({ layers: newLayers })}
           onClose={() => setIsStudioOpen(false)}
         />,
         document.body
       )}
     </div>
   );
-};
+});
 
-// --- COMPOSER STUDIO MODAL ---
+
+// ─────────────────────────────────────────────────────────────
+// COMPOSER STUDIO — fullscreen layer editor
+// ─────────────────────────────────────────────────────────────
 
 interface ComposerStudioProps {
-  layers: any[];
-  layersConfig: Record<string, any>;
-  onSave: (config: Record<string, any>) => void;
+  layers: ComposerLayer[];
+  imageLayers: any[];
+  onUpdateLayers: (layers: ComposerLayer[]) => void;
   onClose: () => void;
 }
 
-const ComposerStudio = ({ layers, layersConfig: initialConfig, onSave, onClose }: ComposerStudioProps) => {
-  const [config, setConfig] = useState(initialConfig);
+const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClose }: ComposerStudioProps) => {
+  const [layers, setLayers] = useState<ComposerLayer[]>(initLayers);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [drag, setDrag] = useState<{ id: string, startX: number, startY: number, initX: number, initY: number, initS: number, mode: string } | null>(null);
-  const studioRef = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<{ id: string; sx: number; sy: number; ix: number; iy: number; iw: number; ih: number; mode: string } | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
-  // Handle keyboard movement
+  // Keyboard nudge
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!selectedId) return;
-      const c = config[selectedId] || { x: 0, y: 0, scale: 1 };
-      let { x, y } = c;
-      if (e.key === 'ArrowUp') y -= 5;
-      else if (e.key === 'ArrowDown') y += 5;
-      else if (e.key === 'ArrowLeft') x -= 5;
-      else if (e.key === 'ArrowRight') x += 5;
-      else return;
-      
+      const step = e.shiftKey ? 10 : 1;
+      setLayers(prev => prev.map(l => {
+        if (l.id !== selectedId) return l;
+        if (e.key === 'ArrowUp') return { ...l, y: l.y - step };
+        if (e.key === 'ArrowDown') return { ...l, y: l.y + step };
+        if (e.key === 'ArrowLeft') return { ...l, x: l.x - step };
+        if (e.key === 'ArrowRight') return { ...l, x: l.x + step };
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          return { ...l, visible: false }; // soft delete via visibility
+        }
+        return l;
+      }));
       e.preventDefault();
-      e.stopPropagation();
-      setConfig({ ...config, [selectedId]: { ...c, x, y } });
     };
-    window.addEventListener('keydown', onKey, true); // Use capture to block parent
+    window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [selectedId, config]);
+  }, [selectedId]);
 
-  const onDown = (e: React.PointerEvent, id: string, mode = 'move') => {
+  const onLayerPointerDown = (e: React.PointerEvent, id: string, mode = 'move') => {
     e.stopPropagation();
-    const c = config[id] || { x: 0, y: 0, scale: 1 };
-    setDrag({ id, startX: e.clientX, startY: e.clientY, initX: c.x, initY: c.y, initS: c.scale, mode });
+    const l = layers.find(x => x.id === id);
+    if (!l || l.locked) return;
     setSelectedId(id);
-  };
-
-  const onMove = (e: PointerEvent) => {
-    if (!drag || !studioRef.current) return; // Added studioRef check
-    
-    const rect = studioRef.current.getBoundingClientRect();
-    const scaleX = 1920 / rect.width;
-    const scaleY = 1080 / rect.height;
-    
-    const dx = (e.clientX - drag.startX) * scaleX; // Scaled dx
-    const dy = (e.clientY - drag.startY) * scaleY; // Scaled dy
-    const c = config[drag.id] || { x: 0, y: 0, scale: 1 };
-
-    if (drag.mode === 'move') {
-      setConfig({ ...config, [drag.id]: { ...c, x: drag.initX + dx, y: drag.initY + dy } });
-    } else {
-      // Pivot-based scaling logic (Uniform)
-      const sf = 0.005;
-      // Use scaled dx/dy for moveDeltaScreen as well
-      const moveDeltaScreen = (drag.mode.includes('tl') || drag.mode.includes('bl')) ? (-dx + dy) : (dx + dy);
-      const newS = Math.max(0.1, drag.initS + moveDeltaScreen * sf);
-      
-      // Reference dimensions (fixed internal 1920x1080)
-      const baseW = 1920 * 0.4;
-      const baseH = 1080 * 0.4; // 16:9 approx
-      
-      let newX = drag.initX;
-      let newY = drag.initY;
-
-      // Calculate translation to keep opposite corner fixed
-      if (drag.mode === 'scale-tl') { // Pivot is BR
-        newX = drag.initX - (baseW * (newS - drag.initS));
-        newY = drag.initY - (baseH * (newS - drag.initS));
-      } else if (drag.mode === 'scale-tr') { // Pivot is BL
-        newY = drag.initY - (baseH * (newS - drag.initS));
-      } else if (drag.mode === 'scale-bl') { // Pivot is TR
-        newX = drag.initX - (baseW * (newS - drag.initS));
-      }
-      // scale-br keeps TL (origin) fixed, so no X/Y change
-
-      setConfig({ ...config, [drag.id]: { ...c, scale: newS, x: newX, y: newY } });
-    }
+    setDrag({ id, sx: e.clientX, sy: e.clientY, ix: l.x, iy: l.y, iw: l.w, ih: l.h, mode });
   };
 
   useEffect(() => {
     if (!drag) return;
-    const up = () => setDrag(null);
+    const onMove = (e: PointerEvent) => {
+      if (!canvasRef.current) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const sx = 1920 / rect.width;
+      const sy = 1080 / rect.height;
+      const dx = (e.clientX - drag.sx) * sx;
+      const dy = (e.clientY - drag.sy) * sy;
+      setLayers(prev => prev.map(l => {
+        if (l.id !== drag.id) return l;
+        if (drag.mode === 'move') return { ...l, x: drag.ix + dx, y: drag.iy + dy };
+        if (drag.mode === 'se') return { ...l, w: Math.max(20, drag.iw + dx), h: Math.max(20, drag.ih + dy) };
+        if (drag.mode === 'sw') return { ...l, x: drag.ix + dx, w: Math.max(20, drag.iw - dx), h: Math.max(20, drag.ih + dy) };
+        if (drag.mode === 'ne') return { ...l, y: drag.iy + dy, w: Math.max(20, drag.iw + dx), h: Math.max(20, drag.ih - dy) };
+        if (drag.mode === 'nw') return { ...l, x: drag.ix + dx, y: drag.iy + dy, w: Math.max(20, drag.iw - dx), h: Math.max(20, drag.ih - dy) };
+        return l;
+      }));
+    };
+    const onUp = () => setDrag(null);
     window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', up);
-    return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', up); };
-  }, [drag, config]);
+    window.addEventListener('pointerup', onUp);
+    return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
+  }, [drag]);
+
+  const addRect = () => {
+    const l: ComposerLayer = { id: `rect-${Date.now()}`, type: 'rect', label: 'Rectangle', x: 400, y: 300, w: 400, h: 200, fill: '#3b82f6', opacity: 1, visible: true, locked: false, radius: 0 };
+    setLayers(prev => [...prev, l]);
+    setSelectedId(l.id);
+  };
+  const addColor = () => {
+    const l: ComposerLayer = { id: `color-${Date.now()}`, type: 'color', label: 'Solid Color', x: 0, y: 0, w: 1920, h: 1080, color: '#1e293b', opacity: 1, visible: true, locked: false };
+    setLayers(prev => [l, ...prev]);
+    setSelectedId(l.id);
+  };
+
+  const selectedLayer = layers.find(l => l.id === selectedId);
+
+  const allDisplayLayers = [...layers, ...imageLayers].filter(l => l.visible !== false);
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-8 studio-overlay" onPointerDown={() => setSelectedId(null)}>
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 h-16 border-b border-slate-200/60 bg-slate-50 flex items-center px-8 gap-6 backdrop-blur-md">
-        <button onClick={() => onSave(config)} className="text-gray-500 hover:text-white transition-colors cursor-pointer"><X size={20} /></button>
-        <div className="h-6 w-px bg-white/10" />
-        <div className="flex items-center gap-3">
-          <Layers className="text-cyan-500" size={18} />
-          <span className="text-[11px] font-black uppercase tracking-[3px] text-white">Advanced Composer <span className="text-cyan-500/50">Studio</span></span>
-        </div>
-        <div className="ml-auto flex items-center gap-4">
-          <button onClick={() => setConfig({})} className="text-[10px] font-black text-rose-500/60 hover:text-rose-500 transition-colors uppercase tracking-[2px]">Clear Layout</button>
-          <button 
-            onClick={() => onSave(config)}
-            className="group relative bg-cyan-500 hover:bg-cyan-400 text-black px-10 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[2px] transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)]"
-          >
-            Guardar y Cerrar
-            <div className="absolute inset-0 rounded-full group-hover:animate-ping bg-cyan-500/20 pointer-events-none"></div>
+    <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex flex-col" onPointerDown={() => setSelectedId(null)}>
+      {/* Top bar */}
+      <div className="h-14 border-b border-white/5 flex items-center px-6 gap-4 flex-shrink-0">
+        <Layers className="text-cyan-400" size={16} />
+        <span className="text-[11px] font-black uppercase tracking-widest text-white">Composer Studio</span>
+        <div className="h-4 w-px bg-white/10" />
+        <button onClick={addColor} className="nodrag text-[9px] font-black px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors">+ Color</button>
+        <button onClick={addRect} className="nodrag text-[9px] font-black px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors flex items-center gap-1"><Square size={9} /> Rect</button>
+        <div className="ml-auto flex items-center gap-3">
+          <button onClick={() => { onUpdateLayers(layers); onClose(); }} className="bg-cyan-500 hover:bg-cyan-400 text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all">
+            Save & Close
           </button>
+          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors"><X size={18} /></button>
         </div>
       </div>
 
-      {/* Canvas Area */}
-      <div className="relative w-full h-full flex items-center justify-center pt-16 pb-20">
-        <div 
-          ref={studioRef} // Added studioRef
-          className="relative aspect-video bg-[#050505] border border-white/10 rounded-2xl shadow-[0_40px_100px_rgba(0,0,0,1)] overflow-hidden select-none group/canvas"
-          style={{ 
-            width: 'min(92vw, 1600px)',
-            backgroundImage: 'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)', 
-            backgroundSize: '32px 32px' 
-          }}
-        >
-          {layers.map((l, idx) => {
-            const isSel = selectedId === l.handleId;
-            const c = config[l.handleId] || { x: 0, y: 0, scale: 1 };
-            return (
-              <div
-                key={`${l.handleId}-${l.edgeId}-${idx}`}
-                onPointerDown={(e) => onDown(e, l.handleId!)}
-                className={`absolute cursor-move ${isSel ? 'z-50' : 'hover:z-10'}`} // Removed transition-[box-shadow,transform] duration-200
-                style={{
-                  left: `${(c.x / 1920) * 100}%`,
-                  top: `${(c.y / 1080) * 100}%`,
-                  width: (l.color || (idx === 0 && c.scale === 1 && c.x === 0 && c.y === 0)) ? '100%' : `${40 * c.scale}%`,
-                  height: (l.color || (idx === 0 && c.scale === 1 && c.x === 0 && c.y === 0)) ? '100%' : 'auto',
-                  zIndex: idx,
-                }}
-              >
-                <div className={`relative w-full h-full p-0.5 rounded-lg ${isSel ? 'ring-2 ring-cyan-500 shadow-[0_0_40px_rgba(6,182,212,0.4)]' : 'group-hover/canvas:ring-1 group-hover/canvas:ring-white/10'}`}>
-                  {l.color ? (
-                    <div className="w-full h-full min-h-[40px] rounded shadow-lg" style={{ backgroundColor: l.color }}></div>
-                  ) : (
-                    <img src={l.value} className="w-full h-auto block pointer-events-none drop-shadow-2xl" alt="" />
-                  )}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Canvas */}
+        <div className="flex-1 flex items-center justify-center p-6 bg-[#080808]">
+          <div
+            ref={canvasRef}
+            className="relative bg-[#050505] border border-white/10 rounded-xl shadow-2xl overflow-hidden select-none"
+            style={{
+              width: 'min(90vw, calc((100vh - 120px) * 16/9))',
+              aspectRatio: '16/9',
+              backgroundImage: 'radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
+            }}
+            onPointerDown={() => setSelectedId(null)}
+          >
+            {allDisplayLayers.map((layer, idx) => {
+              const isImg = !!layer.src;
+              const isSel = selectedId === layer.id;
+              const lx = (layer.x / 1920) * 100;
+              const ly = (layer.y / 1080) * 100;
+              const lw = isImg && !layer.w ? '40%' : layer.w ? `${(layer.w / 1920) * 100}%` : '100%';
+              const lh = isImg ? 'auto' : layer.h ? `${(layer.h / 1080) * 100}%` : '100%';
+              const bgColor = layer.fill || layer.color;
 
-                  {isSel && (
+              return (
+                <div
+                  key={`${layer.id}-${idx}`}
+                  className={`absolute cursor-move ${isSel ? 'z-50' : ''}`}
+                  style={{ left: `${lx}%`, top: `${ly}%`, width: lw, height: lh, zIndex: idx, opacity: layer.opacity }}
+                  onPointerDown={(e) => { e.stopPropagation(); setSelectedId(layer.id); if (!layer.locked) setDrag({ id: layer.id, sx: e.clientX, sy: e.clientY, ix: layer.x, iy: layer.y, iw: layer.w, ih: layer.h, mode: 'move' }); }}
+                >
+                  {isImg ? (
+                    <img src={layer.src} className="w-full h-auto block pointer-events-none" alt="" />
+                  ) : (
+                    <div className="w-full h-full" style={{ backgroundColor: bgColor || '#888', borderRadius: layer.radius ? `${layer.radius}px` : 0 }} />
+                  )}
+                  {isSel && !layer.locked && (
                     <>
-                      {/* Scale Handles */}
-                      <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-cyan-500 rounded-full cursor-nwse-resize shadow-lg hover:scale-150 transition-transform" onPointerDown={(e) => onDown(e, l.handleId!, 'scale-tl')} />
-                      <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-cyan-500 rounded-full cursor-nesw-resize shadow-lg hover:scale-150 transition-transform" onPointerDown={(e) => onDown(e, l.handleId!, 'scale-tr')} />
-                      <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-cyan-500 rounded-full cursor-nesw-resize shadow-lg hover:scale-150 transition-transform" onPointerDown={(e) => onDown(e, l.handleId!, 'scale-bl')} />
-                      <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-cyan-500 rounded-full cursor-nwse-resize shadow-lg hover:scale-150 transition-transform" onPointerDown={(e) => onDown(e, l.handleId!, 'scale-br')} />
-                      
-                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-2 whitespace-nowrap bg-slate-100/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-cyan-500/30 text-[9px] font-black uppercase text-cyan-400 shadow-xl pointer-events-none">
-                         <div className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse" />
-                         L{idx + 1} • {Math.round(c.scale * 100)}%
-                      </div>
+                      <div className="absolute inset-0 ring-2 ring-cyan-400 rounded pointer-events-none" />
+                      {/* Resize handles */}
+                      {(['nw','ne','sw','se'] as const).map(pos => (
+                        <div
+                          key={pos}
+                          className={`absolute w-3 h-3 bg-white border-2 border-cyan-400 rounded-sm cursor-${pos}-resize z-10`}
+                          style={{
+                            top: pos.startsWith('n') ? -6 : undefined, bottom: pos.startsWith('s') ? -6 : undefined,
+                            left: pos.endsWith('w') ? -6 : undefined, right: pos.endsWith('e') ? -6 : undefined,
+                          }}
+                          onPointerDown={(e) => { e.stopPropagation(); setDrag({ id: layer.id, sx: e.clientX, sy: e.clientY, ix: layer.x, iy: layer.y, iw: layer.w, ih: layer.h, mode: pos }); }}
+                        />
+                      ))}
                     </>
                   )}
                 </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Side panel */}
+        <div className="w-60 border-l border-white/5 flex flex-col bg-black/40 backdrop-blur-sm overflow-y-auto">
+          <div className="p-3 border-b border-white/5">
+            <div className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-2">Layers</div>
+            <div className="space-y-1">
+              {[...layers].reverse().map(l => (
+                <div key={l.id} onClick={() => setSelectedId(l.id)}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border cursor-pointer transition-all ${selectedId === l.id ? 'bg-cyan-500/20 border-cyan-500/30 text-white' : 'bg-white/[0.02] border-white/5 text-white/50 hover:bg-white/5'}`}>
+                  <div className="w-3 h-3 rounded-sm border border-white/10 flex-shrink-0" style={{ backgroundColor: l.fill || l.color || '#888' }} />
+                  <span className="text-[9px] font-bold flex-1 truncate">{l.label}</span>
+                  <button onClick={(e) => { e.stopPropagation(); setLayers(prev => prev.map(x => x.id === l.id ? { ...x, visible: !x.visible } : x)); }} className="opacity-40 hover:opacity-100">
+                    {l.visible !== false ? <Eye size={9} /> : <EyeOff size={9} />}
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setLayers(prev => prev.filter(x => x.id !== l.id)); if (selectedId === l.id) setSelectedId(null); }} className="opacity-40 hover:opacity-100 hover:text-rose-400">
+                    <Trash2 size={9} />
+                  </button>
+                </div>
+              ))}
+              {imageLayers.map(l => (
+                <div key={l.id} onClick={() => setSelectedId(l.id)}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border cursor-pointer transition-all ${selectedId === l.id ? 'bg-cyan-500/20 border-cyan-500/30 text-white' : 'bg-white/[0.02] border-white/5 text-white/50 hover:bg-white/5'}`}>
+                  <ImageIcon size={9} className="flex-shrink-0 text-pink-400" />
+                  <span className="text-[9px] font-bold flex-1 truncate">{l.label}</span>
+                  <Eye size={9} className="opacity-40" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Properties panel */}
+          {selectedLayer && (
+            <div className="p-3 space-y-3">
+              <div className="text-[8px] font-black text-white/30 uppercase tracking-widest">Properties</div>
+              {/* Color/fill */}
+              {(selectedLayer.type === 'rect' || selectedLayer.type === 'color') && (
+                <div>
+                  <label className="text-[8px] text-white/40">Color</label>
+                  <input type="color" value={selectedLayer.fill || selectedLayer.color || '#3b82f6'}
+                    onChange={e => setLayers(prev => prev.map(l => l.id === selectedId ? { ...l, fill: e.target.value, color: e.target.value } : l))}
+                    className="w-full h-8 rounded cursor-pointer border border-white/10 bg-transparent" />
+                </div>
+              )}
+              {/* Opacity */}
+              <div>
+                <label className="text-[8px] text-white/40">Opacity {Math.round((selectedLayer.opacity ?? 1) * 100)}%</label>
+                <input type="range" min="0" max="1" step="0.01" value={selectedLayer.opacity ?? 1}
+                  onChange={e => setLayers(prev => prev.map(l => l.id === selectedId ? { ...l, opacity: parseFloat(e.target.value) } : l))}
+                  className="w-full" />
               </div>
-            );
-          })}
+              {/* Radius for rect */}
+              {selectedLayer.type === 'rect' && (
+                <div>
+                  <label className="text-[8px] text-white/40">Corner radius {selectedLayer.radius ?? 0}px</label>
+                  <input type="range" min="0" max="200" value={selectedLayer.radius ?? 0}
+                    onChange={e => setLayers(prev => prev.map(l => l.id === selectedId ? { ...l, radius: parseInt(e.target.value) } : l))}
+                    className="w-full" />
+                </div>
+              )}
+              {/* Position */}
+              <div className="grid grid-cols-2 gap-1">
+                {(['x','y','w','h'] as const).map(k => (
+                  <div key={k}>
+                    <label className="text-[8px] text-white/40">{k.toUpperCase()}</label>
+                    <input type="number" value={Math.round((selectedLayer as any)[k] ?? 0)}
+                      onChange={e => setLayers(prev => prev.map(l => l.id === selectedId ? { ...l, [k]: parseInt(e.target.value) } : l))}
+                      className="w-full bg-white/5 border border-white/10 rounded px-1 py-0.5 text-[9px] text-white" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Footer Status */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-12 text-gray-400 text-[8px] font-black uppercase tracking-[3px] bg-white/5 backdrop-blur-xl px-10 py-3 rounded-full border border-white/10 shadow-2xl">
-        <div className="flex items-center gap-3">DRAG <span className="text-gray-600">to move</span></div>
-        <div className="w-px h-3 bg-white/10" />
-        <div className="flex items-center gap-3 text-cyan-500">HANDLES <span className="text-cyan-500/40">to pivot-scale</span></div>
-        <div className="w-px h-3 bg-white/10" />
-        <div className="flex items-center gap-3">ARROWS <span className="text-gray-600">fine-tune</span></div>
-        <div className="w-px h-3 bg-white/10" />
-        <div className="flex items-center gap-3 text-rose-500/60">X <span className="text-rose-500/30">to close</span></div>
+      {/* Footer */}
+      <div className="h-10 border-t border-white/5 flex items-center justify-center gap-8 text-[8px] font-black text-white/20 uppercase tracking-widest flex-shrink-0">
+        <span>DRAG to move</span>
+        <span className="text-white/10">|</span>
+        <span>HANDLES to resize</span>
+        <span className="text-white/10">|</span>
+        <span>ARROWS to nudge (+SHIFT×10)</span>
+        <span className="text-white/10">|</span>
+        <span>DELETE to remove</span>
       </div>
     </div>
   );
 };
 
-  // --- IMAGE EXPORT NODE ---
+// --- IMAGE EXPORT NODE ---
 
 const loadCanvasImage = async (url: string): Promise<HTMLImageElement> => {
   if (!url) throw new Error("Empty image URL");
