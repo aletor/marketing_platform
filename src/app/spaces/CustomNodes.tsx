@@ -149,21 +149,34 @@ function useNodeCollapse(id: string, data: any) {
     setNodes((nds: any) => nds.map((n: any) => {
       if (n.id !== id) return n;
       const isCurrentlyCollapsed = !!n.data.collapsed;
+
       if (isCurrentlyCollapsed) {
-        // EXPAND: restore saved height (remove fixed height so it's auto again)
+        // EXPAND: restore saved dimensions
         const savedH = n.data._savedH;
+        const savedW = n.data._savedW;
         return {
           ...n,
-          style: { ...n.style, height: savedH ?? undefined },
-          data: { ...n.data, collapsed: false, _savedH: undefined },
+          style: {
+            ...n.style,
+            height: savedH !== undefined ? savedH : undefined,
+            width: savedW !== undefined ? savedW : n.style?.width,
+            minHeight: undefined, // clear collapse override
+          },
+          data: { ...n.data, collapsed: false, _savedH: undefined, _savedW: undefined },
         };
       } else {
-        // COLLAPSE: save current height, set to header-only height
+        // COLLAPSE: save current dimensions, force to header height
         const currentH = n.style?.height ?? (n as any).measured?.height ?? 300;
+        const currentW = n.style?.width ?? (n as any).measured?.width;
         return {
           ...n,
-          style: { ...n.style, height: COLLAPSED_H },
-          data: { ...n.data, collapsed: true, _savedH: currentH },
+          style: {
+            ...n.style,
+            height: COLLAPSED_H,
+            minHeight: COLLAPSED_H, // override NodeResizer's minHeight enforcement
+            width: currentW,        // keep width unchanged
+          },
+          data: { ...n.data, collapsed: true, _savedH: currentH, _savedW: currentW },
         };
       }
     }));
@@ -262,7 +275,7 @@ export const ButtonEdge = ({
 
 // --- CORE INPUT NODES ---
 
-export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
+export const BackgroundNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { width?: number, height?: number, color?: string };
   const { setNodes } = useReactFlow();
   const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
@@ -277,7 +290,8 @@ export const BackgroundNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node background-node ${_nc ? 'node-collapsed' : ''}` }>
-      <NodeLabel id={id} label={nodeData.label} defaultLabel="Background" />
+            <NodeResizer minWidth={280} minHeight={200} isVisible={selected && !_nc} />
+<NodeLabel id={id} label={nodeData.label} defaultLabel="Background" />
       <div className="node-header">
         <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Paintbrush size={16} /> CANVAS
@@ -418,7 +432,7 @@ export const UrlImageNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node url-image-node border-cyan-500/30 ${loading ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 280, minHeight: 320 }}>
-      <NodeResizer minWidth={280} minHeight={320} keepAspectRatio isVisible={selected} />
+      <NodeResizer minWidth={280} minHeight={320} keepAspectRatio isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Image Search" />
       <div className="node-header text-cyan-400">
         <CollapseBtn collapsed={_nc} onToggle={_nct} />
@@ -1039,7 +1053,7 @@ const loadCanvasImage = async (url: string): Promise<HTMLImageElement> => {
   }
 };
 
-export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
+export const ImageExportNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodes = useNodes();
   const edges = useEdges();
   const [format, setFormat] = useState<'png' | 'jpeg'>('png');
@@ -1143,7 +1157,8 @@ export const ImageExportNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node export-node border-rose-500/30 ${_nc ? 'node-collapsed' : ''}` }>
-      <NodeLabel id={id} label={data.label} defaultLabel="Export" />
+            <NodeResizer minWidth={280} minHeight={180} isVisible={selected && !_nc} />
+<NodeLabel id={id} label={data.label} defaultLabel="Export" />
 
       {/* Hidden iframe — receives the form POST response (Content-Disposition: attachment) */}
       <iframe
@@ -1243,6 +1258,7 @@ export const MediaInputNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const [showFullSize, setShowFullSize] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const isUploading = isUploadingLocal || nodeData.loading;
@@ -1310,7 +1326,7 @@ export const MediaInputNode = memo(({ id, data, selected }: NodeProps<any>) => {
       className="custom-node"
       style={{ padding: 0, minWidth: 280, borderRadius: 18, overflow: 'visible' }}
     >
-      <NodeResizer minWidth={280} minHeight={320} keepAspectRatio isVisible={selected} />
+      <NodeResizer minWidth={280} minHeight={320} keepAspectRatio isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel={nodeData.type ? `${nodeData.type.charAt(0).toUpperCase() + nodeData.type.slice(1)} Input` : 'Media Input'} />
 
       {/* Persistent header */}
@@ -1530,7 +1546,7 @@ export const PromptNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const { setNodes } = useReactFlow();
   return (
     <div className={`custom-node prompt-node ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 280, minHeight: 160 }}>
-      <NodeResizer minWidth={280} minHeight={160} isVisible={selected} />
+      <NodeResizer minWidth={280} minHeight={160} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Prompt" />
       <div className="node-header">
         <CollapseBtn collapsed={_nc} onToggle={_nct} />
@@ -1587,7 +1603,7 @@ export const ConcatenatorNode = memo(({ id, data, selected }: NodeProps<any>) =>
 
   return (
     <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 240, minHeight: 180 }}>
-      <NodeResizer minWidth={240} minHeight={180} maxWidth={600} maxHeight={520} isVisible={selected} />
+      <NodeResizer minWidth={240} minHeight={180} maxWidth={600} maxHeight={520} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Concatenator" />
       {handleIds.map((hId: any, index: number) => (
         <div key={hId} className="handle-wrapper handle-left" style={{ top: `${(index + 1) * (100 / (handleIds.length + 1))}%` }}>
@@ -1675,7 +1691,7 @@ export const EnhancerNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 280, minHeight: 200 }}>
-      <NodeResizer minWidth={280} minHeight={200} maxWidth={620} maxHeight={660} isVisible={selected} />
+      <NodeResizer minWidth={280} minHeight={200} maxWidth={620} maxHeight={660} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Enhancer" />
 
       {/* Always render all 8 handles; hide extras beyond connected+1 */}
@@ -1798,7 +1814,7 @@ export const GrokNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 300, minHeight: 280 }}>
-      <NodeResizer minWidth={300} minHeight={280} maxWidth={620} maxHeight={620} isVisible={selected} />
+      <NodeResizer minWidth={300} minHeight={280} maxWidth={620} maxHeight={620} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Grok Imagine" />
       <div className="handle-wrapper handle-left" style={{ top: '30%' }}>
         <Handle type="target" position={Position.Left} id="video" className="handle-video" />
@@ -1962,7 +1978,7 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`}
          style={{ minWidth: 320, minHeight: 350 }}>
-      <NodeResizer minWidth={320} minHeight={350} keepAspectRatio isVisible={selected} />
+      <NodeResizer minWidth={320} minHeight={350} keepAspectRatio isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana 2" />
 
       {/* ── Ref image handles (4 slots) ─── */}
@@ -2269,7 +2285,7 @@ export const TextOverlayNode = memo(({ id, data, selected }: NodeProps<any>) => 
 
   return (
     <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 300, minHeight: 280 }}>
-      <NodeResizer minWidth={300} minHeight={280} maxWidth={700} maxHeight={720} isVisible={selected} />
+      <NodeResizer minWidth={300} minHeight={280} maxWidth={700} maxHeight={720} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Text Overlay" />
 
       <div className="node-header bg-gradient-to-r from-purple-600/20 to-pink-600/20">
@@ -2538,7 +2554,7 @@ export const BackgroundRemoverNode = memo(({ id, data, selected }: NodeProps<any
 
   return (
     <div className={`custom-node mask-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 320, minHeight: 320 }}>
-      <NodeResizer minWidth={320} minHeight={320} maxWidth={700} maxHeight={700} isVisible={selected} />
+      <NodeResizer minWidth={320} minHeight={320} maxWidth={700} maxHeight={700} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Background Remover" />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="media" className="handle-image" />
@@ -2825,7 +2841,7 @@ const MatteStudioOverlay = ({
 
 
 
-export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
+export const SpaceNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { 
     outputType?: string, 
     inputType?: string,
@@ -2929,7 +2945,8 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
 
       {/* Main node card */}
       <div className={`custom-node space-node border-cyan-500/30 ${_nc ? 'node-collapsed' : ''}` } style={{ position: 'relative', zIndex: 0 }}>
-      <NodeLabel id={id} label={nodeData.label} defaultLabel="Space" />
+            <NodeResizer minWidth={280} minHeight={180} isVisible={selected && !_nc} />
+<NodeLabel id={id} label={nodeData.label} defaultLabel="Space" />
       
       {/* Input handle only if space has an internal InputNode */}
       {nodeData.hasInput !== false && (
@@ -2998,7 +3015,7 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
 });
 
 
-export const SpaceInputNode = memo(({ id, data }: NodeProps<any>) => {
+export const SpaceInputNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const nodeData = data as BaseNodeData & { inputType?: string };
   
@@ -3027,7 +3044,8 @@ export const SpaceInputNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node space-io-node ${theme.border} ${_nc ? 'node-collapsed' : ''}`}>
-      <NodeLabel id={id} label={nodeData.label} defaultLabel="Input" />
+            <NodeResizer minWidth={200} minHeight={120} isVisible={selected && !_nc} />
+<NodeLabel id={id} label={nodeData.label} defaultLabel="Input" />
       <div className="node-header">
         <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <ChevronRight size={16} className={theme.text} /> SPACE INPUT
@@ -3045,7 +3063,7 @@ export const SpaceInputNode = memo(({ id, data }: NodeProps<any>) => {
   );
 });
 
-export const SpaceOutputNode = memo(({ id, data }: NodeProps<any>) => {
+export const SpaceOutputNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const nodeData = data as BaseNodeData & { outputType?: string };
   const nodes = useNodes();
@@ -3079,7 +3097,8 @@ export const SpaceOutputNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node space-io-node ${theme.border} ${_nc ? 'node-collapsed' : ''}`} style={{ padding: 0, overflow: 'visible', minWidth: 200 }}>
-      <NodeLabel id={id} label={nodeData.label} defaultLabel="Output" />
+            <NodeResizer minWidth={200} minHeight={120} isVisible={selected && !_nc} />
+<NodeLabel id={id} label={nodeData.label} defaultLabel="Output" />
 
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="in" className={getHandleClass()} />
@@ -3220,7 +3239,7 @@ export const MediaDescriberNode = memo(({ id, data, selected }: NodeProps<any>) 
 
   return (
     <div className={`custom-node describer-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 300, minHeight: 300 }}>
-      <NodeResizer minWidth={300} minHeight={300} maxWidth={700} maxHeight={720} isVisible={selected} />
+      <NodeResizer minWidth={300} minHeight={300} maxWidth={700} maxHeight={720} isVisible={selected && !_nc} />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="media" />
         <span className="handle-label">Media in</span>
@@ -3399,7 +3418,7 @@ export const GeminiVideoNode = memo(({ id, data, selected }: NodeProps<any>) => 
 
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 320, minHeight: 320 }}>
-      <NodeResizer minWidth={320} minHeight={320} keepAspectRatio isVisible={selected} />
+      <NodeResizer minWidth={320} minHeight={320} keepAspectRatio isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Gemini Video" />
 
       {/* Handles */}
@@ -3795,7 +3814,7 @@ export const PainterNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node bg-[#141414] border-amber-900/30 ${_nc ? 'node-collapsed' : ''}` } style={{ padding: 0, overflow: 'visible', minWidth: 280, minHeight: 280 }}>
-      <NodeResizer minWidth={280} minHeight={280} isVisible={selected} />
+      <NodeResizer minWidth={280} minHeight={280} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Painter" />
 
       <div className="handle-wrapper handle-left" style={{ top: '50%' }}>
@@ -3884,7 +3903,7 @@ export const PainterNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
 
 // --- CROP NODE ---
-export const CropNode = memo(({ id, data }: NodeProps<any>) => {
+export const CropNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const { setNodes } = useReactFlow();
   const edges = useEdges();
   const nodes = useNodes();
@@ -4022,7 +4041,8 @@ export const CropNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node bg-[#1e1e1e] border-slate-700 w-[340px] ${_nc ? 'node-collapsed' : ''}` }>
-      <NodeLabel id={id} label={nodeData.label} defaultLabel="Crop Asset" />
+            <NodeResizer minWidth={320} minHeight={340} isVisible={selected && !_nc} />
+<NodeLabel id={id} label={nodeData.label} defaultLabel="Crop Asset" />
       
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="image" className="handle-image" />
@@ -4123,7 +4143,7 @@ export const CropNode = memo(({ id, data }: NodeProps<any>) => {
 });
 
 // --- BEZIER MASK NODE ---
-export const BezierMaskNode = memo(({ id, data }: NodeProps<any>) => {
+export const BezierMaskNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const { setNodes } = useReactFlow();
   const edges = useEdges();
   const nodes = useNodes();
@@ -4430,7 +4450,8 @@ export const BezierMaskNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node mask-node w-[360px] ${_nc ? 'node-collapsed' : ''}`}>
-      <NodeLabel id={id} label={nodeData.label} defaultLabel="Bezier Mask" />
+            <NodeResizer minWidth={360} minHeight={400} isVisible={selected && !_nc} />
+<NodeLabel id={id} label={nodeData.label} defaultLabel="Bezier Mask" />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="image" className="handle-image" />
         <span className="handle-label">Media Input</span>
@@ -4670,7 +4691,7 @@ export const BezierMaskNode = memo(({ id, data }: NodeProps<any>) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // FINAL OUTPUT NODE — permanent output destination, no delete, no outputs
 // ─────────────────────────────────────────────────────────────────────────────
-export const FinalOutputNode = memo(({ id, data }: NodeProps<any>) => {
+export const FinalOutputNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodes = useNodes();
   const edges = useEdges();
   const videoRef = useRef<HTMLVideoElement>(null);
