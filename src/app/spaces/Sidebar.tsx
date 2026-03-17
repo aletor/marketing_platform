@@ -179,7 +179,7 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
               }}
               className="hover:bg-white/10 hover:border-white/20 active:scale-95"
             >
-              <span className={item.color}>{item.icon}</span>
+              <span className="text-slate-600">{item.icon}</span>
               <span style={{ fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.04em', lineHeight: 1 }}>
                 {item.label}
               </span>
@@ -197,7 +197,7 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
       <div className="absolute inset-0 w-12 h-full pointer-events-auto" />
 
       {/* Collapsed pill — the visible strip when not hovering */}
-      <div className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-20 bg-white/10 backdrop-blur-2xl border border-white/10 rounded-full flex items-center justify-center text-white/30 group-hover/sidebar:opacity-0 transition-opacity duration-300 shadow-lg pointer-events-none">
+      <div className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-20 bg-white/10 backdrop-blur-2xl border border-white/10 rounded-full flex items-center justify-center text-slate-400 group-hover/sidebar:opacity-0 transition-opacity duration-300 shadow-lg pointer-events-none">
         <ChevronRight size={14} />
       </div>
 
@@ -208,13 +208,13 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
       >
         <div className="h-full w-[200px] bg-white/5 backdrop-blur-2xl border-r border-white/8 flex flex-col shadow-[4px_0_40px_rgba(0,0,0,0.4)]">
           <div className="px-3 mb-4 pt-5 flex-1 overflow-y-auto custom-scrollbar">
-            <div className="text-[10px] font-black text-white/40 uppercase tracking-[3px] mb-5 flex items-center gap-2 px-1">
-              <Layers size={13} className="shrink-0 text-white/30" /> <span>Node Library</span>
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-[3px] mb-5 flex items-center gap-2 px-1">
+              <Layers size={13} className="shrink-0 text-slate-400" /> <span>Node Library</span>
             </div>
 
             {/* 📥 INGESTA */}
             <div className="mb-6">
-              <h3 className="text-[8px] font-black text-emerald-400/70 uppercase tracking-widest mb-3 px-1 flex items-center gap-1.5 whitespace-nowrap overflow-hidden">
+              <h3 className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-3 px-1 flex items-center gap-1.5 whitespace-nowrap overflow-hidden">
                 <Download size={10} className="shrink-0" /> <span>Ingesta</span>
               </h3>
               <div className="grid grid-cols-2 gap-2">
@@ -230,8 +230,8 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
                     title={`${item.label} · ${NODE_KEYS[item.type]}`}
                   >
                     <KeyBadge nodeType={item.type} />
-                    <span className={item.color}>{item.icon}</span>
-                    <span className="text-[7px] font-black text-white/90">{item.label}</span>
+                    <span className="text-slate-600">{item.icon}</span>
+                    <span className="text-[7px] font-black text-slate-700">{item.label}</span>
                     <TypeIndicators nodeType={item.type} />
                   </div>
                 ))}
@@ -240,7 +240,7 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
 
             {/* 🧠 INTELIGENCIA */}
             <div className="mb-6">
-              <h3 className="text-[8px] font-black text-cyan-400/70 uppercase tracking-widest mb-3 px-1 flex items-center gap-1.5">
+              <h3 className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-3 px-1 flex items-center gap-1.5">
                 <Zap size={10} className="shrink-0" /> <span>Inteligencia</span>
               </h3>
               <div className="grid grid-cols-2 gap-2">
@@ -258,8 +258,8 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
                     title={`${item.label} · ${NODE_KEYS[item.type]}`}
                   >
                     <KeyBadge nodeType={item.type} />
-                    <span className={item.color}>{item.icon}</span>
-                    <span className="text-[7px] font-black text-white/90">{item.label}</span>
+                    <span className="text-slate-600">{item.icon}</span>
+                    <span className="text-[7px] font-black text-slate-700">{item.label}</span>
                     <TypeIndicators nodeType={item.type} />
                   </div>
                 ))}
@@ -268,7 +268,7 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
 
             {/* 🧩 LÓGICA */}
             <div className="mb-6">
-              <h3 className="text-[8px] font-black text-blue-400/70 uppercase tracking-widest mb-3 px-1 flex items-center gap-1.5">
+              <h3 className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-3 px-1 flex items-center gap-1.5">
                 <PlusSquare size={10} className="shrink-0" /> <span>Lógica</span>
               </h3>
               <div className="grid grid-cols-2 gap-2">
@@ -284,8 +284,8 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
                     title={`${item.label} · ${NODE_KEYS[item.type]}`}
                   >
                     <KeyBadge nodeType={item.type} />
-                    <span className={item.color}>{item.icon}</span>
-                    <span className="text-[7px] font-black text-white/90">{item.label}</span>
+                    <span className="text-slate-600">{item.icon}</span>
+                    <span className="text-[7px] font-black text-slate-700">{item.label}</span>
                     <TypeIndicators nodeType={item.type} />
                   </div>
                 ))}
@@ -294,7 +294,7 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
 
             {/* 🎨 COMPOSICIÓN */}
             <div className="mb-3">
-              <h3 className="text-[8px] font-black text-amber-400/70 uppercase tracking-widest mb-3 px-1 flex items-center gap-1.5">
+              <h3 className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-3 px-1 flex items-center gap-1.5">
                 <Layers size={10} className="shrink-0" /> <span>Composición</span>
               </h3>
               <div className="grid grid-cols-2 gap-2">
@@ -312,8 +312,8 @@ const Sidebar = ({ windowMode = false }: { windowMode?: boolean }) => {
                     title={`${item.label} · ${NODE_KEYS[item.type]}`}
                   >
                     <KeyBadge nodeType={item.type} />
-                    <span className={item.color}>{item.icon}</span>
-                    <span className="text-[7px] font-black text-white/90">{item.label}</span>
+                    <span className="text-slate-600">{item.icon}</span>
+                    <span className="text-[7px] font-black text-slate-700">{item.label}</span>
                     <TypeIndicators nodeType={item.type} />
                   </div>
                 ))}
