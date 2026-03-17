@@ -1837,7 +1837,7 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
         body: JSON.stringify({
           prompt,
           images: refImages,
-          aspect_ratio: nodeData.aspect_ratio || '1:1',
+          aspect_ratio: nodeData.aspect_ratio || '16:9',
           resolution: isFlash25 ? '1k' : (nodeData.resolution || '1k'),
           model: selectedModel,
           thinking: nodeData.thinking && isPro,
@@ -1913,7 +1913,7 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover/media:opacity-100 transition-opacity duration-300 pointer-events-none" />
             <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between opacity-0 group-hover/media:opacity-100 transition-opacity duration-300">
               <span className="text-[7px] font-black uppercase tracking-widest text-white/60 bg-black/50 px-1.5 py-0.5 rounded backdrop-blur-sm">
-                {modelInfo.badge} · {nodeData.aspect_ratio || '1:1'} · {!isFlash25 ? (nodeData.resolution || '1k').toUpperCase() : ''}
+                {modelInfo.badge} · {nodeData.aspect_ratio || '16:9'} · {!isFlash25 ? (nodeData.resolution || '1k').toUpperCase() : ''}
               </span>
               <button
                 onClick={() => setShowFullSize(true)}
