@@ -1710,12 +1710,10 @@ const SpacesContent = () => {
 
       )}
 
-      {/* ── MAIN CANVAS AREA ────────────────────────────────────────────────── */}
+      {/* ── MAIN CANVAS AREA — always full height, viewer overlays on top ── */}
       <div
         className="flex flex-1"
-        style={windowMode
-          ? { marginTop: viewerHeight, height: `calc(100vh - ${viewerHeight}px)` }
-          : { height: '100%' }}
+        style={{ height: '100%' }}
       >
       {/* Sidebar: fixed full-height, floats above everything including viewer */}
       <div style={{ position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 10003 }}>
