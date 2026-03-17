@@ -351,7 +351,7 @@ export const UrlImageNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node url-image-node border-cyan-500/30 ${loading ? 'node-glow-running' : ''}`} style={{ minWidth: 280, minHeight: 320 }}>
-      <NodeResizer minWidth={280} minHeight={320} isVisible={selected} />
+      <NodeResizer minWidth={280} minHeight={320} keepAspectRatio isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Image Search" />
       <div className="node-header text-cyan-400">
         <Globe size={16} /> CAROUSEL {loading && <Loader2 size={12} className="animate-spin ml-auto" />}
@@ -1238,7 +1238,7 @@ export const MediaInputNode = memo(({ id, data, selected }: NodeProps<any>) => {
       className="custom-node"
       style={{ padding: 0, minWidth: 280, borderRadius: 18, overflow: 'visible' }}
     >
-      <NodeResizer minWidth={280} minHeight={320} isVisible={selected} />
+      <NodeResizer minWidth={280} minHeight={320} keepAspectRatio isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel={nodeData.type ? `${nodeData.type.charAt(0).toUpperCase() + nodeData.type.slice(1)} Input` : 'Media Input'} />
 
       {/* Persistent header */}
@@ -1512,7 +1512,7 @@ export const ConcatenatorNode = memo(({ id, data, selected }: NodeProps<any>) =>
 
   return (
     <div className="custom-node tool-node" style={{ minWidth: 240, minHeight: 180 }}>
-      <NodeResizer minWidth={240} minHeight={180} isVisible={selected} />
+      <NodeResizer minWidth={240} minHeight={180} maxWidth={600} maxHeight={520} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Concatenator" />
       {handleIds.map((hId: any, index: number) => (
         <div key={hId} className="handle-wrapper handle-left" style={{ top: `${(index + 1) * (100 / (handleIds.length + 1))}%` }}>
@@ -1598,7 +1598,7 @@ export const EnhancerNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
   return (
     <div className="custom-node tool-node" style={{ minWidth: 280, minHeight: 200 }}>
-      <NodeResizer minWidth={280} minHeight={200} isVisible={selected} />
+      <NodeResizer minWidth={280} minHeight={200} maxWidth={620} maxHeight={660} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Enhancer" />
 
       {/* Always render all 8 handles; hide extras beyond connected+1 */}
@@ -1719,7 +1719,7 @@ export const GrokNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`} style={{ minWidth: 300, minHeight: 280 }}>
-      <NodeResizer minWidth={300} minHeight={280} isVisible={selected} />
+      <NodeResizer minWidth={300} minHeight={280} maxWidth={620} maxHeight={620} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Grok Imagine" />
       <div className="handle-wrapper handle-left" style={{ top: '30%' }}>
         <Handle type="target" position={Position.Left} id="video" className="handle-video" />
@@ -1881,7 +1881,7 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}
          style={{ minWidth: 320, minHeight: 350 }}>
-      <NodeResizer minWidth={320} minHeight={350} isVisible={selected} />
+      <NodeResizer minWidth={320} minHeight={350} keepAspectRatio isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana 2" />
 
       {/* ── Ref image handles (4 slots) ─── */}
@@ -2186,7 +2186,7 @@ export const TextOverlayNode = memo(({ id, data, selected }: NodeProps<any>) => 
 
   return (
     <div className="custom-node tool-node" style={{ minWidth: 300, minHeight: 280 }}>
-      <NodeResizer minWidth={300} minHeight={280} isVisible={selected} />
+      <NodeResizer minWidth={300} minHeight={280} maxWidth={700} maxHeight={720} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Text Overlay" />
 
       <div className="node-header bg-gradient-to-r from-purple-600/20 to-pink-600/20">
@@ -2453,7 +2453,7 @@ export const BackgroundRemoverNode = memo(({ id, data, selected }: NodeProps<any
 
   return (
     <div className={`custom-node mask-node ${status === 'running' ? 'node-glow-running' : ''}`} style={{ minWidth: 320, minHeight: 320 }}>
-      <NodeResizer minWidth={320} minHeight={320} isVisible={selected} />
+      <NodeResizer minWidth={320} minHeight={320} maxWidth={700} maxHeight={700} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Background Remover" />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="media" className="handle-image" />
@@ -3128,7 +3128,7 @@ export const MediaDescriberNode = memo(({ id, data, selected }: NodeProps<any>) 
 
   return (
     <div className={`custom-node describer-node ${status === 'running' ? 'node-glow-running' : ''}`} style={{ minWidth: 300, minHeight: 300 }}>
-      <NodeResizer minWidth={300} minHeight={300} isVisible={selected} />
+      <NodeResizer minWidth={300} minHeight={300} maxWidth={700} maxHeight={720} isVisible={selected} />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="media" />
         <span className="handle-label">Media in</span>
@@ -3305,7 +3305,7 @@ export const GeminiVideoNode = memo(({ id, data, selected }: NodeProps<any>) => 
 
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`} style={{ minWidth: 320, minHeight: 320 }}>
-      <NodeResizer minWidth={320} minHeight={320} isVisible={selected} />
+      <NodeResizer minWidth={320} minHeight={320} keepAspectRatio isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Gemini Video (Veo 3.1)" />
       
       <div className="handle-wrapper handle-left !top-[20%]">
