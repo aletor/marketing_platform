@@ -4506,14 +4506,16 @@ export const FinalOutputNode = memo(({ id, data }: NodeProps<any>) => {
   }
 
 
-  // Normal mode: invisible node — just handles for edge routing
-  // The actual FINAL OUT UI is rendered as position:fixed in page.tsx
+  // Normal mode: invisible node — large handles for edge routing/connection
+  // The actual FINAL OUT UI card is rendered as position:fixed in page.tsx
   return (
-    <div style={{ width: 1, height: 1, overflow: 'visible', opacity: 0, pointerEvents: 'none' }}>
+    <div style={{ width: 260, height: 200, overflow: 'visible', opacity: 0, pointerEvents: 'none' }}>
+      {/* Image handle — large invisible hit area at 35% height */}
       <Handle type="target" position={Position.Left} id="image"
-        style={{ left: -8, top: 4, opacity: 0, pointerEvents: 'all', width: 12, height: 12 }} />
+        style={{ left: -30, top: '35%', opacity: 0, pointerEvents: 'all', width: 60, height: 60, transform: 'translateY(-50%)' }} />
+      {/* Video handle — large invisible hit area at 65% height */}
       <Handle type="target" position={Position.Left} id="video"
-        style={{ left: -8, top: 20, opacity: 0, pointerEvents: 'all', width: 12, height: 12 }} />
+        style={{ left: -30, top: '65%', opacity: 0, pointerEvents: 'all', width: 60, height: 60, transform: 'translateY(-50%)' }} />
     </div>
   );
 });

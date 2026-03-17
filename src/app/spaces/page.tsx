@@ -1710,6 +1710,15 @@ const SpacesContent = () => {
           width: 260,
           pointerEvents: 'auto',
         }}>
+          {/* Visible connection handle indicators — left side */}
+          <div style={{ position:'absolute', left:-28, top:'35%', transform:'translateY(-50%)', display:'flex', alignItems:'center', gap:4, pointerEvents:'none' }}>
+            <div style={{ width:10, height:10, borderRadius:'50%', background:'#ec4899', border:'2px solid white', boxShadow:'0 0 6px #ec4899' }} />
+            <span style={{ fontSize:7, color:'rgba(255,255,255,0.5)', fontWeight:700, textTransform:'uppercase' }}>img</span>
+          </div>
+          <div style={{ position:'absolute', left:-28, top:'65%', transform:'translateY(-50%)', display:'flex', alignItems:'center', gap:4, pointerEvents:'none' }}>
+            <div style={{ width:10, height:10, borderRadius:'50%', background:'#f43f5e', border:'2px solid white', boxShadow:'0 0 6px #f43f5e' }} />
+            <span style={{ fontSize:7, color:'rgba(255,255,255,0.5)', fontWeight:700, textTransform:'uppercase' }}>vid</span>
+          </div>
           {/* Header */}
           <div
             style={{
