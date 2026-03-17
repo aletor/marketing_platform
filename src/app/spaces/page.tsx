@@ -323,12 +323,38 @@ const SpacesContent = () => {
   }, [nodes, edges]);
 
   // Download helper for viewer (placed after finalMedia to avoid use-before-declaration)
-  const downloadViewerMedia = useCallback(() => {
+  const downloadViewerMedia = useCallback(async () => {
     if (!finalMedia.value) return;
-    const a = document.createElement('a');
-    a.href = finalMedia.value;
-    a.download = `output.${finalMedia.type === 'video' ? 'mp4' : 'jpg'}`;
-    a.click();
+    const ext = finalMedia.type === 'video' ? 'mp4' : 'png';
+    const filename = `output.${ext}`;
+    const url = finalMedia.value;
+
+    if (url.startsWith('data:')) {
+      // DataURL — direct download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      // External URL — fetch as blob to force download (avoids new-tab opening)
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      } catch {
+        // Fallback: open in new tab if fetch fails (e.g. strict CORS)
+        window.open(url, '_blank');
+      }
+    }
   }, [finalMedia]);
 
   // Listen for toggle-final-window events from the FinalOutputNode button
