@@ -143,6 +143,7 @@ const SpacesContent = () => {
   // ── Window Viewer Mode ─────────────────────────────────────────────────────
   const [windowMode, setWindowMode] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false); // triggered after auth
+  const [showFinalOut, setShowFinalOut] = useState(false); // appears 3s after welcome splash ends
 
   // On mount: position viewport so FINAL node is ~50px from right, vertically centered
   useEffect(() => {
@@ -709,9 +710,10 @@ const SpacesContent = () => {
     setPasscode(val);
     if (val === '6666') {
       setIsAuthenticated(true);
-      // Trigger welcome splash
+      // Trigger welcome splash, then show FINAL OUT 3s after it disappears
       setShowWelcome(true);
       setTimeout(() => setShowWelcome(false), 2500);
+      setTimeout(() => setShowFinalOut(true), 5500); // 2.5s splash + 3s delay
     } else if (val.length === 4) {
       setPassError(true);
       setTimeout(() => {
@@ -1703,15 +1705,16 @@ const SpacesContent = () => {
     <div className="flex w-full h-full" ref={reactFlowWrapper} style={{ flexDirection: 'column' }}>
 
       {/* ── FINAL OUT FIXED OVERLAY (UI only, edges route via invisible canvas node) ── */}
-      {!windowMode && !isInsideNestedSpace && (
+      {!windowMode && !isInsideNestedSpace && showFinalOut && (
         <div style={{
           position: 'fixed',
           right: 50,
           top: '50%',
           transform: 'translateY(-50%)',
           zIndex: 9997,
-          width: 260,
+          width: 130,
           pointerEvents: 'auto',
+          transition: 'opacity 0.5s ease',
         }}>
           {/* Visible connection handle indicators — left side */}
           <div style={{ position:'absolute', left:-28, top:'35%', transform:'translateY(-50%)', display:'flex', alignItems:'center', gap:4, pointerEvents:'none' }}>
