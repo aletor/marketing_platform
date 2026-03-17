@@ -3306,102 +3306,113 @@ export const GeminiVideoNode = memo(({ id, data, selected }: NodeProps<any>) => 
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`} style={{ minWidth: 320, minHeight: 320 }}>
       <NodeResizer minWidth={320} minHeight={320} keepAspectRatio isVisible={selected} />
-      <NodeLabel id={id} label={nodeData.label} defaultLabel="Gemini Video (Veo 3.1)" />
-      
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Gemini Video" />
+
+      {/* Handles */}
       <div className="handle-wrapper handle-left !top-[20%]">
         <Handle type="target" position={Position.Left} id="firstFrame" className="handle-image" />
         <span className="handle-label text-emerald-600">First Frame</span>
       </div>
-      <div className="handle-wrapper handle-left !top-[35%]">
+      <div className="handle-wrapper handle-left !top-[38%]">
         <Handle type="target" position={Position.Left} id="lastFrame" className="handle-image" />
         <span className="handle-label text-emerald-600">Last Frame</span>
       </div>
-      <div className="handle-wrapper handle-left !top-[50%]">
+      <div className="handle-wrapper handle-left !top-[56%]">
         <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
-        <span className="handle-label text-emerald-600">Creative Prompt</span>
+        <span className="handle-label text-emerald-600">Prompt</span>
       </div>
-      <div className="handle-wrapper handle-left !top-[65%]">
+      <div className="handle-wrapper handle-left !top-[74%]">
         <Handle type="target" position={Position.Left} id="negativePrompt" className="handle-prompt border-rose-500/50" />
-        <span className="handle-label text-rose-600">Negative Prompt</span>
+        <span className="handle-label text-rose-600">Negative</span>
       </div>
 
+      {/* Header */}
       <div className="node-header bg-gradient-to-r from-emerald-600/20 to-cyan-600/20">
-        <Video size={16} className="text-emerald-600" />
+        <Video size={15} className="text-emerald-500" />
         <span>Gemini Video</span>
         <div className="node-badge">VEO 3.1</div>
       </div>
 
-      <div className="node-content space-y-4" style={{ display: 'flex', flexDirection: 'column' }}>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resolution</span>
-             <select 
-               className="node-input text-[10px]" 
-               value={nodeData.resolution || '1080p'} 
-               onChange={(e) => updateData('resolution', e.target.value)}
-             >
-               <option value="720p">720p HD</option>
-               <option value="1080p">1080p Full HD</option>
-               <option value="4K">4K Ultra HD</option>
-             </select>
-          </div>
-          <div className="space-y-1">
-             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Duration</span>
-             <select 
-               className="node-input text-[10px]" 
-               value={nodeData.duration || '5'} 
-               onChange={(e) => updateData('duration', e.target.value)}
-             >
-               <option value="4">4 Seconds</option>
-               <option value="5">5 Seconds</option>
-               <option value="6">6 Seconds</option>
-               <option value="8">8 Seconds</option>
-             </select>
-          </div>
-        </div>
-
-        <div className="border-t border-slate-200/60 pt-3 space-y-4">
-          <div className="space-y-2">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Camera Motion</span>
-            <CameraMotionSelector 
-              value={nodeData.cameraPreset || ''} 
-              onChange={(val) => updateData('cameraPreset', val)} 
+      {/* ── Video preview — top, fills space (NanoBanana style) ── */}
+      <div className="relative w-full bg-[#0a0a0a] group/media" style={{ flex: '1 1 0', minHeight: 140, overflow: 'hidden' }}>
+        {result ? (
+          <>
+            <video
+              src={result}
+              className="w-full h-full object-cover"
+              controls
+              loop
+              muted
+              playsInline
             />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/media:opacity-100 transition-opacity pointer-events-none" />
+            <div className="absolute bottom-2 left-2 opacity-0 group-hover/media:opacity-100 transition-opacity">
+              <span className="text-[7px] font-black uppercase tracking-widest text-white/60 bg-black/50 px-1.5 py-0.5 rounded">
+                {nodeData.resolution || '1080p'} · {nodeData.duration || '5'}s
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full gap-3 opacity-25">
+            <Video size={36} className="text-zinc-400" />
+            <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">No video generated</span>
+          </div>
+        )}
+        {status === 'running' && (
+          <div className="absolute bottom-0 left-0 right-0">
+            <div className="w-full bg-black/60 h-0.5">
+              <div className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 transition-all duration-500" style={{ width: `${progress}%` }} />
+            </div>
+            <p className="text-[6px] text-emerald-400/80 font-black text-center uppercase tracking-widest py-0.5 bg-black/70 animate-pulse">
+              Generating… {Math.round(progress)}%
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Controls — compact, bottom ── */}
+      <div className="px-3 pt-2.5 pb-3 space-y-2" style={{ flexShrink: 0 }}>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-0.5">
+            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Resolution</span>
+            <select className="w-full bg-[#1a1a1a] text-zinc-300 border border-white/10 rounded-lg px-2 py-1.5 text-[8px] font-black cursor-pointer hover:border-white/20 transition-colors"
+              value={nodeData.resolution || '1080p'}
+              onChange={(e) => updateData('resolution', e.target.value)}>
+              <option value="720p">720p HD</option>
+              <option value="1080p">1080p Full HD</option>
+              <option value="4K">4K Ultra HD</option>
+            </select>
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Duration</span>
+            <select className="w-full bg-[#1a1a1a] text-zinc-300 border border-white/10 rounded-lg px-2 py-1.5 text-[8px] font-black cursor-pointer hover:border-white/20 transition-colors"
+              value={nodeData.duration || '5'}
+              onChange={(e) => updateData('duration', e.target.value)}>
+              <option value="4">4s</option>
+              <option value="5">5s</option>
+              <option value="6">6s</option>
+              <option value="8">8s</option>
+            </select>
           </div>
         </div>
-
-        <button 
+        <div className="space-y-0.5">
+          <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Camera Motion</span>
+          <CameraMotionSelector value={nodeData.cameraPreset || ''} onChange={(val) => updateData('cameraPreset', val)} />
+        </div>
+        <button
           onClick={onRun}
           disabled={status === 'running'}
-          className="execute-btn w-full justify-center gap-2 group relative overflow-hidden"
+          className="execute-btn w-full !py-2.5 !text-[10px] justify-center gap-2 group relative overflow-hidden"
         >
           {status === 'running' && (
             <div className="absolute inset-0 bg-emerald-500/20" style={{ width: `${progress}%`, transition: 'width 0.5s ease-out' }} />
           )}
-          <Zap size={14} className={status === 'running' ? 'animate-pulse' : 'group-hover:scale-125 transition-transform'} />
+          <Zap size={11} className={status === 'running' ? 'animate-pulse' : 'group-hover:scale-125 transition-transform'} />
           <span className="relative z-10">{status === 'running' ? `GENERATING ${Math.round(progress)}%` : 'GENERATE VIDEO'}</span>
         </button>
-
-        <div className="preview-container w-full bg-slate-50 rounded-xl border border-slate-200/60 overflow-hidden flex items-center justify-center relative group" style={{ flex: '1 1 0', minHeight: 160 }}>
-          {result ? (
-            <video 
-              src={result} 
-              className="w-full h-full object-cover" 
-              controls 
-              loop 
-              muted 
-              playsInline
-            />
-          ) : (
-            <div className="flex flex-col items-center gap-2 opacity-20 group-hover:opacity-40 transition-opacity">
-              <Video size={32} />
-              <span className="text-[8px] font-black uppercase tracking-[2px]">No video generated</span>
-            </div>
-          )}
-        </div>
       </div>
 
-      <div className="handle-wrapper handle-right">
+      <div className="handle-wrapper handle-right" style={{ top: '50%' }}>
         <span className="handle-label text-cyan-400">Video Out</span>
         <Handle type="source" position={Position.Right} id="video" className="handle-video" />
       </div>
