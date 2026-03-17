@@ -4468,8 +4468,9 @@ export const FinalOutputNode = memo(({ id, data }: NodeProps<any>) => {
   if (data?.viewerMode) {
     const isConnected = !!(imageEdge || videoEdge);
     const dotColor = mediaType === 'video' ? '#f43f5e' : '#ec4899';
+    const vz = data?.vpZoom || 1;
     return (
-      <div className="relative overflow-visible" style={{ width: 32, height: 32 }}>
+      <div className="relative overflow-visible" style={{ width: 32, height: 32, transform: `scale(${1/vz})`, transformOrigin: 'top center' }}>
         {/* Image handle — top-left */}
         <Handle
           type="target"
@@ -4504,10 +4505,11 @@ export const FinalOutputNode = memo(({ id, data }: NodeProps<any>) => {
     );
   }
 
+  const vz = data?.vpZoom || 1;
   return (
     <div
       className="relative overflow-visible"
-      style={{ width: 260, minHeight: 200 }}
+      style={{ width: 260, minHeight: 200, transform: `scale(${1/vz})`, transformOrigin: 'top right' }}
     >
       {/* Input handles */}
       <div className="handle-wrapper handle-left" style={{ top: '35%' }}>

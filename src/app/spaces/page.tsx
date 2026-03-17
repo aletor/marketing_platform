@@ -162,6 +162,33 @@ const SpacesContent = () => {
 
 
   const [viewerHeight, setViewerHeight] = useState(500); // safe SSR default; updated on mount
+  const viewerHeightRef = useRef(500);
+  const windowModeRef = useRef(false);
+  useEffect(() => { viewerHeightRef.current = viewerHeight; }, [viewerHeight]);
+  useEffect(() => { windowModeRef.current = windowMode; }, [windowMode]);
+
+  // Compute canvas position for FINAL node so it stays screen-fixed
+  const syncFinalNode = useCallback((vp: { x: number; y: number; zoom: number }) => {
+    const nodeW = 260, nodeH = 180, marginRight = 50;
+    let screenX: number, screenY: number;
+    if (windowModeRef.current) {
+      // viewerMode: bottom-center of the viewer panel
+      screenX = window.innerWidth / 2 - 16;
+      screenY = viewerHeightRef.current - 48;
+    } else {
+      // normal: right edge, vertically centered
+      screenX = window.innerWidth - marginRight - nodeW;
+      screenY = window.innerHeight / 2 - nodeH / 2;
+    }
+    const canvasX = (screenX - vp.x) / vp.zoom;
+    const canvasY = (screenY - vp.y) / vp.zoom;
+    setNodes((prev: any[]) => prev.map((n: any) =>
+      n.id === FINAL_NODE_ID
+        ? { ...n, position: { x: canvasX, y: canvasY }, data: { ...(n.data || {}), vpZoom: vp.zoom } }
+        : n
+    ));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const isDraggingViewer = useRef(false);
   const dragStartY = useRef(0);
   const dragStartH = useRef(0);
@@ -318,6 +345,7 @@ const SpacesContent = () => {
         position: { x: 1400, y: 200 },
         data: { label: 'FINAL OUT' },
         deletable: false,
+        draggable: false,
       }];
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1897,7 +1925,7 @@ const SpacesContent = () => {
           onNodeContextMenu={onNodeContextMenu}
           onNodeDragStop={onNodeDragStop}
           onConnectEnd={onConnectEnd}
-
+          onMove={(_evt, vp) => syncFinalNode(vp)}
 
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
