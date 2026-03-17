@@ -3472,11 +3472,32 @@ export const PainterNode = memo(({ id, data }: NodeProps<any>) => {
     } else {
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.onload = () => { ctx.clearRect(0, 0, canvasW, canvasH); ctx.drawImage(img, 0, 0, canvasW, canvasH); };
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvasW, canvasH);
+        ctx.drawImage(img, 0, 0, canvasW, canvasH);
+        saveToNode(); // update preview with rescaled content
+      };
       img.src = data.value;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasW, canvasH, fullscreen]);
+
+  // Repaint background when bgColor changes (preserving drawing content)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    // Save current drawing as image
+    const snap = canvas.toDataURL();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = bgHexRef.current;
+    ctx.fillRect(0, 0, canvasW, canvasH);
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0);
+    img.src = snap;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bgColor]);
 
   // ── Drawing handlers (all use refs, never trigger re-render) ──────────────
   const getXY = (e: React.PointerEvent) => {
@@ -3698,16 +3719,11 @@ export const PainterNode = memo(({ id, data }: NodeProps<any>) => {
             </button>
           </div>
 
-          {/* Mini footer: ratio badge only */}
+          {/* Mini footer: ratio badge (read-only) + fullscreen button */}
           <div className="flex items-center justify-between px-3 py-2 border-t border-white/5">
-            <div className="flex gap-1">
-              {PAINT_RATIOS.map(r => (
-                <span key={r.value}
-                  className={`px-1.5 py-0.5 rounded text-[6px] font-black border ${ratio.value === r.value ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'text-zinc-700 border-transparent'}`}>
-                  {r.label}
-                </span>
-              ))}
-            </div>
+            <span className={`px-1.5 py-0.5 rounded text-[6px] font-black border bg-amber-500/20 text-amber-400 border-amber-500/30`}>
+              {ratio.label}
+            </span>
             <button onClick={() => setFullscreen(true)}
               className="p-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors">
               <Maximize2 size={11} />

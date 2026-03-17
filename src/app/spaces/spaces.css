@@ -527,8 +527,8 @@
 }
 
 .react-flow__edge-path {
-  stroke: #cbd5e1 !important;
-  stroke-width: 3px !important;
+  stroke: #cbd5e1;
+  stroke-width: 2.5px;
   transition: stroke 0.3s;
 }
 
