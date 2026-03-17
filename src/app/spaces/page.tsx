@@ -165,7 +165,68 @@ const SpacesContent = () => {
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
   }, [viewerHeight]);
-  
+
+  // ── Viewer pan / zoom ───────────────────────────────────────────────────────
+  const [viewerTransform, setViewerTransform] = useState({ scale: 1, x: 0, y: 0 });
+  const isPanningViewer = useRef(false);
+  const panStart = useRef({ x: 0, y: 0 });
+  const panOrigin = useRef({ x: 0, y: 0 });
+  const viewerAreaRef = useRef<HTMLDivElement>(null);
+
+  // Scroll → zoom centered on cursor
+  const onViewerWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    setViewerTransform(prev => {
+      const newScale = Math.min(Math.max(prev.scale * factor, 0.1), 20);
+      const ratio = newScale / prev.scale;
+      return {
+        scale: newScale,
+        x: mx - ratio * (mx - prev.x),
+        y: my - ratio * (my - prev.y),
+      };
+    });
+  }, []);
+
+  // Pointer down → start pan
+  const onViewerPointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    isPanningViewer.current = true;
+    panStart.current = { x: e.clientX, y: e.clientY };
+    panOrigin.current = { x: 0, y: 0 }; // will be set from current transform in move
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    setViewerTransform(prev => {
+      panOrigin.current = { x: prev.x, y: prev.y };
+      return prev;
+    });
+  }, []);
+
+  const onViewerPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isPanningViewer.current) return;
+    const dx = e.clientX - panStart.current.x;
+    const dy = e.clientY - panStart.current.y;
+    setViewerTransform(prev => ({
+      ...prev,
+      x: panOrigin.current.x + dx,
+      y: panOrigin.current.y + dy,
+    }));
+  }, []);
+
+  const onViewerPointerUp = useCallback(() => {
+    isPanningViewer.current = false;
+  }, []);
+
+  // Key 'A' → fit to view (reset transform)
+  const onViewerKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'a' || e.key === 'A') {
+      setViewerTransform({ scale: 1, x: 0, y: 0 });
+    }
+  }, []);
+
+
   // Track final output media for the viewer panel
   const finalMedia = useMemo(() => {
     const imgEdge = edges.find((e: any) => e.target === FINAL_NODE_ID && e.targetHandle === 'image');
@@ -1587,15 +1648,37 @@ const SpacesContent = () => {
             </button>
           </div>
 
-          {/* Media display area */}
-          <div className="flex-1 flex items-center justify-center overflow-hidden relative">
+          {/* Media display area — pan/zoom/fit */}
+          <div
+            ref={viewerAreaRef}
+            tabIndex={0}
+            onWheel={onViewerWheel}
+            onPointerDown={onViewerPointerDown}
+            onPointerMove={onViewerPointerMove}
+            onPointerUp={onViewerPointerUp}
+            onKeyDown={onViewerKeyDown}
+            className="flex-1 overflow-hidden relative outline-none"
+            style={{ cursor: isPanningViewer.current ? 'grabbing' : 'grab' }}
+          >
             {finalMedia.value ? (
-              <>
+              /* Transformable inner div */
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0, left: 0,
+                  width: '100%', height: '100%',
+                  transform: `translate(${viewerTransform.x}px, ${viewerTransform.y}px) scale(${viewerTransform.scale})`,
+                  transformOrigin: '0 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  willChange: 'transform',
+                }}
+              >
                 {finalMedia.type === 'video' ? (
                   <video
                     src={finalMedia.value}
-                    className="max-w-full max-h-full"
-                    style={{ objectFit: 'contain' }}
+                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
                     controls
                     autoPlay
                     loop
@@ -1603,34 +1686,18 @@ const SpacesContent = () => {
                 ) : (
                   <img
                     src={finalMedia.value}
-                    className="max-w-full max-h-full"
-                    style={{ objectFit: 'contain' }}
+                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block', userSelect: 'none', pointerEvents: 'none' }}
                     alt="Final output"
+                    draggable={false}
                   />
                 )}
-              </>
+              </div>
             ) : (
-              <div className="flex flex-col items-center gap-3 opacity-30">
+              <div className="flex flex-col items-center justify-center h-full gap-3 opacity-30">
                 <Maximize size={48} strokeWidth={1} className="text-amber-400" />
                 <span className="text-amber-300 text-xs font-bold uppercase tracking-widest">No output yet — connect a node to FINAL OUT</span>
               </div>
             )}
-          </div>
-
-          {/* ─ Horizontal node icon toolbar ─ */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 8,   /* sits above the 8px drag handle */
-              left: 0, right: 0,
-              height: 48,
-              background: 'rgba(0,0,0,0.25)',
-              backdropFilter: 'blur(8px)',
-              borderTop: '1px solid rgba(255,255,255,0.06)',
-              zIndex: 9,
-            }}
-          >
-            <Sidebar windowMode={true} />
           </div>
 
           {/* ─ Draggable resize handle ─ */}
@@ -1936,31 +2003,53 @@ const SpacesContent = () => {
             </div>
         </div>
 
-        {/* Legend HUD - Ultra Minimal Single Row */}
-        <div key="legend-hud" className="absolute bottom-6 left-6 flex items-center gap-6 px-6 py-2.5 bg-white/5 backdrop-blur-2xl border border-white/5 rounded-full z-50 pointer-events-none shadow-2xl shadow-black/5">
-            {[
-              { color: 'bg-blue-500', label: 'Prompt' },
-              { color: 'bg-rose-500', label: 'Video' },
-              { color: 'bg-pink-500', label: 'Image' },
-              { color: 'bg-purple-500', label: 'Sound' },
-              { color: 'bg-cyan-500', label: 'Mask' },
-              { color: 'bg-orange-500', label: 'PDF' },
-              { color: 'bg-amber-500', label: 'Txt' },
-              { color: 'bg-emerald-500', label: 'Url' },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center gap-2">
-                <div className={`w-1.5 h-1.5 rounded-full ${item.color} shadow-[0_0_8px_rgba(255,255,255,0.2)]`} />
-                <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">{item.label}</span>
+        {/* Bottom HUD: node toolbar in windowMode, legend in normal mode */}
+        {windowMode ? (
+          /* Horizontal node icon bar — same pill style as legend */
+          <div
+            key="nodes-hud"
+            className="absolute bottom-6 left-6 right-6 flex items-center z-50"
+            style={{
+              height: 44,
+              background: 'rgba(255,255,255,0.05)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              borderRadius: 999,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+              overflow: 'hidden',
+              paddingInline: 12,
+            }}
+          >
+            <Sidebar windowMode={true} />
+          </div>
+        ) : (
+          /* Legend HUD - Ultra Minimal Single Row */
+          <div key="legend-hud" className="absolute bottom-6 left-6 flex items-center gap-6 px-6 py-2.5 bg-white/5 backdrop-blur-2xl border border-white/5 rounded-full z-50 pointer-events-none shadow-2xl shadow-black/5">
+              {[
+                { color: 'bg-blue-500', label: 'Prompt' },
+                { color: 'bg-rose-500', label: 'Video' },
+                { color: 'bg-pink-500', label: 'Image' },
+                { color: 'bg-purple-500', label: 'Sound' },
+                { color: 'bg-cyan-500', label: 'Mask' },
+                { color: 'bg-orange-500', label: 'PDF' },
+                { color: 'bg-amber-500', label: 'Txt' },
+                { color: 'bg-emerald-500', label: 'Url' },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center gap-2">
+                  <div className={`w-1.5 h-1.5 rounded-full ${item.color} shadow-[0_0_8px_rgba(255,255,255,0.2)]`} />
+                  <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">{item.label}</span>
+                </div>
+              ))}
+              <div className="h-3 w-[1px] bg-white/10 mx-1" />
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full border border-rose-500/50 flex items-center justify-center">
+                  <div className="w-1 h-1 rounded-full bg-rose-500" />
+                </div>
+                <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">Disconnect</span>
               </div>
-            ))}
-            <div className="h-3 w-[1px] bg-white/10 mx-1" />
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full border border-rose-500/50 flex items-center justify-center">
-                <div className="w-1 h-1 rounded-full bg-rose-500" />
-              </div>
-              <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">Disconnect</span>
-            </div>
-        </div>
+          </div>
+        )}
 
         {/* Modals */}
         {showSaveModal && (
