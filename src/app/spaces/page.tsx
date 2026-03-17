@@ -1699,6 +1699,93 @@ const SpacesContent = () => {
   return (
     <div className="flex w-full h-full" ref={reactFlowWrapper} style={{ flexDirection: 'column' }}>
 
+      {/* ── FINAL OUT FIXED OVERLAY (UI only, edges route via invisible canvas node) ── */}
+      {!windowMode && (
+        <div style={{
+          position: 'fixed',
+          right: 50,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 9997,
+          width: 260,
+          pointerEvents: 'auto',
+        }}>
+          {/* Header */}
+          <div
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '6px 10px',
+              background: 'linear-gradient(to bottom,rgba(0,0,0,0.75) 0%,transparent 100%)',
+              position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+              borderRadius: '18px 18px 0 0',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fbbf24' }} />
+              <span style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#fcd34d' }}>
+                Final Out
+              </span>
+            </div>
+            <button
+              onClick={() => setWindowMode(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '3px 7px',
+                background: 'rgba(251,191,36,0.2)', border: '1px solid rgba(251,191,36,0.4)',
+                borderRadius: 8, color: '#fbbf24', fontSize: 8, fontWeight: 900,
+                textTransform: 'uppercase', letterSpacing: '0.08em', cursor: 'pointer',
+              }}
+            >
+              <Maximize2 size={10} />
+              <span>Window</span>
+            </button>
+          </div>
+
+          {/* Card body */}
+          <div
+            style={{
+              borderRadius: 18, overflow: 'hidden',
+              border: '2px solid rgba(251,191,36,0.6)',
+              boxShadow: '0 25px 50px rgba(251,191,36,0.2)',
+              background: finalMedia.value ? 'transparent' : 'rgba(20,16,8,0.95)',
+              minHeight: 200, position: 'relative',
+            }}
+          >
+            {finalMedia.value ? (
+              <div style={{ position: 'relative', aspectRatio: '16/9', minHeight: 160 }}>
+                {finalMedia.type === 'video' ? (
+                  <video src={finalMedia.value} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loop muted />
+                ) : (
+                  <img src={finalMedia.value} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Final output" />
+                )}
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(0,0,0,0.6) 0%,transparent 50%)', pointerEvents: 'none' }} />
+                <div style={{
+                  position: 'absolute', bottom: 8, left: 8,
+                  padding: '2px 8px', borderRadius: 99, fontSize: 8, fontWeight: 900,
+                  textTransform: 'uppercase', letterSpacing: '0.1em',
+                  background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
+                  color: finalMedia.type === 'video' ? '#f43f5e' : '#fbbf24',
+                }}>
+                  {finalMedia.type} · output
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '64px 16px' }}>
+                <div style={{
+                  width: 48, height: 48, borderRadius: 12,
+                  background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Maximize size={22} style={{ color: '#fbbf24', opacity: 0.8 }} strokeWidth={1.5} />
+                </div>
+                <span style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(251,191,36,0.7)', textAlign: 'center' }}>
+                  Connect an image or video node
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── WELCOME SPLASH ─────────────────────────────────────────────────── */}
       {showWelcome && (
         <div style={{

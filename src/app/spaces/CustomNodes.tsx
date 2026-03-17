@@ -4505,119 +4505,15 @@ export const FinalOutputNode = memo(({ id, data }: NodeProps<any>) => {
     );
   }
 
-  const vz = data?.vpZoom || 1;
+
+  // Normal mode: invisible node — just handles for edge routing
+  // The actual FINAL OUT UI is rendered as position:fixed in page.tsx
   return (
-    <div
-      className="relative overflow-visible"
-      style={{ width: 260, minHeight: 200, transform: `scale(${1/vz})`, transformOrigin: 'top right' }}
-    >
-      {/* Input handles */}
-      <div className="handle-wrapper handle-left" style={{ top: '35%' }}>
-        <Handle type="target" position={Position.Left} id="image" className="handle-image" />
-        <span className="handle-label">Image</span>
-      </div>
-      <div className="handle-wrapper handle-left" style={{ top: '65%' }}>
-        <Handle type="target" position={Position.Left} id="video" className="handle-video" />
-        <span className="handle-label">Video</span>
-      </div>
-
-      {/* Main card */}
-      <div
-        className="rounded-[18px] overflow-hidden border-2 border-amber-400/60 shadow-2xl shadow-amber-500/20"
-        style={{
-          background: mediaValue ? 'transparent' : 'rgba(20,16,8,0.95)',
-          minHeight: 200,
-          position: 'relative',
-        }}
-      >
-        {/* Persistent header */}
-        <div
-          className="flex items-center justify-between px-3 py-2"
-          style={{
-            position: 'absolute',
-            top: 0, left: 0, right: 0,
-            zIndex: 10,
-            background: 'linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, transparent 100%)',
-          }}
-        >
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-amber-300">FINAL OUT</span>
-          </div>
-          {/* Window toggle button */}
-          <button
-            onClick={toggleWindow}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95"
-            style={{
-              background: 'rgba(251,191,36,0.2)',
-              border: '1px solid rgba(251,191,36,0.4)',
-              color: '#fbbf24',
-            }}
-            title="Toggle Window Viewer"
-          >
-            <Maximize2 size={10} />
-            <span>Window</span>
-          </button>
-        </div>
-
-        {/* Media preview */}
-        {mediaValue ? (
-          <div className="relative w-full" style={{ aspectRatio: '16/9', minHeight: 160 }}>
-            {mediaType === 'video' ? (
-              <>
-                <video
-                  ref={videoRef}
-                  src={mediaValue}
-                  className="w-full h-full object-cover"
-                  loop
-                  muted={false}
-                  onEnded={() => setIsPlaying(false)}
-                />
-                {/* Play overlay */}
-                <button
-                  onClick={togglePlay}
-                  className="absolute inset-0 flex items-center justify-center group/play"
-                  style={{ background: 'transparent' }}
-                >
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all opacity-60 group-hover/play:opacity-100 group-hover/play:scale-110"
-                    style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
-                  >
-                    {isPlaying
-                      ? <div className="flex gap-0.5"><div className="w-1 h-4 bg-white rounded-sm" /><div className="w-1 h-4 bg-white rounded-sm" /></div>
-                      : <Play size={18} className="text-white ml-0.5" fill="white" />
-                    }
-                  </div>
-                </button>
-              </>
-            ) : (
-              <img src={mediaValue} className="w-full h-full object-cover" alt="Final output" />
-            )}
-            {/* Gradient overlay bottom */}
-            <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%)' }} />
-            {/* Type badge */}
-            <div
-              className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest"
-              style={{ background: 'rgba(0,0,0,0.6)', color: mediaType === 'video' ? '#f43f5e' : '#fbbf24', backdropFilter: 'blur(6px)' }}
-            >
-              {mediaType} · output
-            </div>
-          </div>
-        ) : (
-          /* Empty state */
-          <div className="flex flex-col items-center justify-center gap-2 py-16 px-4">
-            <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)' }}
-            >
-              <Maximize size={22} className="text-amber-400" strokeWidth={1.5} />
-            </div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-amber-400/70 text-center">
-              Connect an image or video node
-            </span>
-          </div>
-        )}
-      </div>
+    <div style={{ width: 1, height: 1, overflow: 'visible', opacity: 0, pointerEvents: 'none' }}>
+      <Handle type="target" position={Position.Left} id="image"
+        style={{ left: -8, top: 4, opacity: 0, pointerEvents: 'all', width: 12, height: 12 }} />
+      <Handle type="target" position={Position.Left} id="video"
+        style={{ left: -8, top: 20, opacity: 0, pointerEvents: 'all', width: 12, height: 12 }} />
     </div>
   );
 });
