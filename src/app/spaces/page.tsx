@@ -1647,9 +1647,9 @@ const SpacesContent = () => {
           }}
         >
 
-          {/* ─ Viewer action buttons (top-right) ─ */}
+          {/* ─ Viewer action buttons (bottom-right) ─ */}
           <div style={{
-            position: 'absolute', top: 10, right: 12, zIndex: 20,
+            position: 'absolute', bottom: 32, right: 12, zIndex: 20,
             display: 'flex', gap: 6, alignItems: 'center',
           }}>
             {finalMedia.value && (
