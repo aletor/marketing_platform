@@ -141,7 +141,7 @@ const SpacesContent = () => {
 
   // ── Window Viewer Mode ─────────────────────────────────────────────────────
   const [windowMode, setWindowMode] = useState(false);
-  const [viewerHeight, setViewerHeight] = useState(() => Math.max(Math.round(window.innerHeight * 0.5), 400));
+  const [viewerHeight, setViewerHeight] = useState(500); // safe SSR default; updated on mount
   const isDraggingViewer = useRef(false);
   const dragStartY = useRef(0);
   const dragStartH = useRef(0);
@@ -200,6 +200,10 @@ const SpacesContent = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Set real viewerHeight once mounted on client
+  useEffect(() => {
+    setViewerHeight(Math.max(Math.round(window.innerHeight * 0.5), 400));
+  }, []);
 
   const MAX_HISTORY = 10;
   const historyRef = useRef<Array<{ nodes: any[]; edges: any[] }>>([]);
