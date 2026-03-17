@@ -227,20 +227,39 @@ const SpacesContent = () => {
     }
   }, []);
 
-  // Hide FINAL node visually when Window Viewer is open (restore on close)
+  // Move FINAL node to viewer bottom in windowMode; restore on close
+  const savedFinalPosition = useRef<{ x: number; y: number } | null>(null);
   useEffect(() => {
     setNodes((prev: any[]) =>
-      prev.map((n: any) => n.id === FINAL_NODE_ID
-        ? {
+      prev.map((n: any) => {
+        if (n.id !== FINAL_NODE_ID) return n;
+        if (windowMode) {
+          // Save original position
+          savedFinalPosition.current = { x: n.position.x, y: n.position.y };
+          // Map viewer bottom-center to canvas coords
+          const canvasPos = screenToFlowPosition({
+            x: window.innerWidth / 2 - 16,
+            y: viewerHeight - 40,
+          });
+          return {
             ...n,
-            style: windowMode
-              ? { ...(n.style || {}), opacity: 0, pointerEvents: 'none' }
-              : { ...(n.style || {}), opacity: 1, pointerEvents: 'auto' },
-          }
-        : n
-      )
+            position: canvasPos,
+            style: { ...(n.style || {}), opacity: 1, pointerEvents: 'auto' },
+            data: { ...(n.data || {}), viewerMode: true },
+          };
+        } else {
+          // Restore original position
+          const restored = savedFinalPosition.current || n.position;
+          return {
+            ...n,
+            position: restored,
+            style: { ...(n.style || {}), opacity: 1, pointerEvents: 'auto' },
+            data: { ...(n.data || {}), viewerMode: false },
+          };
+        }
+      })
     );
-  }, [windowMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [windowMode, viewerHeight, screenToFlowPosition]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Track final output media for the viewer panel
   const finalMedia = useMemo(() => {
@@ -2097,7 +2116,7 @@ const SpacesContent = () => {
 
         {/* Modals */}
         {showSaveModal && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[10004] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowSaveModal(false)}></div>
             <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10 border border-slate-200">
               <div className="flex justify-between items-center mb-6">
@@ -2142,7 +2161,7 @@ const SpacesContent = () => {
         )}
 
         {showLoadModal && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[10004] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowLoadModal(false)}></div>
             <div className="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl relative z-10 border border-slate-200 max-h-[80vh] flex flex-col">
               <div className="flex justify-between items-center mb-6">

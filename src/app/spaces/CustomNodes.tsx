@@ -4431,7 +4431,7 @@ export const BezierMaskNode = memo(({ id, data }: NodeProps<any>) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // FINAL OUTPUT NODE — permanent output destination, no delete, no outputs
 // ─────────────────────────────────────────────────────────────────────────────
-export const FinalOutputNode = memo(({ id }: NodeProps<any>) => {
+export const FinalOutputNode = memo(({ id, data }: NodeProps<any>) => {
   const nodes = useNodes();
   const edges = useEdges();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -4463,6 +4463,46 @@ export const FinalOutputNode = memo(({ id }: NodeProps<any>) => {
     }
     setIsPlaying(!isPlaying);
   };
+
+  // ── VIEWER MODE: compact connection circle ─────────────────────────────────
+  if (data?.viewerMode) {
+    const isConnected = !!(imageEdge || videoEdge);
+    const dotColor = mediaType === 'video' ? '#f43f5e' : '#ec4899';
+    return (
+      <div className="relative overflow-visible" style={{ width: 32, height: 32 }}>
+        {/* Image handle — top-left */}
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="image"
+          style={{ left: 6, top: -6, background: '#ec4899', border: '2px solid #fff', width: 10, height: 10 }}
+        />
+        {/* Video handle — top-right */}
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="video"
+          style={{ left: 22, top: -6, background: '#f43f5e', border: '2px solid #fff', width: 10, height: 10 }}
+        />
+        {/* Connection circle */}
+        <div style={{
+          width: 32, height: 32, borderRadius: '50%',
+          background: isConnected ? dotColor : 'rgba(255,255,255,0.08)',
+          border: `2px solid ${isConnected ? dotColor : 'rgba(255,255,255,0.2)'}`,
+          boxShadow: isConnected ? `0 0 14px ${dotColor}99` : 'none',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'all 0.3s',
+        }}>
+          {isConnected && (
+            <div style={{
+              width: 10, height: 10, borderRadius: '50%',
+              background: '#fff', opacity: 0.9,
+            }} />
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
