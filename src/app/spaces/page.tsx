@@ -1758,11 +1758,11 @@ const SpacesContent = () => {
           {/* Card body */}
           <div
             style={{
-              borderRadius: 18, overflow: 'hidden',
+              borderRadius: 18, overflow: 'hidden', position: 'relative',
               border: '2px solid rgba(251,191,36,0.6)',
               boxShadow: '0 25px 50px rgba(251,191,36,0.2)',
               background: finalMedia.value ? 'transparent' : 'rgba(20,16,8,0.95)',
-              minHeight: 200, position: 'relative',
+              minHeight: 100, maxHeight: 100,
             }}
           >
             {finalMedia.value ? (
