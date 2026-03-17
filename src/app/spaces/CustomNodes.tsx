@@ -1872,10 +1872,10 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node processor-node w-[340px] ${status === 'running' ? 'node-glow-running' : ''}`}
-         style={{ minHeight: 0 }}>
+         style={{ minHeight: 0, padding: 0, overflow: 'hidden' }}>
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana 2" />
 
-      {/* ── Reference image handles (4 slots) ─── */}
+      {/* ── Ref image handles (4 slots) ─── */}
       {REF_SLOTS.map((slot, i) => (
         <div key={slot.id} className="handle-wrapper handle-left"
              style={{ top: slot.top, opacity: i === 0 || connectedSlots[i - 1] ? 1 : 0.35 }}>
@@ -1890,218 +1890,202 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
       ))}
 
       {/* ── Prompt handle ─── */}
-      <div className="handle-wrapper handle-left" style={{ top: '83%' }}>
+      <div className="handle-wrapper handle-left" style={{ top: '92%' }}>
         <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
         <span className="handle-label">Prompt</span>
       </div>
 
-      {/* ── Node header ─── */}
-      <div className="node-header bg-gradient-to-r from-yellow-600/20 to-orange-600/20">
-        <Sparkles size={15} className="text-yellow-400" />
-        <span>Nano Banana</span>
-        <div className={`node-badge ${modelInfo.bg} ${modelInfo.color} border ${modelInfo.borderColor}`}>
-          {modelInfo.badge}
-        </div>
+      {/* ── Result preview — FULL WIDTH, image-first ─── */}
+      <div className="relative w-full bg-[#0a0a0a] group/media"
+           style={{ minHeight: result ? 'auto' : 180, aspectRatio: result ? 'auto' : '4/3' }}>
+        {result ? (
+          <>
+            <img src={result} className="w-full h-full object-cover" alt="Result" />
+            {/* overlay controls on hover */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover/media:opacity-100 transition-opacity duration-300 pointer-events-none" />
+            <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between opacity-0 group-hover/media:opacity-100 transition-opacity duration-300">
+              <span className="text-[7px] font-black uppercase tracking-widest text-white/60 bg-black/50 px-1.5 py-0.5 rounded backdrop-blur-sm">
+                {modelInfo.badge} · {nodeData.aspect_ratio || '1:1'} · {!isFlash25 ? (nodeData.resolution || '1k').toUpperCase() : ''}
+              </span>
+              <button
+                onClick={() => setShowFullSize(true)}
+                className="bg-black/60 hover:bg-black/90 text-white text-[7px] font-black px-2 py-1 rounded-lg flex items-center gap-1 pointer-events-auto"
+              >
+                <Maximize2 size={9} /> EXPAND
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full gap-3 opacity-25 py-12">
+            <ImageIcon className="text-zinc-400" size={36} />
+            <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">No image generated</span>
+          </div>
+        )}
+
+        {/* Progress bar — absolutely over image */}
+        {status === 'running' && (
+          <div className="absolute bottom-0 left-0 right-0">
+            <div className="w-full bg-black/60 h-0.5">
+              <div
+                className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-[6px] text-yellow-400/80 font-black text-center uppercase tracking-widest py-0.5 bg-black/70 animate-pulse">
+              {isPro && nodeData.thinking ? `Thinking… ${Math.round(progress)}%` : `Generating… ${Math.round(progress)}%`}
+            </p>
+          </div>
+        )}
       </div>
 
-      <div className="node-content space-y-4">
+      {/* ── Controls panel ─── */}
+      <div className="px-3 pt-3 pb-3 space-y-2.5">
 
-        {/* ── Model selector ─── */}
-        <div className="space-y-1.5">
-          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Model</span>
-          <div className="grid grid-cols-3 gap-1.5">
+        {/* Header row: title + model pills */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Sparkles size={11} className="text-yellow-400" />
+            <span className="text-[9px] font-black text-yellow-300 uppercase tracking-widest">Nano Banana</span>
+          </div>
+          <div className="flex gap-1">
             {NB_MODELS.map(m => (
               <button
                 key={m.id}
                 onClick={() => updateData('modelKey', m.id)}
-                className={`py-1.5 px-2 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all
+                className={`px-2 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest border transition-all
                   ${selectedModel === m.id
-                    ? `${m.bg} ${m.color} ${m.borderColor} shadow-sm`
-                    : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:border-white/15 hover:text-zinc-400'
+                    ? `${m.bg} ${m.color} ${m.borderColor}`
+                    : 'bg-white/[0.03] text-zinc-600 border-white/5 hover:border-white/15 hover:text-zinc-400'
                   }`}
               >
                 {m.label}
               </button>
             ))}
           </div>
-          {isPro && (
-            <p className="text-[8px] text-violet-400/70 font-medium leading-tight">
-              Pro 3: professional quality, slower. Supports thinking mode.
-            </p>
-          )}
         </div>
 
-        {/* ── Aspect ratio grid ─── */}
-        <div className="space-y-1.5">
-          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Aspect Ratio</span>
-          {/* Standard */}
-          <div className="grid grid-cols-7 gap-1">
-            {ASPECT_RATIOS.filter(r => r.category === 'standard').map(r => (
-              <button
-                key={r.value}
-                onClick={() => updateData('aspect_ratio', r.value)}
-                title={r.value}
-                className={`py-1 rounded text-[7px] font-black text-center border transition-all
-                  ${nodeData.aspect_ratio === r.value
-                    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
-                    : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:border-white/15 hover:text-zinc-400'
-                  }`}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-          {/* Extreme — only for flash31 and pro3 */}
-          <div className="grid grid-cols-4 gap-1">
-            {ASPECT_RATIOS.filter(r => r.category === 'extreme').map(r => (
-              <button
-                key={r.value}
-                onClick={() => !isFlash25 && updateData('aspect_ratio', r.value)}
-                disabled={isFlash25}
-                title={isFlash25 ? `${r.value} — not available on Flash 2.5` : r.value}
-                className={`py-1 rounded text-[7px] font-black text-center border transition-all
-                  ${isFlash25 ? 'opacity-25 cursor-not-allowed bg-white/[0.01] text-zinc-700 border-white/5' :
-                    nodeData.aspect_ratio === r.value
+        {/* Aspect ratio + Resolution in one compact row */}
+        <div className="flex gap-2">
+          {/* Aspect ratio — compact grid */}
+          <div className="flex-1 space-y-1">
+            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Ratio</span>
+            <div className="grid grid-cols-7 gap-0.5">
+              {ASPECT_RATIOS.filter(r => r.category === 'standard').map(r => (
+                <button
+                  key={r.value}
+                  onClick={() => updateData('aspect_ratio', r.value)}
+                  title={r.value}
+                  className={`py-0.5 rounded text-[6px] font-black text-center border transition-all
+                    ${nodeData.aspect_ratio === r.value
                       ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
-                      : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:border-white/15 hover:text-zinc-400'
-                  }`}
-              >
-                {r.label}
-              </button>
-            ))}
+                      : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:text-zinc-400'
+                    }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-4 gap-0.5">
+              {ASPECT_RATIOS.filter(r => r.category === 'extreme').map(r => (
+                <button
+                  key={r.value}
+                  onClick={() => !isFlash25 && updateData('aspect_ratio', r.value)}
+                  disabled={isFlash25}
+                  title={r.value}
+                  className={`py-0.5 rounded text-[6px] font-black text-center border transition-all
+                    ${isFlash25 ? 'opacity-20 cursor-not-allowed text-zinc-700 border-white/5' :
+                      nodeData.aspect_ratio === r.value
+                        ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
+                        : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:text-zinc-400'
+                    }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
           </div>
-          {isFlash25 && (
-            <p className="text-[7px] text-zinc-700 font-bold">Extreme ratios only on Flash 3.1 / Pro 3</p>
-          )}
-        </div>
 
-        {/* ── Resolution ─── */}
-        {!isFlash25 && (
-          <div className="space-y-1.5">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resolution</span>
-            <div className="grid grid-cols-4 gap-1">
+          {/* Resolution + Thinking */}
+          <div className="w-[68px] space-y-1">
+            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Res</span>
+            <div className="grid grid-cols-2 gap-0.5">
               {[
-                { v: '0.5k', l: '0.5K', hint: 'Draft' },
-                { v: '1k',   l: '1K',   hint: 'Normal' },
-                { v: '2k',   l: '2K',   hint: 'High' },
-                { v: '4k',   l: '4K',   hint: 'Ultra' },
-              ].map(({ v, l, hint }) => (
+                { v: '0.5k', l: '0.5K' },
+                { v: '1k',   l: '1K'   },
+                { v: '2k',   l: '2K'   },
+                { v: '4k',   l: '4K'   },
+              ].map(({ v, l }) => (
                 <button
                   key={v}
-                  onClick={() => updateData('resolution', v)}
-                  title={hint}
-                  className={`py-1 rounded text-[8px] font-black border transition-all
-                    ${nodeData.resolution === v || (!nodeData.resolution && v === '1k')
-                      ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
-                      : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:border-white/15 hover:text-zinc-400'
+                  onClick={() => !isFlash25 && updateData('resolution', v)}
+                  disabled={isFlash25}
+                  title={l}
+                  className={`py-0.5 rounded text-[6px] font-black border transition-all
+                    ${isFlash25 ? 'opacity-20 cursor-not-allowed text-zinc-700 border-white/5' :
+                      (nodeData.resolution === v || (!nodeData.resolution && v === '1k'))
+                        ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
+                        : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:text-zinc-400'
                     }`}
                 >
                   {l}
                 </button>
               ))}
             </div>
-          </div>
-        )}
 
-        {/* ── Thinking mode ─── */}
-        <div className={`flex items-center justify-between p-3 rounded-xl border transition-all
-          ${isPro
-            ? 'bg-violet-500/5 border-violet-500/20 cursor-pointer hover:bg-violet-500/10'
-            : 'bg-white/[0.02] border-white/5 opacity-35 cursor-not-allowed'
-          }`}
-          onClick={() => isPro && updateData('thinking', !nodeData.thinking)}
-        >
-          <div className="space-y-0.5">
-            <p className="text-[9px] font-black text-zinc-300 uppercase tracking-widest flex items-center gap-1.5">
-              <span>🧠</span> Thinking Mode
-            </p>
-            <p className="text-[7px] text-zinc-600 font-medium">
-              {isPro ? 'Deep reasoning before generation (+30s)' : 'Pro 3 model required'}
-            </p>
-          </div>
-          <div className={`w-8 h-4 rounded-full border transition-all flex items-center px-0.5
-            ${isPro && nodeData.thinking
-              ? 'bg-violet-500 border-violet-500 justify-end'
-              : 'bg-white/5 border-white/10 justify-start'
-            }`}>
-            <div className={`w-3 h-3 rounded-full transition-all
-              ${isPro && nodeData.thinking ? 'bg-white' : 'bg-zinc-600'}`} />
+            {/* Thinking toggle — tiny */}
+            <button
+              onClick={() => isPro && updateData('thinking', !nodeData.thinking)}
+              title={isPro ? 'Thinking mode' : 'Pro 3 required'}
+              className={`w-full flex items-center justify-between px-1.5 py-1 rounded border transition-all mt-1
+                ${isPro
+                  ? nodeData.thinking
+                    ? 'bg-violet-500/15 border-violet-500/40 text-violet-300'
+                    : 'bg-white/[0.03] border-white/5 text-zinc-600 hover:border-white/15'
+                  : 'opacity-20 cursor-not-allowed bg-white/[0.02] border-white/5 text-zinc-700'
+                }`}
+            >
+              <span className="text-[6px] font-black uppercase tracking-widest">🧠 Think</span>
+              <div className={`w-5 h-2.5 rounded-full flex items-center px-0.5 transition-all
+                ${isPro && nodeData.thinking ? 'bg-violet-500 justify-end' : 'bg-white/10 justify-start'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${isPro && nodeData.thinking ? 'bg-white' : 'bg-zinc-600'}`} />
+              </div>
+            </button>
           </div>
         </div>
 
-        {/* ── Reference images connected indicator ─── */}
+        {/* Ref images indicator (if any connected) */}
         {connectedSlots.some(Boolean) && (
-          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/15">
-            <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">Ref Images</span>
-            <div className="flex gap-1.5 ml-auto">
-              {REF_SLOTS.map((slot, i) => (
-                <div key={slot.id}
-                  className={`w-4 h-4 rounded border text-[6px] font-black flex items-center justify-center transition-all
-                    ${connectedSlots[i]
-                      ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
-                      : 'bg-white/[0.02] border-white/5 text-zinc-700'
-                    }`}
-                >
-                  {i + 1}
-                </div>
-              ))}
-            </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[7px] font-black text-amber-500 uppercase tracking-widest">Refs</span>
+            {REF_SLOTS.map((slot, i) => (
+              <div key={slot.id}
+                className={`w-4 h-4 rounded border text-[5px] font-black flex items-center justify-center
+                  ${connectedSlots[i]
+                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                    : 'bg-white/[0.02] border-white/5 text-zinc-700'
+                  }`}
+              >
+                {i + 1}
+              </div>
+            ))}
           </div>
         )}
 
-        {/* ── Generate button ─── */}
+        {/* Generate button */}
         <button
-          className="execute-btn w-full !py-3 !text-xs"
+          className="execute-btn w-full !py-2.5 !text-[10px]"
           onClick={onRun}
           disabled={status === 'running'}
         >
           {status === 'running'
-            ? <><Loader2 size={12} className="animate-spin" /><span className="ml-2">{isPro && nodeData.thinking ? 'THINKING...' : 'GENERATING...'}</span></>
-            : <><Sparkles size={12} /><span className="ml-2">GENERATE IMAGE</span></>
+            ? <><Loader2 size={11} className="animate-spin" /><span className="ml-1.5">{isPro && nodeData.thinking ? 'THINKING...' : 'GENERATING...'}</span></>
+            : <><Sparkles size={11} /><span className="ml-1.5">GENERATE IMAGE</span></>
           }
         </button>
-
-        {/* ── Progress bar ─── */}
-        {status === 'running' && (
-          <div className="space-y-1">
-            <div className="w-full bg-white/5 h-0.5 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="text-[7px] text-yellow-500/50 font-medium text-center uppercase tracking-widest animate-pulse">
-              {isPro && nodeData.thinking
-                ? `Nano Banana Pro · Thinking → Generating (40-90s)... ${Math.round(progress)}%`
-                : `Flash ${selectedModel === 'flash31' ? '3.1' : '2.5'} · Generating (15-35s)... ${Math.round(progress)}%`
-              }
-            </p>
-          </div>
-        )}
-
-        {/* ── Result preview ─── */}
-        <div className="drop-zone overflow-hidden bg-slate-50 min-h-[160px] border-slate-200/60 group/media relative">
-          {result ? (
-            <>
-              <img src={result} className="w-full h-full object-cover group-hover/media:scale-105 transition-transform duration-700" alt="Result" />
-              <button
-                onClick={() => setShowFullSize(true)}
-                className="absolute bottom-2 right-2 bg-black/60 hover:bg-black/80 text-white text-[8px] font-black px-2 py-1 rounded-lg flex items-center gap-1 opacity-0 group-hover/media:opacity-100 transition-opacity"
-              >
-                <Maximize2 size={10} /> FULLSCREEN
-              </button>
-            </>
-          ) : (
-            <div className="flex flex-col items-center gap-2 opacity-20">
-              <ImageIcon className="text-zinc-400" size={32} />
-              <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">No image generated</span>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* ── Output handle ─── */}
-      <div className="handle-wrapper handle-right">
+      <div className="handle-wrapper handle-right" style={{ top: '50%' }}>
         <span className="handle-label">Image out</span>
         <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
@@ -2121,6 +2105,8 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
     </div>
   );
 });
+
+
 
 // ── TEXT OVERLAY NODE ────────────────────────────────────────────────────────
 const FONT_FAMILIES = [
