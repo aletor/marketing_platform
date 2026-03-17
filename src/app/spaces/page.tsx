@@ -706,6 +706,11 @@ const SpacesContent = () => {
         }
     }
 
+    // 7. Notify any SpaceNode cards in the parent view so they refresh their preview
+    window.dispatchEvent(new CustomEvent('space-data-updated', {
+      detail: { spaceId: currentId, outputType: structure.type, outputValue: structure.value }
+    }));
+
     return { newMap, structure };
   }, [analyzeSpaceStructure, setNodes, setSpacesMap]);
 

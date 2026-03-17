@@ -44,6 +44,7 @@ import {
   Check
 } from 'lucide-react';
 import './spaces.css';
+import { NODE_REGISTRY } from './nodeRegistry';
 
 interface BaseNodeData {
   value?: string;
@@ -1779,7 +1780,8 @@ export const NanoBananaNode = memo(({ id, data }: NodeProps<any>) => {
     for (const slot of REF_SLOTS) {
       const edge = edges.find(e => e.target === id && e.targetHandle === slot.id);
       const srcNode = edge ? nodes.find(n => n.id === edge.source) : null;
-      imgs.push(srcNode?.data?.value || null);
+      const rawVal = srcNode?.data?.value;
+      imgs.push(typeof rawVal === 'string' ? rawVal : null);
     }
     return imgs;
   };
@@ -2755,6 +2757,20 @@ export const SpaceNode = memo(({ id, data }: NodeProps<any>) => {
     internalCategories?: string[]
   };
   const { setNodes } = useReactFlow();
+  const spaceId = nodeData.spaceId;
+
+  // Refresh node when returning from an inner space (so preview updates)
+  useEffect(() => {
+    const onSpaceDataUpdated = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.spaceId === spaceId) {
+        // Trigger a force-update by touching the node
+        setNodes(prev => prev.map(n => n.id === id ? { ...n, data: { ...n.data, _ts: Date.now() } } : n));
+      }
+    };
+    window.addEventListener('space-data-updated', onSpaceDataUpdated);
+    return () => window.removeEventListener('space-data-updated', onSpaceDataUpdated);
+  }, [id, spaceId, setNodes]);
 
   const onEnterSpace = () => {
     // This will be handled by the parent component via a custom event or callback
@@ -2955,8 +2971,11 @@ export const SpaceOutputNode = memo(({ id, data }: NodeProps<any>) => {
   // Find what's connected to the 'in' handle
   const inputEdge = edges.find((e: any) => e.target === id && e.targetHandle === 'in');
   const sourceNode = inputEdge ? nodes.find((n: any) => n.id === inputEdge.source) : null;
-  const sourceValue = sourceNode?.data?.value as string | undefined;
-  const sourceType: string = sourceNode?.data?.type || sourceNode?.type || '';
+  const sourceValue: string | undefined = typeof sourceNode?.data?.value === 'string' ? sourceNode.data.value : undefined;
+  // Resolve output type: NODE_REGISTRY is most reliable, fallback to data fields
+  const nodeType = sourceNode?.type as string | undefined;
+  const registryOutputType = nodeType ? (NODE_REGISTRY[nodeType]?.outputs?.[0]?.type ?? '') : '';
+  const sourceType: string = registryOutputType || (sourceNode?.data?.outputType as string) || (sourceNode?.data?.type as string) || '';
   const isVisual = sourceType === 'image' || sourceType === 'video';
 
   const getHandleClass = () => {
