@@ -1706,12 +1706,10 @@ const SpacesContent = () => {
           ? { marginTop: viewerHeight, height: `calc(100vh - ${viewerHeight}px)` }
           : { height: '100%' }}
       >
-      {/* Sidebar: vertical in normal mode, hidden when windowMode (replaced by horizontal toolbar in viewer panel) */}
-      {!windowMode && (
-        <div style={{ zIndex: 10001, position: 'relative', flexShrink: 0 }}>
-          <Sidebar windowMode={false} />
-        </div>
-      )}
+      {/* Sidebar: always visible, z-index above viewer panel */}
+      <div style={{ zIndex: 10001, position: 'relative', flexShrink: 0 }}>
+        <Sidebar />
+      </div>
       <div className="flex-1 relative" onContextMenu={(e) => e.preventDefault()}>
         <ReactFlow
           nodes={nodes}
@@ -1976,53 +1974,31 @@ const SpacesContent = () => {
             </div>
         </div>
 
-        {/* Bottom HUD: node toolbar in windowMode, legend in normal mode */}
-        {windowMode ? (
-          /* Horizontal node icon bar — same pill style as legend */
-          <div
-            key="nodes-hud"
-            className="absolute bottom-6 left-6 right-6 flex items-center z-50"
-            style={{
-              height: 44,
-              background: 'rgba(255,255,255,0.05)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.05)',
-              borderRadius: 999,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-              overflow: 'hidden',
-              paddingInline: 12,
-            }}
-          >
-            <Sidebar windowMode={true} />
-          </div>
-        ) : (
-          /* Legend HUD - Ultra Minimal Single Row */
-          <div key="legend-hud" className="absolute bottom-6 left-6 flex items-center gap-6 px-6 py-2.5 bg-white/5 backdrop-blur-2xl border border-white/5 rounded-full z-50 pointer-events-none shadow-2xl shadow-black/5">
-              {[
-                { color: 'bg-blue-500', label: 'Prompt' },
-                { color: 'bg-rose-500', label: 'Video' },
-                { color: 'bg-pink-500', label: 'Image' },
-                { color: 'bg-purple-500', label: 'Sound' },
-                { color: 'bg-cyan-500', label: 'Mask' },
-                { color: 'bg-orange-500', label: 'PDF' },
-                { color: 'bg-amber-500', label: 'Txt' },
-                { color: 'bg-emerald-500', label: 'Url' },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-2">
-                  <div className={`w-1.5 h-1.5 rounded-full ${item.color} shadow-[0_0_8px_rgba(255,255,255,0.2)]`} />
-                  <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">{item.label}</span>
-                </div>
-              ))}
-              <div className="h-3 w-[1px] bg-white/10 mx-1" />
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full border border-rose-500/50 flex items-center justify-center">
-                  <div className="w-1 h-1 rounded-full bg-rose-500" />
-                </div>
-                <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">Disconnect</span>
+        {/* Legend HUD - Ultra Minimal Single Row (always visible) */}
+        <div key="legend-hud" className="absolute bottom-6 left-6 flex items-center gap-6 px-6 py-2.5 bg-white/5 backdrop-blur-2xl border border-white/5 rounded-full z-50 pointer-events-none shadow-2xl shadow-black/5">
+            {[
+              { color: 'bg-blue-500', label: 'Prompt' },
+              { color: 'bg-rose-500', label: 'Video' },
+              { color: 'bg-pink-500', label: 'Image' },
+              { color: 'bg-purple-500', label: 'Sound' },
+              { color: 'bg-cyan-500', label: 'Mask' },
+              { color: 'bg-orange-500', label: 'PDF' },
+              { color: 'bg-amber-500', label: 'Txt' },
+              { color: 'bg-emerald-500', label: 'Url' },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-2">
+                <div className={`w-1.5 h-1.5 rounded-full ${item.color} shadow-[0_0_8px_rgba(255,255,255,0.2)]`} />
+                <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">{item.label}</span>
               </div>
-          </div>
-        )}
+            ))}
+            <div className="h-3 w-[1px] bg-white/10 mx-1" />
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full border border-rose-500/50 flex items-center justify-center">
+                <div className="w-1 h-1 rounded-full bg-rose-500" />
+              </div>
+              <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">Disconnect</span>
+            </div>
+        </div>
 
         {/* Modals */}
         {showSaveModal && (
