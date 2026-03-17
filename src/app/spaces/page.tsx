@@ -156,9 +156,7 @@ const SpacesContent = () => {
       const vpY = window.innerHeight / 2 - (nodeY + nodeH / 2) * zoom;
       setViewport({ x: vpX, y: vpY, zoom });
     }, 50);
-    // Welcome splash disappears at 4s
-    const tw = setTimeout(() => setShowWelcome(false), 4000);
-    return () => { clearTimeout(t); clearTimeout(tw); };
+    // Welcome disappears via onAnimationEnd (not setTimeout) for smooth fade-out
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
 
@@ -716,8 +714,7 @@ const SpacesContent = () => {
       setIsAuthenticated(true);
       // Trigger welcome splash, then show FINAL OUT 3s after it disappears
       setShowWelcome(true);
-      setTimeout(() => setShowWelcome(false), 4000);
-      setTimeout(() => setShowFinalOut(true), 7000); // 4s splash + 3s delay
+      setTimeout(() => setShowFinalOut(true), 7000); // 4s animation + 3s delay
     } else if (val.length === 4) {
       setPassError(true);
       setTimeout(() => {
@@ -1783,7 +1780,9 @@ const SpacesContent = () => {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           pointerEvents: 'none',
           animation: 'welcomeFade 4s ease forwards',
-        }}>
+        }}
+        onAnimationEnd={() => setShowWelcome(false)}
+        >
           <style>{`
             @keyframes welcomeFade {
               0%   { opacity: 0; transform: scale(0.94); }
