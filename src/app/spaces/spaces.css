@@ -11,7 +11,7 @@
 }
 
 .custom-node {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 24px;
@@ -116,7 +116,7 @@
   overflow-y: auto;
   flex: 1;
   min-height: 0;
-  background: rgba(255, 255, 255, 0.20);
+  background: transparent;
 }
 
 .node-content::-webkit-scrollbar {
