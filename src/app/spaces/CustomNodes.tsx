@@ -3397,236 +3397,351 @@ export const GeminiVideoNode = memo(({ id, data }: NodeProps<any>) => {
 });
 
 // --- PAINTER NODE ---
+const PAINT_COLORS = [
+  { id: 'black',  hex: '#111111', label: 'Black' },
+  { id: 'blue',   hex: '#3b82f6', label: 'Blue' },
+  { id: 'pink',   hex: '#ec4899', label: 'Pink' },
+  { id: 'yellow', hex: '#eab308', label: 'Yellow' },
+  { id: 'green',  hex: '#22c55e', label: 'Green' },
+];
+const PAINT_RATIOS = [
+  { label: '1:1',  value: '1:1',  w: 1024, h: 1024 },
+  { label: '16:9', value: '16:9', w: 1920, h: 1080 },
+  { label: '9:16', value: '9:16', w: 1080, h: 1920 },
+];
+
 export const PainterNode = memo(({ id, data }: NodeProps<any>) => {
   const { setNodes } = useReactFlow();
-  const nodeData = data as BaseNodeData & { 
-    bgColor?: string, 
-    strokeColor?: string, 
-    brushSize?: number 
+  const nodeData = data as BaseNodeData & {
+    bgColor?: string; strokeColor?: string; brushSize?: number;
+    aspectRatio?: string;
   };
-  
-  const width = 1024;
-  const height = 1024;
-  
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const ratio = PAINT_RATIOS.find(r => r.value === (nodeData.aspectRatio || '16:9')) || PAINT_RATIOS[1];
+  const canvasW = ratio.w;
+  const canvasH = ratio.h;
+
+  const canvasRef    = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [color, setColor] = useState(nodeData.strokeColor || '#ffffff');
-  const [bgColor, setBgColor] = useState(nodeData.bgColor || '#000000');
-  const [brushSize, setBrushSize] = useState(nodeData.brushSize || 10);
-  const [mode, setMode] = useState<'brush'|'eraser'>('brush');
-  
+  const lastPt       = useRef<{x:number,y:number}|null>(null);
+
+  const [isDrawing, setIsDrawing]   = useState(false);
+  const [colorId, setColorId]       = useState<string>('black');
+  const [bgColor, setBgColor]       = useState<'white'|'black'>(nodeData.bgColor === '#ffffff' ? 'white' : 'black');
+  const [brushSize, setBrushSize]   = useState(nodeData.brushSize || 10);
+  const [mode, setMode]             = useState<'brush'|'eraser'>('brush');
+  const [fullscreen, setFullscreen] = useState(false);
+  // cursor preview position (in container px)
+  const [cursorPos, setCursorPos]   = useState<{x:number,y:number}|null>(null);
+  const [cursorVisible, setCursorVisible] = useState(false);
+
+  const bgHex = bgColor === 'white' ? '#ffffff' : '#111111';
+  const color  = PAINT_COLORS.find(c => c.id === colorId)?.hex || '#111111';
+
   const saveToNode = useCallback(() => {
     if (!canvasRef.current) return;
-    const dataUrl = canvasRef.current.toDataURL('image/png');
-    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, value: dataUrl, type: 'image' } } : n));
+    const url = canvasRef.current.toDataURL('image/png');
+    setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, value: url, type: 'image' } } : n));
   }, [id, setNodes]);
 
-  // Handle changes to background color without clearing drawing
-  useEffect(() => {
-    if (data.value) return; 
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (ctx && canvas) {
-      const currentData = canvas.toDataURL();
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, width, height);
-      const img = new Image();
-      img.onload = () => {
-         ctx.drawImage(img, 0, 0);
-         saveToNode();
-      };
-      img.src = currentData;
-    }
-  }, [bgColor, saveToNode, data.value, width, height]);
-
-  // Initialize Canvas
+  // Init canvas on mount or ratio change
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
     if (!data.value) {
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = bgHex;
+      ctx.fillRect(0, 0, canvasW, canvasH);
       saveToNode();
     } else {
       const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-      };
+      img.crossOrigin = 'anonymous';
+      img.onload = () => { ctx.clearRect(0, 0, canvasW, canvasH); ctx.drawImage(img, 0, 0, canvasW, canvasH); };
       img.src = data.value;
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasW, canvasH]);
 
-  const updateData = (key: string, val: any) => {
+  const updateData = (key: string, val: any) =>
     setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
-  };
 
-  const getCoordinates = (e: React.PointerEvent) => {
-    if (!canvasRef.current || !containerRef.current) return { x: 0, y: 0 };
-    const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = canvasRef.current.width / rect.width;
-    const scaleY = canvasRef.current.height / rect.height;
+  const getXY = (e: React.PointerEvent): {x:number,y:number} => {
+    const rect = canvasRef.current!.getBoundingClientRect();
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY
+      x: (e.clientX - rect.left) * (canvasW / rect.width),
+      y: (e.clientY - rect.top)  * (canvasH / rect.height),
     };
   };
 
-  const startDrawing = (e: React.PointerEvent) => {
+  const getContainerXY = (e: React.PointerEvent): {x:number,y:number} => {
+    const rect = containerRef.current!.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const { x, y } = getCoordinates(e);
+    const { x, y } = getXY(e);
+    const pressure = e.pressure > 0 ? e.pressure : 1;
+    const size = mode === 'eraser' ? brushSize * 3 : brushSize * pressure;
+    ctx.lineCap  = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth   = size;
+    ctx.strokeStyle = mode === 'eraser' ? bgHex : color;
+    ctx.globalCompositeOperation = mode === 'eraser' ? 'destination-out' : 'source-over';
+    if (mode === 'eraser') ctx.strokeStyle = bgHex;
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = brushSize;
-    ctx.strokeStyle = mode === 'eraser' ? bgColor : color;
-    
+    lastPt.current = { x, y };
     setIsDrawing(true);
   };
 
-  const draw = (e: React.PointerEvent) => {
+  const onPointerMove = (e: React.PointerEvent) => {
+    // update cursor preview
+    const cxy = getContainerXY(e);
+    setCursorPos(cxy);
     if (!isDrawing) return;
+    e.preventDefault(); e.stopPropagation();
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    const { x, y } = getCoordinates(e);
+    const { x, y } = getXY(e);
+    const pressure = e.pressure > 0 ? e.pressure : 1;
+    const size = mode === 'eraser' ? brushSize * 3 : brushSize * pressure;
+    ctx.lineWidth = size;
     ctx.lineTo(x, y);
     ctx.stroke();
+    // start new segment from here for pressure responsiveness
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    lastPt.current = { x, y };
   };
 
-  const stopDrawing = (e: React.PointerEvent) => {
+  const onPointerUp = (e: React.PointerEvent) => {
     if (!isDrawing) return;
+    e.preventDefault(); e.stopPropagation();
     const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) ctx.closePath();
+    if (ctx) { ctx.closePath(); ctx.globalCompositeOperation = 'source-over'; }
     setIsDrawing(false);
-    e.preventDefault();
-    e.stopPropagation();
+    lastPt.current = null;
     saveToNode();
   };
 
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, width, height);
+    const ctx = canvas.getContext('2d')!;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = bgHex;
+    ctx.fillRect(0, 0, canvasW, canvasH);
     saveToNode();
   };
 
-  return (
-    <div className="custom-node bg-[#1e1e1e] border-slate-700 w-[300px]">
-      <NodeLabel id={id} label={nodeData.label} defaultLabel="Painter" />
-      
-      <div className="handle-wrapper handle-left">
-        <Handle type="target" position={Position.Left} id="image" className="handle-image" />
-        <span className="handle-label text-emerald-500">Base Image</span>
+  const switchRatio = (r: typeof PAINT_RATIOS[0]) => {
+    updateData('aspectRatio', r.value);
+    // canvas dims change → useEffect re-inits
+  };
+
+  const switchBg = (bg: 'white'|'black') => {
+    setBgColor(bg);
+    updateData('bgColor', bg === 'white' ? '#ffffff' : '#111111');
+  };
+
+  // scale of brushSize cursor circle in container px
+  const getCanvasToCssScale = (): number => {
+    if (!canvasRef.current) return 1;
+    const rect = canvasRef.current.getBoundingClientRect();
+    return rect.width / canvasW;
+  };
+
+  const DrawingArea = ({ style }: { style?: React.CSSProperties }) => (
+    <div ref={containerRef}
+      className="nodrag nopan relative select-none"
+      style={{ width: '100%', cursor: 'none', ...style }}
+      onPointerEnter={() => setCursorVisible(true)}
+      onPointerLeave={() => { setCursorVisible(false); if (isDrawing) onPointerUp({} as any); }}
+    >
+      <canvas
+        ref={canvasRef}
+        width={canvasW}
+        height={canvasH}
+        className="w-full h-auto block touch-none"
+        style={{ touchAction: 'none', imageRendering: 'pixelated' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+      />
+      {/* cursor circle preview */}
+      {cursorVisible && cursorPos && (
+        <div style={{
+          position: 'absolute',
+          left: cursorPos.x,
+          top: cursorPos.y,
+          width: brushSize * getCanvasToCssScale() * (mode === 'eraser' ? 3 : 1),
+          height: brushSize * getCanvasToCssScale() * (mode === 'eraser' ? 3 : 1),
+          borderRadius: '50%',
+          border: `1.5px solid ${mode === 'eraser' ? 'rgba(255,255,255,0.6)' : color}`,
+          background: mode === 'eraser' ? 'rgba(255,255,255,0.1)' : `${color}33`,
+          transform: 'translate(-50%, -50%)',
+          pointerEvents: 'none',
+          boxShadow: `0 0 0 1px rgba(0,0,0,0.5)`,
+        }} />
+      )}
+    </div>
+  );
+
+  const Controls = ({ compact = false }: { compact?: boolean }) => (
+    <div className={`bg-[#1a1a1a] border-t border-white/10 ${compact ? 'p-3' : 'p-4'} space-y-3`}>
+      {/* Row 1: colors + eraser + clear */}
+      <div className="flex items-center gap-2">
+        {/* 5 color swatches */}
+        <div className="flex gap-1.5">
+          {PAINT_COLORS.map(c => (
+            <button
+              key={c.id}
+              onClick={() => { setColorId(c.id); setMode('brush'); }}
+              title={c.label}
+              style={{ background: c.hex }}
+              className={`w-5 h-5 rounded-full border-2 transition-all ${
+                colorId === c.id && mode === 'brush'
+                  ? 'border-white scale-110 shadow-md'
+                  : 'border-transparent opacity-70 hover:opacity-100'
+              }`}
+            />
+          ))}
+        </div>
+        {/* eraser */}
+        <button
+          onClick={() => setMode(mode === 'eraser' ? 'brush' : 'eraser')}
+          title="Eraser"
+          className={`ml-1 p-1.5 rounded-lg border transition-all ${
+            mode === 'eraser'
+              ? 'bg-white/20 border-white/40 text-white'
+              : 'bg-white/[0.03] border-white/10 text-zinc-500 hover:text-white'
+          }`}
+        >
+          <Eraser size={13} />
+        </button>
+        {/* clear */}
+        <button onClick={clearCanvas} className="ml-auto text-[9px] text-zinc-600 hover:text-red-400 transition-colors font-bold uppercase tracking-widest">
+          Clear
+        </button>
       </div>
 
-      <div className="node-content p-3 space-y-3 flex flex-col items-center">
-        <div ref={containerRef} className="nodrag nopan bg-[#000000] rounded-2xl overflow-hidden flex items-center justify-center relative touch-none border border-slate-700 w-full shadow-inner">
-          <canvas
-            ref={canvasRef}
-            width={width}
-            height={height}
-            className="w-full h-auto aspect-square cursor-crosshair touch-none"
-            onPointerDown={startDrawing}
-            onPointerMove={draw}
-            onPointerUp={stopDrawing}
-            onPointerLeave={stopDrawing}
-            style={{ touchAction: 'none' }}
+      {/* Row 2: brush size */}
+      <div className="flex items-center gap-2">
+        <Paintbrush size={11} className="text-zinc-500 shrink-0" />
+        <input
+          type="range" min="1" max="80"
+          value={brushSize}
+          onChange={e => { const v = parseInt(e.target.value); setBrushSize(v); updateData('brushSize', v); }}
+          className="flex-1 accent-white nodrag"
+        />
+        <div
+          style={{
+            width: Math.min(Math.max(brushSize / 2, 6), 28),
+            height: Math.min(Math.max(brushSize / 2, 6), 28),
+            borderRadius: '50%',
+            background: mode === 'eraser' ? 'rgba(255,255,255,0.2)' : color,
+            border: '1.5px solid rgba(255,255,255,0.3)',
+            flexShrink: 0,
+          }}
+        />
+      </div>
+
+      {/* Row 3: ratio + bg + fullscreen */}
+      <div className="flex items-center gap-1.5">
+        {PAINT_RATIOS.map(r => (
+          <button
+            key={r.value}
+            onClick={() => switchRatio(r)}
+            className={`px-2 py-0.5 rounded text-[7px] font-black border transition-all ${
+              ratio.value === r.value
+                ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:text-zinc-400'
+            }`}
+          >
+            {r.label}
+          </button>
+        ))}
+        <div className="ml-auto flex gap-1">
+          <button
+            onClick={() => switchBg('white')}
+            title="White background"
+            className={`w-5 h-5 rounded border transition-all ${bgColor === 'white' ? 'border-white ring-1 ring-white scale-110' : 'border-zinc-600 opacity-50 hover:opacity-80'}`}
+            style={{ background: '#ffffff' }}
           />
+          <button
+            onClick={() => switchBg('black')}
+            title="Black background"
+            className={`w-5 h-5 rounded border transition-all ${bgColor === 'black' ? 'border-white ring-1 ring-white scale-110' : 'border-zinc-600 opacity-50 hover:opacity-80'}`}
+            style={{ background: '#111111' }}
+          />
+          {!compact && (
+            <button onClick={() => setFullscreen(true)} className="ml-1 p-1.5 rounded-lg border border-white/10 bg-white/[0.03] text-zinc-500 hover:text-white transition-colors">
+              <Maximize2 size={11} />
+            </button>
+          )}
         </div>
-
-        <div className="flex items-center gap-2 border-b border-white/10 pb-3 mt-2">
-          <button 
-            onClick={() => setMode('brush')}
-            className={`p-1.5 rounded-md transition-colors ${mode === 'brush' ? 'bg-white/20 text-white' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
-          >
-            <Paintbrush size={14} />
-          </button>
-          <button 
-            onClick={() => setMode('eraser')}
-            className={`p-1.5 rounded-md transition-colors ${mode === 'eraser' ? 'bg-white/20 text-white' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
-          >
-            <Eraser size={14} />
-          </button>
-          <button onClick={clearCanvas} className="ml-auto text-[10px] text-gray-400 hover:text-white underline underline-offset-2">
-            Clear
-          </button>
-        </div>
-
-        <div className="space-y-3 pt-1">
-          <div className="flex items-center gap-2">
-            <input 
-              type="color" 
-              value={color} 
-              onChange={(e) => { setColor(e.target.value); updateData('strokeColor', e.target.value); }}
-              className="w-5 h-5 rounded cursor-pointer border-0 p-0 nodrag"
-            />
-            <input 
-              type="text" 
-              value={color.toUpperCase()} 
-              onChange={(e) => { setColor(e.target.value); updateData('strokeColor', e.target.value); }}
-              className="bg-black/30 border border-white/10 rounded px-2 py-1 text-[9px] text-white font-mono w-[60px] nodrag"
-            />
-            
-            <div className="flex-1 flex items-center gap-2 ml-2">
-              <span className="text-[9px] text-gray-500">Size</span>
-              <input 
-                type="range" 
-                min="1" max="100" 
-                value={brushSize} 
-                onChange={(e) => { setBrushSize(parseInt(e.target.value)); updateData('brushSize', parseInt(e.target.value)); }}
-                className="flex-1 accent-white nodrag"
-              />
-              <span className="text-[9px] text-gray-400 w-4 text-right">{brushSize}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 pt-1 border-t border-white/5">
-             <div className="bg-black/30 border border-white/5 p-1 px-2 rounded flex items-center gap-1">
-               <span className="text-[9px] text-gray-600 font-mono">W</span>
-               <input type="number" readOnly value={width} className="bg-transparent text-[10px] text-white font-mono outline-none w-8 p-0 border-0" />
-             </div>
-             <div className="bg-black/30 border border-white/5 p-1 px-2 rounded flex items-center gap-1">
-               <span className="text-[9px] text-gray-600 font-mono">H</span>
-               <input type="number" readOnly value={height} className="bg-transparent text-[10px] text-white font-mono outline-none w-8 p-0 border-0" />
-             </div>
-             
-             <div className="ml-auto flex items-center gap-2 bg-black/30 border border-white/5 p-1 px-2 rounded">
-               <span className="text-[9px] font-medium text-gray-400">Background Color</span>
-               <input 
-                 type="color" 
-                 value={bgColor} 
-                 onChange={(e) => { setBgColor(e.target.value); updateData('bgColor', e.target.value); }}
-                 className="w-4 h-4 rounded cursor-pointer border-0 p-0 nodrag"
-               />
-             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="handle-wrapper handle-right">
-        <span className="handle-label text-cyan-500">Output Image</span>
-        <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
     </div>
   );
+
+  return (
+    <div className="custom-node bg-[#141414] border-amber-900/30 w-[320px]" style={{ padding: 0, overflow: 'visible' }}>
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Painter" />
+
+      <div className="handle-wrapper handle-left" style={{ top: '50%' }}>
+        <Handle type="target" position={Position.Left} id="image" className="handle-image" />
+        <span className="handle-label">Base</span>
+      </div>
+
+      {/* node-header */}
+      <div className="node-header bg-gradient-to-r from-amber-800/20 to-orange-900/20">
+        <Paintbrush size={14} className="text-amber-400" />
+        <span>Painter</span>
+        <span className="text-[7px] font-black uppercase tracking-widest text-amber-600/60 ml-auto">{ratio.label}</span>
+      </div>
+
+      {/* Canvas */}
+      <DrawingArea style={{ background: bgHex }} />
+
+      {/* Controls */}
+      <Controls />
+
+      <div className="handle-wrapper handle-right" style={{ top: '50%' }}>
+        <span className="handle-label">Output</span>
+        <Handle type="source" position={Position.Right} id="image" className="handle-image" />
+      </div>
+
+      {/* Fullscreen overlay */}
+      {fullscreen && (
+        <div className="fixed inset-0 z-[9999] bg-black/95 flex flex-col nodrag nopan">
+          {/* Top bar */}
+          <div className="flex items-center gap-3 px-4 py-2.5 bg-[#1a1a1a] border-b border-white/10">
+            <Paintbrush size={14} className="text-amber-400" />
+            <span className="text-[10px] font-black text-amber-300 uppercase tracking-widest">Painter — Fullscreen</span>
+            <button onClick={() => setFullscreen(false)} className="ml-auto text-zinc-500 hover:text-white transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+          {/* Canvas area */}
+          <div className="flex-1 flex items-center justify-center overflow-hidden p-6 bg-[#0a0a0a]">
+            <div style={{ maxWidth: '100%', maxHeight: '100%', aspectRatio: `${canvasW}/${canvasH}` }}>
+              <DrawingArea style={{ height: '100%', background: bgHex }} />
+            </div>
+          </div>
+          {/* Controls */}
+          <Controls compact />
+        </div>
+      )}
+    </div>
+  );
 });
+
+
 
 // --- CROP NODE ---
 export const CropNode = memo(({ id, data }: NodeProps<any>) => {
