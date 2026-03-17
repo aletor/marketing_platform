@@ -1673,30 +1673,39 @@ const SpacesContent = () => {
             )}
           </div>
 
-          {/* ─ Draggable resize handle ─ */}
+          {/* ─ Draggable resize handle — large hit area, thin visual ─ */}
           <div
             onPointerDown={startViewerResize}
             style={{
               position: 'absolute',
               bottom: 0, left: 0, right: 0,
-              height: 8,
+              height: 24,               /* large pointer hit area */
               cursor: 'ns-resize',
+              display: 'flex',
+              alignItems: 'flex-end',   /* align visual strip to bottom edge */
+              zIndex: 10,
+            }}
+          >
+            {/* Visual strip — only 8px tall */}
+            <div style={{
+              width: '100%',
+              height: 8,
               background: 'rgba(251,191,36,0.08)',
               borderTop: '1px solid rgba(251,191,36,0.25)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              zIndex: 10,
-            }}
-          >
-            {/* Grip dots */}
-            <div style={{ display: 'flex', gap: 3 }}>
-              {[0,1,2,3,4].map(i => (
-                <div key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(251,191,36,0.5)' }} />
-              ))}
+            }}>
+              {/* Grip dots */}
+              <div style={{ display: 'flex', gap: 3 }}>
+                {[0,1,2,3,4].map(i => (
+                  <div key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(251,191,36,0.5)' }} />
+                ))}
+              </div>
             </div>
           </div>
         </div>
+
       )}
 
       {/* ── MAIN CANVAS AREA ────────────────────────────────────────────────── */}
