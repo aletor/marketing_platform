@@ -712,9 +712,8 @@ const SpacesContent = () => {
     setPasscode(val);
     if (val === '6666') {
       setIsAuthenticated(true);
-      // Trigger welcome splash, then show FINAL OUT 3s after it disappears
+      // Trigger welcome splash — output node appears when splash finishes
       setShowWelcome(true);
-      setTimeout(() => setShowFinalOut(true), 7000); // 4s animation + 3s delay
     } else if (val.length === 4) {
       setPassError(true);
       setTimeout(() => {
@@ -1781,7 +1780,7 @@ const SpacesContent = () => {
           pointerEvents: 'none',
           animation: 'welcomeFade 4s ease forwards',
         }}
-        onAnimationEnd={() => setShowWelcome(false)}
+        onAnimationEnd={() => { setShowWelcome(false); setShowFinalOut(true); }}
         >
           <style>{`
             @keyframes welcomeFade {
