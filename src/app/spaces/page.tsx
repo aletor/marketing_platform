@@ -335,6 +335,19 @@ const SpacesContent = () => {
     return () => window.removeEventListener('toggle-final-window', handler);
   }, []); // toggle-final-window listener
 
+  // Hide FINAL OUT overlay when inside a nested space
+  const [isInsideNestedSpace, setIsInsideNestedSpace] = useState(false);
+  useEffect(() => {
+    const onEnter = () => setIsInsideNestedSpace(true);
+    const onExit  = () => setIsInsideNestedSpace(false);
+    window.addEventListener('enter-space', onEnter);
+    window.addEventListener('exit-space',  onExit);
+    return () => {
+      window.removeEventListener('enter-space', onEnter);
+      window.removeEventListener('exit-space',  onExit);
+    };
+  }, []);
+
   // Initialize FINAL node on empty canvas (first ever use, no project loaded)
   useEffect(() => {
     setNodes(prev => {
@@ -1700,7 +1713,7 @@ const SpacesContent = () => {
     <div className="flex w-full h-full" ref={reactFlowWrapper} style={{ flexDirection: 'column' }}>
 
       {/* ── FINAL OUT FIXED OVERLAY (UI only, edges route via invisible canvas node) ── */}
-      {!windowMode && (
+      {!windowMode && !isInsideNestedSpace && (
         <div style={{
           position: 'fixed',
           right: 50,
