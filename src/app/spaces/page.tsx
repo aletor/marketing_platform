@@ -564,6 +564,18 @@ const SpacesContent = () => {
   }, [screenToFlowPosition, nodes, edges, setNodes, setEdges, pushHistory]);
 
 
+  // ── Node click: persist z-index until another node is clicked ──────────
+  const onNodeClick = useCallback((_evt: React.MouseEvent, node: any) => {
+    if (lastClickedRef.current === node.id) return; // already on top
+    const prev = lastClickedRef.current;
+    lastClickedRef.current = node.id;
+    setNodes(nds => nds.map(n => {
+      if (n.id === node.id) return { ...n, style: { ...n.style, zIndex: 9999 } };
+      if (n.id === prev)   return { ...n, style: { ...n.style, zIndex: undefined } };
+      return n;
+    }));
+  }, [setNodes]);
+
   // ── Auto-layout (A key) ──────────────────────────────────────────────────
 
   const autoLayout = useCallback(() => {
@@ -713,6 +725,9 @@ const SpacesContent = () => {
   }, [addNodeAtCenter, undo, redo, fitView, autoLayout]);
 
   
+  // ── Track last-clicked node for persistent z-index ──────────────────────
+  const lastClickedRef = useRef<string | null>(null);
+
   // ── Track Shift key for canvas pan ──────────────────────────────────────
   const [shiftHeld, setShiftHeld] = useState(false);
   useEffect(() => {
@@ -2048,6 +2063,7 @@ const SpacesContent = () => {
           onDragOver={onDragOver}
           onPaneContextMenu={onPaneContextMenu}
           onNodeContextMenu={onNodeContextMenu}
+          onNodeClick={onNodeClick}
           onNodeDragStop={onNodeDragStop}
           onConnectEnd={onConnectEnd}
           onMove={(_evt, vp) => syncFinalNode(vp)}

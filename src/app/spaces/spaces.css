@@ -578,8 +578,8 @@
   border-color: #f43f5e;
 }
 
+/* No hardcoded stroke here — ButtonEdge sets inline stroke color per data type */
 .react-flow__edge-path {
-  stroke: #cbd5e1;
   stroke-width: 2.5px;
   transition: stroke 0.3s;
 }
