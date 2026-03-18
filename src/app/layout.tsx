@@ -8,7 +8,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Media Composer",
+  title: "Media Node",
   description: "Advanced AI-powered media creation and composition engine.",
 };
 

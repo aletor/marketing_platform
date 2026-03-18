@@ -34,10 +34,18 @@ export function Sidebar() {
       <div className="sidebar-header">
         <div className="logo-container">
           <div className="flex flex-col items-center gap-1">
-            <div className="w-14 h-14 bg-[#1A1B1E] rounded-2xl flex items-center justify-center text-[#FFBD1B] shadow-xl border border-[#333] mb-2 transform hover:rotate-12 transition-transform">
-              <Zap size={32} fill="currentColor" />
+            <div className="w-14 h-14 bg-[#1A1B1E] rounded-2xl flex items-center justify-center shadow-xl border border-[#333] mb-2">
+              {/* Media Node icon — three circles connected in a triangle (node graph) */}
+              <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="18" cy="7" r="4" stroke="#FFBD1B" strokeWidth="2.2"/>
+                <circle cx="7" cy="27" r="4" stroke="#FFBD1B" strokeWidth="2.2"/>
+                <circle cx="29" cy="27" r="4" stroke="#FFBD1B" strokeWidth="2.2"/>
+                <line x1="14.3" y1="10.1" x2="9.2" y2="23.4" stroke="#FFBD1B" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="21.7" y1="10.1" x2="26.8" y2="23.4" stroke="#FFBD1B" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="11" y1="27" x2="25" y2="27" stroke="#FFBD1B" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
             </div>
-            <span className="logo-text">NeuralMarketing<span className="logo-highlight font-black">OS</span></span>
+            <span className="logo-text">MEDIA<span className="logo-highlight font-black">NODE</span></span>
           </div>
         </div>
       </div>

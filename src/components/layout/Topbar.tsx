@@ -14,7 +14,7 @@ const pathToTitle: Record<string, string> = {
 
 export function Topbar() {
   const pathname = usePathname();
-  const title = pathToTitle[pathname] || "Content Engine AI";
+  const title = pathToTitle[pathname] || "Media Node";
 
   return (
     <header className="topbar">
