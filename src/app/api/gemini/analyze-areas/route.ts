@@ -9,13 +9,31 @@ interface AreaChange {
   description: string; // what the user wants to do in this area
 }
 
-function parseImage(image: string): { data: string; mimeType: string } | null {
+async function parseImage(image: string): Promise<{ data: string; mimeType: string } | null> {
   if (!image) return null;
+  // data URL (paint canvas output)
   if (image.startsWith("data:")) {
     const [meta, data] = image.split(";base64,");
     return { data, mimeType: meta.split(":")[1] };
   }
-  return null; // only data URLs accepted here (no remote fetch needed)
+  // Remote URL (S3 presigned URL for generated images)
+  if (image.startsWith("http")) {
+    try {
+      const res = await fetch(image, {
+        headers: { "User-Agent": "Mozilla/5.0" },
+      });
+      if (!res.ok) { console.warn("[analyze-areas] Failed to fetch image:", res.status); return null; }
+      const buffer = await res.arrayBuffer();
+      return {
+        data: Buffer.from(buffer).toString("base64"),
+        mimeType: res.headers.get("content-type") || "image/jpeg",
+      };
+    } catch (e: any) {
+      console.warn("[analyze-areas] Error fetching image URL:", e.message);
+      return null;
+    }
+  }
+  return null;
 }
 
 export async function POST(req: NextRequest) {
@@ -36,13 +54,13 @@ export async function POST(req: NextRequest) {
 
     // 1. Base image
     if (baseImage) {
-      const parsed = parseImage(baseImage);
+      const parsed = await parseImage(baseImage);
       if (parsed) parts.push({ inline_data: { mime_type: parsed.mimeType, data: parsed.data } });
     }
 
     // 2. Color map image
     if (colorMapImage) {
-      const parsed = parseImage(colorMapImage);
+      const parsed = await parseImage(colorMapImage);
       if (parsed) parts.push({ inline_data: { mime_type: parsed.mimeType, data: parsed.data } });
     }
 
