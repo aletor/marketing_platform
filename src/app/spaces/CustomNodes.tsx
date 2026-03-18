@@ -941,18 +941,56 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
   // and reordered. On save, we split them back out.
   const [layers, setLayers] = useState<ComposerLayer[]>(() => {
     const imageInputIds = new Set(imageLayers.map((il: any) => il.id));
-    // Filter out position-override entries that were saved for image inputs
-    // (they have no _src and their id matches an actual image input)
-    const realInternalLayers = initLayers.filter(l => !imageInputIds.has(l.id));
-    const imgAsLayers: ComposerLayer[] = imageLayers.map((il: any) => ({
-      id: il.id,
-      type: 'image' as const,
-      label: il.label || 'Image Input',
-      x: il.x ?? 0, y: il.y ?? 0, w: il.w ?? 960, h: il.h ?? 540,
-      opacity: il.opacity ?? 1, visible: il.visible !== false, locked: false,
-      _src: il.src, _isImageInput: true,
-    } as any));
-    return [...imgAsLayers, ...realInternalLayers];
+
+    if (initLayers.length === 0) {
+      // First open — no saved order, put image inputs at bottom
+      return imageLayers.map((il: any) => ({
+        id: il.id, type: 'image' as const,
+        label: il.label || 'Image Input',
+        x: il.x ?? 0, y: il.y ?? 0, w: il.w ?? 960, h: il.h ?? 540,
+        opacity: il.opacity ?? 1, visible: il.visible !== false, locked: false,
+        _src: il.src, _isImageInput: true,
+      } as any));
+    }
+
+    // Reconstruct mixed order from saved data.
+    // initLayers may contain:
+    //   - _orderStub entries (image input position stubs, id in imageInputIds)
+    //   - real internal layers (rect, gradient, color, etc.)
+    const idsInSaved = new Set(initLayers.map(l => l.id));
+
+    const reconstructed: ComposerLayer[] = initLayers.map((savedL: any) => {
+      if (imageInputIds.has(savedL.id) || savedL._orderStub) {
+        // Restore image input from live imageLayers with saved position
+        const actual = imageLayers.find((il: any) => il.id === savedL.id);
+        if (!actual) return null; // edge was removed
+        return {
+          id: savedL.id, type: 'image' as const,
+          label: actual.label || savedL.label || 'Image Input',
+          x: savedL.x ?? 0, y: savedL.y ?? 0,
+          w: savedL.w ?? 960, h: savedL.h ?? 540,
+          opacity: savedL.opacity ?? 1,
+          visible: savedL.visible !== false,
+          locked: savedL.locked ?? false,
+          _src: actual.src, _isImageInput: true,
+        } as any;
+      }
+      // Internal layer — use as-is
+      return savedL;
+    }).filter(Boolean) as ComposerLayer[];
+
+    // Append any new image inputs not yet in saved order (at bottom)
+    const newImageInputs: ComposerLayer[] = imageLayers
+      .filter((il: any) => !idsInSaved.has(il.id))
+      .map((il: any) => ({
+        id: il.id, type: 'image' as const,
+        label: il.label || 'Image Input',
+        x: il.x ?? 0, y: il.y ?? 0, w: il.w ?? 960, h: il.h ?? 540,
+        opacity: il.opacity ?? 1, visible: il.visible !== false, locked: false,
+        _src: il.src, _isImageInput: true,
+      } as any));
+
+    return [...newImageInputs, ...reconstructed];
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragLayerId, setDragLayerId] = useState<string | null>(null);
@@ -1074,19 +1112,24 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
 
   // ── Save & close ───────────────────────────────────────────────────────
   const handleSave = () => {
-    // Save internal layers (non-image-input)
-    const internalOnly = layers.filter((l: any) => !l._isImageInput);
-    // Also persist image input layer positions as lightweight overrides.
-    // imageLayersFromInputs reads x/y/w/h from internalLayers by matching id,
-    // so we store position-only entries here — they won't render (no src).
-    const imagePositionOverrides: ComposerLayer[] = layers
-      .filter((l: any) => l._isImageInput)
-      .map((l: any) => ({
-        id: l.id, type: 'image' as const, label: l.label,
-        x: l.x, y: l.y, w: l.w, h: l.h,
-        opacity: l.opacity, visible: l.visible, locked: l.locked,
-      }));
-    onUpdateLayers([...imagePositionOverrides, ...internalOnly]);
+    // Save ALL layers in their current ORDER (mixed z-order preserved).
+    // Image input entries are saved as position-only stubs (_isImageInput removed,
+    // kept as type:'image' with no src so they don't render but do hold position).
+    // On next open, we reconstruct the full order from this saved array.
+    const orderedForStorage: ComposerLayer[] = layers.map((l: any) => {
+      if (l._isImageInput) {
+        // Lightweight position stub — no src, no _isImageInput flag so
+        // imageInputIds filter on re-open recognises them via id match
+        return {
+          id: l.id, type: 'image' as const, label: l.label,
+          x: l.x, y: l.y, w: l.w, h: l.h,
+          opacity: l.opacity, visible: l.visible, locked: l.locked,
+          _orderStub: true, // marker so init knows this is an image-input stub
+        } as any;
+      }
+      return l; // internal layer — keep as-is
+    });
+    onUpdateLayers(orderedForStorage);
     onClose();
   };
 
