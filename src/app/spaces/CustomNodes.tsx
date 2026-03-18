@@ -159,93 +159,7 @@ const HANDLE_COLORS: Record<string, string> = {
 const DEFAULT_EDGE_COLOR = '#94a3b8'; // neutral slate for unknown handles
 
 
-// ─────────────────────────────────────────────
-// Collapse helpers (shared across all nodes)
-// ─────────────────────────────────────────────
-const COLLAPSED_H = 44; // px — header-only height
 
-function useNodeCollapse(id: string, data: any) {
-  const { setNodes } = useReactFlow();
-  const collapsed = !!(data as any).collapsed;
-
-  const toggle = useCallback(() => {
-    setNodes((nds: any) => nds.map((n: any) => {
-      if (n.id !== id) return n;
-      const isCurrentlyCollapsed = !!n.data.collapsed;
-
-      if (isCurrentlyCollapsed) {
-        // EXPAND: restore saved dimensions
-        const savedH = n.data._savedH;
-        const savedW = n.data._savedW;
-        const newStyle = { ...n.style };
-        // Restore exact saved values OR delete the constraint entirely so the
-        // node falls back to its content / NodeResizer minimum
-        if (savedH !== undefined) newStyle.height = savedH;
-        else delete newStyle.height;
-        if (savedW !== undefined) newStyle.width = savedW;
-        // Always clear the forced minHeight we set during collapse
-        delete newStyle.minHeight;
-        return {
-          ...n,
-          style: newStyle,
-          data: { ...n.data, collapsed: false, _savedH: undefined, _savedW: undefined },
-        };
-      } else {
-        // COLLAPSE: save current dimensions before squishing to header height
-        // Prefer style values (user-resized), then measured (auto-sized), then defaults
-        const currentH =
-          n.style?.height ??
-          (n as any).measured?.height ??
-          300;
-        const currentW =
-          n.style?.width ??
-          (n as any).measured?.width;
-
-        return {
-          ...n,
-          style: {
-            ...n.style,
-            height: COLLAPSED_H,
-            // NodeResizer enforces its own minHeight via the wrapper style;
-            // we override it here at the reactflow node level.
-            minHeight: COLLAPSED_H,
-            ...(currentW !== undefined ? { width: currentW } : {}),
-          },
-          data: { ...n.data, collapsed: true, _savedH: currentH, _savedW: currentW },
-        };
-      }
-    }));
-  }, [id, setNodes]);
-
-  return { collapsed, toggle };
-}
-
-const CollapseBtn = ({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) => (
-  <button
-    className="collapse-btn nodrag"
-    onClick={(e) => { e.stopPropagation(); onToggle(); }}
-    title={collapsed ? 'Expand' : 'Collapse'}
-    style={{
-      marginLeft: 'auto',
-      background: 'none',
-      border: 'none',
-      cursor: 'pointer',
-      padding: '2px 4px',
-      display: 'flex',
-      alignItems: 'center',
-      color: 'inherit',
-      opacity: 0.6,
-      flexShrink: 0,
-    }}
-  >
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-      {collapsed
-        ? <polyline points="2,7 5,3 8,7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        : <polyline points="2,3 5,7 8,3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      }
-    </svg>
-  </button>
-);
 
 export const ButtonEdge = ({
   id,
@@ -313,7 +227,6 @@ export const ButtonEdge = ({
 export const BackgroundNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & { width?: number, height?: number, color?: string };
   const { setNodes } = useReactFlow();
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
 
   const updateData = (key: string, val: any) => {
     setNodes((nds: any) => nds.map((n: any) => n.id === id ? { ...n, data: { ...n.data, [key]: val } } : n));
@@ -324,11 +237,10 @@ export const BackgroundNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const color = nodeData.color ?? '#000000';
 
   return (
-    <div className={`custom-node background-node ${_nc ? 'node-collapsed' : ''}` }>
-            <NodeResizer minWidth={280} minHeight={200} isVisible={selected && !_nc} />
+    <div className={`custom-node background-node` }>
+            <NodeResizer minWidth={280} minHeight={200} isVisible={selected} />
 <NodeLabel id={id} label={nodeData.label} defaultLabel="Background" />
       <div className="node-header">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Paintbrush size={16} /> CANVAS
       </div>
       <div className="node-content">
@@ -396,7 +308,6 @@ export const UrlImageNode = memo(({ id, data, selected }: NodeProps<any>) => {
   };
   const { setNodes } = useReactFlow();
   const [loading, setLoading] = useState(false);
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   
   const urls = nodeData.urls || [];
   const selectedIndex = nodeData.selectedIndex ?? 0;
@@ -466,11 +377,10 @@ export const UrlImageNode = memo(({ id, data, selected }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node url-image-node border-cyan-500/30 ${loading ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 280 }}>
-      <NodeResizer minWidth={280} minHeight={320} keepAspectRatio isVisible={selected && !_nc} />
+    <div className={`custom-node url-image-node border-cyan-500/30 ${loading ? 'node-glow-running' : ''}`} style={{ minWidth: 280 }}>
+      <NodeResizer minWidth={280} minHeight={320} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Image Search" />
       <div className="node-header text-cyan-400">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Globe size={16} /> CAROUSEL {loading && <Loader2 size={12} className="animate-spin ml-auto" />}
       </div>
       <div className="node-content">
@@ -575,7 +485,6 @@ export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) =
     selectedLayerId?: string | null;
     value?: string;
   };
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
 
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
@@ -722,8 +631,8 @@ export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) =
   const selectedId = nodeData.selectedLayerId;
 
   return (
-    <div className={`custom-node composer-node ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 340 }}>
-      <NodeResizer minWidth={340} minHeight={300} isVisible={selected && !_nc} />
+    <div className={`custom-node composer-node`} style={{ minWidth: 340 }}>
+      <NodeResizer minWidth={340} minHeight={300} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Composer" />
 
       {/* Input handles */}
@@ -736,7 +645,6 @@ export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) =
 
       {/* Header */}
       <div className="node-header bg-gradient-to-r from-cyan-600/20 to-indigo-600/20">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Layers size={14} className="text-cyan-400" />
         <span>Composer</span>
         <div className="node-badge">{allLayersForRender.length} layers</div>
@@ -1199,7 +1107,6 @@ export const ImageExportNode = memo(({ id, data, selected }: NodeProps<any>) => 
   const [format, setFormat] = useState<'png' | 'jpeg'>('png');
   const [isExporting, setIsExporting] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
 
   // Refs for synchronous form-based download (bypasses Chrome async security blocks)
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -1296,8 +1203,8 @@ export const ImageExportNode = memo(({ id, data, selected }: NodeProps<any>) => 
 
 
   return (
-    <div className={`custom-node export-node border-rose-500/30 ${_nc ? 'node-collapsed' : ''}` }>
-            <NodeResizer minWidth={280} minHeight={180} isVisible={selected && !_nc} />
+    <div className={`custom-node export-node border-rose-500/30` }>
+            <NodeResizer minWidth={280} minHeight={180} isVisible={selected} />
 <NodeLabel id={id} label={data.label} defaultLabel="Export" />
 
       {/* Hidden iframe — receives the form POST response (Content-Disposition: attachment) */}
@@ -1330,7 +1237,6 @@ export const ImageExportNode = memo(({ id, data, selected }: NodeProps<any>) => 
         <span className="handle-label">Image Input</span>
       </div>
       <div className="node-header text-rose-400">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Download size={16} /> IMAGE EXPORT
       </div>
       <div className="node-content">
@@ -1398,7 +1304,6 @@ export const MediaInputNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const [showFullSize, setShowFullSize] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const isUploading = isUploadingLocal || nodeData.loading;
@@ -1466,7 +1371,7 @@ export const MediaInputNode = memo(({ id, data, selected }: NodeProps<any>) => {
       className="custom-node"
       style={{ padding: 0, minWidth: 280, borderRadius: 18, overflow: 'visible' }}
     >
-      <NodeResizer minWidth={280} minHeight={320} keepAspectRatio isVisible={selected && !_nc} />
+      <NodeResizer minWidth={280} minHeight={320} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel={nodeData.type ? `${nodeData.type.charAt(0).toUpperCase() + nodeData.type.slice(1)} Input` : 'Media Input'} />
 
       {/* Persistent header */}
@@ -1682,14 +1587,12 @@ export const MediaInputNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
 export const PromptNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const { setNodes } = useReactFlow();
   return (
-    <div className={`custom-node prompt-node ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 280 }}>
-      <NodeResizer minWidth={280} minHeight={160} isVisible={selected && !_nc} />
+    <div className={`custom-node prompt-node`} style={{ minWidth: 280 }}>
+      <NodeResizer minWidth={280} minHeight={160} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Prompt" />
       <div className="node-header">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Type size={16} /> PROMPT
       </div>
       <div className="node-content" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1714,7 +1617,6 @@ export const PromptNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
 export const ConcatenatorNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const nodes = useNodes();
   const edges = useEdges();
   const { setNodes } = useReactFlow();
@@ -1742,8 +1644,8 @@ export const ConcatenatorNode = memo(({ id, data, selected }: NodeProps<any>) =>
   const handleIds = ['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'];
 
   return (
-    <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 240 }}>
-      <NodeResizer minWidth={240} minHeight={180} maxWidth={600} maxHeight={520} isVisible={selected && !_nc} />
+    <div className={`custom-node tool-node` } style={{ minWidth: 240 }}>
+      <NodeResizer minWidth={240} minHeight={180} maxWidth={600} maxHeight={520} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Concatenator" />
       {handleIds.map((hId: any, index: number) => (
         <div key={hId} className="handle-wrapper handle-left" style={{ top: `${(index + 1) * (100 / (handleIds.length + 1))}%` }}>
@@ -1758,7 +1660,6 @@ export const ConcatenatorNode = memo(({ id, data, selected }: NodeProps<any>) =>
       ))}
       
       <div className="node-header bg-gradient-to-r from-blue-600/20 to-cyan-600/20">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <PlusSquare size={16} className="text-blue-400" /> 
         <span>Concatenator</span>
         <div className="node-badge">UTILITY</div>
@@ -1782,7 +1683,6 @@ export const ConcatenatorNode = memo(({ id, data, selected }: NodeProps<any>) =>
 
 export const EnhancerNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const nodes = useNodes();
   const edges = useEdges();
   const { setNodes } = useReactFlow();
@@ -1830,8 +1730,8 @@ export const EnhancerNode = memo(({ id, data, selected }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 280 }}>
-      <NodeResizer minWidth={280} minHeight={200} maxWidth={620} maxHeight={660} isVisible={selected && !_nc} />
+    <div className={`custom-node tool-node` } style={{ minWidth: 280 }}>
+      <NodeResizer minWidth={280} minHeight={200} maxWidth={620} maxHeight={660} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Enhancer" />
 
       {/* Always render all 8 handles; hide extras beyond connected+1 */}
@@ -1862,7 +1762,6 @@ export const EnhancerNode = memo(({ id, data, selected }: NodeProps<any>) => {
       })}
 
       <div className="node-header bg-gradient-to-r from-purple-600/20 to-indigo-600/20">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Zap size={16} className="text-purple-400" />
         <span>Prompt Enhancer</span>
         <div className="node-badge">AI TOOL</div>
@@ -1912,7 +1811,6 @@ export const EnhancerNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
 export const GrokNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const { setNodes } = useReactFlow();
   const nodes = useNodes();
   const edges = useEdges();
@@ -1953,8 +1851,8 @@ export const GrokNode = memo(({ id, data, selected }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 300 }}>
-      <NodeResizer minWidth={300} minHeight={280} maxWidth={620} maxHeight={620} isVisible={selected && !_nc} />
+    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`} style={{ minWidth: 300 }}>
+      <NodeResizer minWidth={300} minHeight={280} maxWidth={620} maxHeight={620} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Grok Imagine" />
       <div className="handle-wrapper handle-left" style={{ top: '30%' }}>
         <Handle type="target" position={Position.Left} id="video" className="handle-video" />
@@ -1965,7 +1863,7 @@ export const GrokNode = memo(({ id, data, selected }: NodeProps<any>) => {
         <span className="handle-label">Prompt in</span>
       </div>
       <div className="node-header">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} /><Compass size={16} /> GROK IMAGINE</div>
+        <Compass size={16} /> GROK IMAGINE</div>
       <div className="node-content">
         <div className="flex gap-2 mb-3">
           <select className="node-input text-[10px]" value={nodeData.resolution || '720p'} onChange={(e) => setNodes((nds: any) => nds.map((n: any) => n.id === id ? {...n, data: {...n.data, resolution: e.target.value}} : n))}>
@@ -2024,7 +1922,6 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
     modelKey?: string;
     thinking?: boolean;
   };
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const nodes = useNodes();
   const edges = useEdges();
   const { setNodes } = useReactFlow();
@@ -2116,9 +2013,9 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`}
+    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}
          style={{ minWidth: 320 }}>
-      <NodeResizer minWidth={320} minHeight={350} keepAspectRatio isVisible={selected && !_nc} />
+      <NodeResizer minWidth={320} minHeight={350} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana 2" />
 
       {/* ── Ref image handles (4 slots) ─── */}
@@ -2143,7 +2040,6 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
       {/* ── Standard node header ─── */}
       <div className="node-header bg-gradient-to-r from-yellow-600/20 to-orange-600/20">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Sparkles size={15} className="text-yellow-400" />
         <span>Nano Banana</span>
         <div className={`node-badge ${modelInfo.bg} ${modelInfo.color} border ${modelInfo.borderColor}`}>
@@ -2360,7 +2256,6 @@ export const TextOverlayNode = memo(({ id, data, selected }: NodeProps<any>) => 
     canvasW?: number;
     canvasH?: number;
   };
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const { setNodes } = useReactFlow();
   const previewRef = useRef<HTMLCanvasElement>(null);
   const [rendered, setRendered] = useState(false);
@@ -2424,12 +2319,11 @@ export const TextOverlayNode = memo(({ id, data, selected }: NodeProps<any>) => 
   }, [text, fontFamily, fontSize, color, fontWeight, textAlign, canvasW, canvasH, id, setNodes]);
 
   return (
-    <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 300 }}>
-      <NodeResizer minWidth={300} minHeight={280} maxWidth={700} maxHeight={720} isVisible={selected && !_nc} />
+    <div className={`custom-node tool-node` } style={{ minWidth: 300 }}>
+      <NodeResizer minWidth={300} minHeight={280} maxWidth={700} maxHeight={720} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Text Overlay" />
 
       <div className="node-header bg-gradient-to-r from-purple-600/20 to-pink-600/20">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Type size={14} className="text-purple-500" />
         <span>Text Overlay</span>
         <div className="node-badge bg-purple-500/10 text-purple-400 border border-purple-500/30">TEXT</div>
@@ -2596,7 +2490,6 @@ export const BackgroundRemoverNode = memo(({ id, data, selected }: NodeProps<any
   const [status, setStatus] = useState('idle');
   const [previewMode, setPreviewMode] = useState<'original' | 'mask' | 'cutout'>('cutout');
   const [isStudioOpen, setIsStudioOpen] = useState(false);
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
 
   useEffect(() => {
     if (nodeData.threshold === undefined) {
@@ -2693,8 +2586,8 @@ export const BackgroundRemoverNode = memo(({ id, data, selected }: NodeProps<any
   };
 
   return (
-    <div className={`custom-node mask-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 320 }}>
-      <NodeResizer minWidth={320} minHeight={320} maxWidth={700} maxHeight={700} isVisible={selected && !_nc} />
+    <div className={`custom-node mask-node ${status === 'running' ? 'node-glow-running' : ''}`} style={{ minWidth: 320 }}>
+      <NodeResizer minWidth={320} minHeight={320} maxWidth={700} maxHeight={700} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Background Remover" />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="media" className="handle-image" />
@@ -2702,7 +2595,6 @@ export const BackgroundRemoverNode = memo(({ id, data, selected }: NodeProps<any
       </div>
       
       <div className="node-header bg-gradient-to-r from-cyan-600/20 to-blue-600/20">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Scissors size={16} className="text-cyan-400" /> 
         <span>Remove Background</span>
         <button 
@@ -2991,7 +2883,6 @@ export const SpaceNode = memo(({ id, data, selected }: NodeProps<any>) => {
     internalCategories?: string[]
   };
   const { setNodes } = useReactFlow();
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const spaceId = nodeData.spaceId;
 
   // Refresh node when returning from an inner space (so preview updates)
@@ -3084,8 +2975,8 @@ export const SpaceNode = memo(({ id, data, selected }: NodeProps<any>) => {
       />
 
       {/* Main node card */}
-      <div className={`custom-node space-node border-cyan-500/30 ${_nc ? 'node-collapsed' : ''}` } style={{ position: 'relative', zIndex: 0 }}>
-            <NodeResizer minWidth={280} minHeight={180} isVisible={selected && !_nc} />
+      <div className={`custom-node space-node border-cyan-500/30` } style={{ position: 'relative', zIndex: 0 }}>
+            <NodeResizer minWidth={280} minHeight={180} isVisible={selected} />
 <NodeLabel id={id} label={nodeData.label} defaultLabel="Space" />
       
       {/* Input handle only if space has an internal InputNode */}
@@ -3097,7 +2988,6 @@ export const SpaceNode = memo(({ id, data, selected }: NodeProps<any>) => {
       )}
       
       <div className="node-header">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         {getIcon()} <span className="uppercase">{nodeData.outputType ? `${nodeData.outputType} Space` : 'NESTED SPACE'}</span>
       </div>
       
@@ -3156,7 +3046,6 @@ export const SpaceNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
 
 export const SpaceInputNode = memo(({ id, data, selected }: NodeProps<any>) => {
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const nodeData = data as BaseNodeData & { inputType?: string };
   
   const getHandleClass = () => {
@@ -3183,11 +3072,10 @@ export const SpaceInputNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const theme = getThemeColors();
 
   return (
-    <div className={`custom-node space-io-node ${theme.border} ${_nc ? 'node-collapsed' : ''}`}>
-            <NodeResizer minWidth={200} minHeight={120} isVisible={selected && !_nc} />
+    <div className={`custom-node space-io-node ${theme.border}`}>
+            <NodeResizer minWidth={200} minHeight={120} isVisible={selected} />
 <NodeLabel id={id} label={nodeData.label} defaultLabel="Input" />
       <div className="node-header">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <ChevronRight size={16} className={theme.text} /> SPACE INPUT
       </div>
       <div className="node-content text-center py-4">
@@ -3204,7 +3092,6 @@ export const SpaceInputNode = memo(({ id, data, selected }: NodeProps<any>) => {
 });
 
 export const SpaceOutputNode = memo(({ id, data, selected }: NodeProps<any>) => {
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const nodeData = data as BaseNodeData & { outputType?: string };
   const nodes = useNodes();
   const edges = useEdges();
@@ -3236,8 +3123,8 @@ export const SpaceOutputNode = memo(({ id, data, selected }: NodeProps<any>) => 
   const theme = getThemeColors();
 
   return (
-    <div className={`custom-node space-io-node ${theme.border} ${_nc ? 'node-collapsed' : ''}`} style={{ padding: 0, overflow: 'visible', minWidth: 200 }}>
-            <NodeResizer minWidth={200} minHeight={120} isVisible={selected && !_nc} />
+    <div className={`custom-node space-io-node ${theme.border}`} style={{ padding: 0, overflow: 'visible', minWidth: 200 }}>
+            <NodeResizer minWidth={200} minHeight={120} isVisible={selected} />
 <NodeLabel id={id} label={nodeData.label} defaultLabel="Output" />
 
       <div className="handle-wrapper handle-left">
@@ -3282,7 +3169,6 @@ export const SpaceOutputNode = memo(({ id, data, selected }: NodeProps<any>) => 
 
 export const MediaDescriberNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData;
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const nodes = useNodes();
   const edges = useEdges();
   const { setNodes } = useReactFlow();
@@ -3378,15 +3264,14 @@ export const MediaDescriberNode = memo(({ id, data, selected }: NodeProps<any>) 
   };
 
   return (
-    <div className={`custom-node describer-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 300 }}>
-      <NodeResizer minWidth={300} minHeight={300} maxWidth={700} maxHeight={720} isVisible={selected && !_nc} />
+    <div className={`custom-node describer-node ${status === 'running' ? 'node-glow-running' : ''}`} style={{ minWidth: 300 }}>
+      <NodeResizer minWidth={300} minHeight={300} maxWidth={700} maxHeight={720} isVisible={selected} />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="media" />
         <span className="handle-label">Media in</span>
       </div>
       
       <div className="node-header bg-gradient-to-r from-indigo-600/20 to-blue-600/20">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Eye size={16} className="text-indigo-400" />
         <span>Gemini Describer</span>
         <div className="node-badge">VISION</div>
@@ -3474,7 +3359,6 @@ const CameraMotionSelector = ({ value, onChange }: { value: string, onChange: (v
 
 export const GeminiVideoNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as any;
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const { setNodes, getEdges, getNodes } = useReactFlow();
   const [status, setStatus] = useState('idle');
   const [progress, setProgress] = useState(0);
@@ -3557,8 +3441,8 @@ export const GeminiVideoNode = memo(({ id, data, selected }: NodeProps<any>) => 
   };
 
   return (
-    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 320 }}>
-      <NodeResizer minWidth={320} minHeight={320} keepAspectRatio isVisible={selected && !_nc} />
+    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`} style={{ minWidth: 320 }}>
+      <NodeResizer minWidth={320} minHeight={320} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Gemini Video" />
 
       {/* Handles */}
@@ -3581,7 +3465,6 @@ export const GeminiVideoNode = memo(({ id, data, selected }: NodeProps<any>) => 
 
       {/* Header */}
       <div className="node-header bg-gradient-to-r from-emerald-600/20 to-cyan-600/20">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Video size={15} className="text-emerald-500" />
         <span>Gemini Video</span>
         <div className="node-badge">VEO 3.1</div>
@@ -3695,7 +3578,6 @@ export const PainterNode = memo(({ id, data, selected }: NodeProps<any>) => {
     bgColor?: string; strokeColor?: string; brushSize?: number;
     aspectRatio?: string;
   };
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
 
   const ratio    = PAINT_RATIOS.find(r => r.value === (nodeData.aspectRatio || '16:9')) || PAINT_RATIOS[1];
   const canvasW  = ratio.w;
@@ -3953,8 +3835,8 @@ export const PainterNode = memo(({ id, data, selected }: NodeProps<any>) => {
   );
 
   return (
-    <div className={`custom-node bg-[#141414] border-amber-900/30 ${_nc ? 'node-collapsed' : ''}` } style={{ padding: 0, overflow: 'visible', minWidth: 280, minHeight: 280 }}>
-      <NodeResizer minWidth={280} minHeight={280} isVisible={selected && !_nc} />
+    <div className={`custom-node bg-[#141414] border-amber-900/30` } style={{ padding: 0, overflow: 'visible', minWidth: 280, minHeight: 280 }}>
+      <NodeResizer minWidth={280} minHeight={280} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Painter" />
 
       <div className="handle-wrapper handle-left" style={{ top: '50%' }}>
@@ -3963,7 +3845,6 @@ export const PainterNode = memo(({ id, data, selected }: NodeProps<any>) => {
       </div>
 
       <div className="node-header bg-gradient-to-r from-amber-800/20 to-orange-900/20">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Paintbrush size={14} className="text-amber-400" />
         <span>Painter</span>
         <span className="text-[7px] font-black uppercase tracking-widest text-amber-600/60 ml-auto">{ratio.label}</span>
@@ -4061,7 +3942,6 @@ export const CropNode = memo(({ id, data, selected }: NodeProps<any>) => {
   
   const [draggingAction, setDraggingAction] = useState<'move' | 'nw' | 'ne' | 'sw' | 'se' | null>(null);
   const [dragStartInfo, setDragStartInfo] = useState<{ startX: number, startY: number, initialCrop: any } | null>(null);
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
 
   const inputEdge = edges.find(e => e.target === id && e.targetHandle === 'image');
   const inputNode = nodes.find(n => n.id === inputEdge?.source);
@@ -4180,8 +4060,8 @@ export const CropNode = memo(({ id, data, selected }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node bg-[#1e1e1e] border-slate-700 w-[340px] ${_nc ? 'node-collapsed' : ''}` }>
-            <NodeResizer minWidth={320} minHeight={340} isVisible={selected && !_nc} />
+    <div className={`custom-node bg-[#1e1e1e] border-slate-700 w-[340px]` }>
+            <NodeResizer minWidth={320} minHeight={340} isVisible={selected} />
 <NodeLabel id={id} label={nodeData.label} defaultLabel="Crop Asset" />
       
       <div className="handle-wrapper handle-left">
@@ -4296,7 +4176,6 @@ export const BezierMaskNode = memo(({ id, data, selected }: NodeProps<any>) => {
     result_rgba?: string;
   };
 
-  const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const [points, setPoints] = useState<any[]>(nodeData.points || []);
   const [closed, setClosed] = useState<boolean>(nodeData.closed || false);
   const [invert, setInvert] = useState<boolean>(nodeData.invert || false);
@@ -4589,8 +4468,8 @@ export const BezierMaskNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const hasMask = !!(nodeData.result_rgba);
 
   return (
-    <div className={`custom-node mask-node w-[360px] ${_nc ? 'node-collapsed' : ''}`}>
-            <NodeResizer minWidth={360} minHeight={400} isVisible={selected && !_nc} />
+    <div className={`custom-node mask-node w-[360px]`}>
+            <NodeResizer minWidth={360} minHeight={400} isVisible={selected} />
 <NodeLabel id={id} label={nodeData.label} defaultLabel="Bezier Mask" />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="image" className="handle-image" />
@@ -4598,7 +4477,6 @@ export const BezierMaskNode = memo(({ id, data, selected }: NodeProps<any>) => {
       </div>
       
       <div className="node-header bg-gradient-to-r from-cyan-600/20 to-indigo-600/20">
-        <CollapseBtn collapsed={_nc} onToggle={_nct} />
         <Scissors size={16} className="text-cyan-400" />
         <span>Bezier Mask</span>
         <button 
