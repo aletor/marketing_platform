@@ -216,7 +216,11 @@ const SpacesContent = () => {
     document.addEventListener('pointerup', onUp);
   }, [viewerHeight]);
 
-  // ── Viewer pan / zoom ───────────────────────────────────────────────────────
+  // Keep live refs in sync with React state for snapshot access
+  useEffect(() => { liveNodesRef.current = nodes; }, [nodes]);
+  useEffect(() => { liveEdgesRef.current = edges; }, [edges]);
+
+    // ── Viewer pan / zoom ───────────────────────────────────────────────────────
   const [viewerTransform, setViewerTransform] = useState({ scale: 1, x: 0, y: 0 });
   const isPanningViewer = useRef(false);
   const panStart = useRef({ x: 0, y: 0 });
@@ -388,28 +392,49 @@ const SpacesContent = () => {
     setViewerHeight(Math.max(Math.round(window.innerHeight * 0.5), 400));
   }, []);
 
-  const MAX_HISTORY = 10;
+  const MAX_HISTORY = 20;
   const historyRef = useRef<Array<{ nodes: any[]; edges: any[] }>>([]);
   const futureRef  = useRef<Array<{ nodes: any[]; edges: any[] }>>([]);
+  // Ref holding LIVE nodes/edges so snapshot can access them synchronously
+  const liveNodesRef = useRef<any[]>(initialNodes);
+  const liveEdgesRef = useRef<any[]>(initialEdges);
 
+  // takeSnapshot: call BEFORE making a change so we record the pre-change state.
+  // This replaces the old pushHistory(newState) pattern — call it before setNodes/setEdges.
+  const takeSnapshot = useCallback(() => {
+    historyRef.current = [
+      ...historyRef.current.slice(-(MAX_HISTORY - 1)),
+      { nodes: [...liveNodesRef.current], edges: [...liveEdgesRef.current] },
+    ];
+    futureRef.current = []; // any new action clears redo stack
+  }, []);
+
+  // Keep refs in sync whenever React re-renders with new nodes/edges
+  // (We also use a legacy alias so old pushHistory call-sites still work without crash)
   const pushHistory = useCallback((ns: any[], es: any[]) => {
+    // Legacy: some callers pass the NEW state — we store it but this is less accurate.
+    // Prefer takeSnapshot() before mutations going forward.
     historyRef.current = [...historyRef.current.slice(-(MAX_HISTORY - 1)), { nodes: [...ns], edges: [...es] }];
-    futureRef.current = []; // clear redo on new action
+    futureRef.current = [];
   }, []);
 
   const undo = useCallback(() => {
-    if (historyRef.current.length < 2) return;
-    const current = historyRef.current.pop()!;
-    futureRef.current.unshift(current);
-    const prev = historyRef.current[historyRef.current.length - 1];
+    if (historyRef.current.length === 0) return;
+    // Save current state to future so redo can restore it
+    futureRef.current.unshift({ nodes: [...liveNodesRef.current], edges: [...liveEdgesRef.current] });
+    const prev = historyRef.current.pop()!;
     setNodes([...prev.nodes]);
     setEdges([...prev.edges]);
   }, [setNodes, setEdges]);
 
   const redo = useCallback(() => {
     if (futureRef.current.length === 0) return;
+    // Save current state to history before jumping forward
+    historyRef.current = [
+      ...historyRef.current.slice(-(MAX_HISTORY - 1)),
+      { nodes: [...liveNodesRef.current], edges: [...liveEdgesRef.current] },
+    ];
     const next = futureRef.current.shift()!;
-    historyRef.current.push(next);
     setNodes([...next.nodes]);
     setEdges([...next.edges]);
   }, [setNodes, setEdges]);
@@ -548,9 +573,9 @@ const SpacesContent = () => {
       }
     }
 
+    takeSnapshot(); // snapshot BEFORE adding node
     setNodes(nds => {
       const next = [...nds, newNode];
-      pushHistory(next, [...edges.filter((e: any) => !edgesToRemove.has(e.id)), ...autoEdges]);
       return next;
     });
     // Delay edge render so nodes with dynamic handles (Enhancer, etc.)
@@ -561,7 +586,7 @@ const SpacesContent = () => {
         ...autoEdges,
       ]);
     }, 50);
-  }, [screenToFlowPosition, nodes, edges, setNodes, setEdges, pushHistory]);
+  }, [screenToFlowPosition, nodes, edges, setNodes, setEdges, pushHistory, takeSnapshot]);
 
 
   // ── Node click: global z-order counter — each click brings that node above all others
@@ -637,18 +662,15 @@ const SpacesContent = () => {
     }
 
     // Apply positions (don't touch nodes not being arranged)
-    setNodes(nds => {
-      const next = nds.map(n =>
-        positioned[n.id]
-          ? { ...n, position: positioned[n.id] }
-          : n
-      );
-      pushHistory(next, edges);
-      return next;
-    });
+    takeSnapshot(); // snapshot before layout
+    setNodes(nds => nds.map(n =>
+      positioned[n.id]
+        ? { ...n, position: positioned[n.id] }
+        : n
+    ));
 
     setTimeout(() => fitView({ padding: 0.2, duration: 600 }), 50);
-  }, [nodes, edges, setNodes, pushHistory, fitView]);
+  }, [nodes, edges, setNodes, pushHistory, takeSnapshot, fitView]);
 
   // ── Keyboard shortcuts ───────────────────────────────────────────────────
 
@@ -1398,9 +1420,14 @@ const SpacesContent = () => {
   };
 
 
-  const onNodeDragStop = useCallback((_: any, __: any, ns: any[]) => {
-    pushHistory(ns, edges);
-  }, [pushHistory, edges]);
+  const onNodeDragStop = useCallback((_: any, __: any, _ns: any[]) => {
+    // History snapshot was already taken at drag START (via onNodeDragStart)
+    // Nothing to do here for history — positions are already in liveRef
+  }, []);
+
+  const onNodeDragStart = useCallback(() => {
+    takeSnapshot(); // capture state when drag begins, before positions change
+  }, [takeSnapshot]);
 
   const onConnect: OnConnect = useCallback(
     (params) => {
@@ -2078,6 +2105,11 @@ const SpacesContent = () => {
           edges={edges}
           onNodesChange={(changes) => {
             // Guard: prevent deletion of the permanent FINAL output node
+            const removals = changes.filter(c => c.type === 'remove');
+            if (removals.length > 0) {
+              // Snapshot BEFORE ReactFlow applies the deletion so undo can restore
+              takeSnapshot();
+            }
             const filtered = changes.filter(
               (c) => !(c.type === 'remove' && c.id === FINAL_NODE_ID)
             );
@@ -2091,6 +2123,7 @@ const SpacesContent = () => {
           onPaneContextMenu={onPaneContextMenu}
           onNodeContextMenu={onNodeContextMenu}
           onNodeClick={onNodeClick}
+          onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           onConnectEnd={onConnectEnd}
           onMove={onMoveHandler}
