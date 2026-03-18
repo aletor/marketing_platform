@@ -3140,7 +3140,7 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
       {/* ── NanoBanana Studio ── */}
       {showStudio && (() => {
         const promptEdge = edges.find((e: any) => e.target === id && e.targetHandle === 'prompt');
-        const promptVal = nodes.find((n: any) => n.id === promptEdge?.source)?.data?.value || '';
+        const promptVal: string = nodes.find((n: any) => n.id === promptEdge?.source)?.data?.value || '';
         const refImgs = getRefImages();
         const connected0 = (refImgs[0] as string | null | undefined) ?? null;
         return (
