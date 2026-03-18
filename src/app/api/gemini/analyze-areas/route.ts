@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createCanvas, loadImage } from "@napi-rs/canvas";
+import sharp from "sharp";
 
 // Cheapest Gemini model with vision capability (text output only)
 const VISION_MODEL = "gemini-2.5-flash";
 
 interface AreaChange {
-  color: string;       // color name, e.g. "azul"
-  description: string; // what the user wants to do in this area
+  color: string;
+  description: string;
   posX?: number | null;
   posY?: number | null;
-  paintData?: string | null; // data:image/png;base64,... of the paint stroke
-  assignedColorHex?: string; // hex color assigned to this change e.g. "#ff0000"
+  paintData?: string | null;      // data:image/png;base64,...
+  assignedColorHex?: string;      // e.g. "#ff0000"
 }
 
 async function parseImage(image: string): Promise<{ data: string; mimeType: string } | null> {
@@ -36,76 +36,75 @@ async function parseImage(image: string): Promise<{ data: string; mimeType: stri
   return null;
 }
 
-// Server-side composite: draw base image then each paint stroke (tinted with assigned hex color)
-async function buildMarkedImage(
-  baseImageData: { data: string; mimeType: string },
+// Server-side composite using sharp: base image + colored paint stroke overlays
+async function buildMarkedImageWithSharp(
+  baseData: string,
+  baseType: string,
   changes: AreaChange[]
 ): Promise<string | null> {
   try {
-    // Load base image
-    const baseBuffer = Buffer.from(baseImageData.data, "base64");
-    const base = await loadImage(baseBuffer);
-    const W = base.width;
-    const H = base.height;
-    const canvas = createCanvas(W, H);
-    const ctx = canvas.getContext("2d");
+    const baseBuffer = Buffer.from(baseData, "base64");
+    const baseMeta = await sharp(baseBuffer).metadata();
+    const W = baseMeta.width || 1280;
+    const H = baseMeta.height || 720;
 
-    // Draw base image
-    ctx.drawImage(base, 0, 0, W, H);
+    // Start with the base image (converted to PNG for compositing)
+    let composite = sharp(baseBuffer).ensureAlpha();
 
-    // Overlay each change stroke
+    const overlays: sharp.OverlayOptions[] = [];
+
     for (const change of changes) {
       if (!change.paintData || !change.assignedColorHex) continue;
       try {
         const [, b64] = change.paintData.split(";base64,");
         const strokeBuffer = Buffer.from(b64, "base64");
-        const strokeImg = await loadImage(strokeBuffer);
 
-        // Draw stroke to temp canvas for pixel manipulation
-        const tmp = createCanvas(W, H);
-        const tc = tmp.getContext("2d");
-        tc.drawImage(strokeImg, 0, 0, W, H);
-        const id = tc.getImageData(0, 0, W, H);
+        // Get stroke as raw RGBA pixels, resize to match base
+        const { data: raw, info } = await sharp(strokeBuffer)
+          .resize(W, H, { fit: "fill" })
+          .ensureAlpha()
+          .raw()
+          .toBuffer({ resolveWithObject: true });
 
-        // Parse hex color
         const hex = change.assignedColorHex.replace("#", "");
-        const r = parseInt(hex.slice(0, 2), 16);
-        const g = parseInt(hex.slice(2, 4), 16);
-        const b = parseInt(hex.slice(4, 6), 16);
+        const cr = parseInt(hex.slice(0, 2), 16);
+        const cg = parseInt(hex.slice(2, 4), 16);
+        const cb = parseInt(hex.slice(4, 6), 16);
 
-        // Tint painted pixels
-        for (let i = 0; i < id.data.length; i += 4) {
-          if (id.data[i + 3] > 30) {
-            id.data[i] = r; id.data[i + 1] = g; id.data[i + 2] = b;
-            id.data[i + 3] = Math.min(230, id.data[i + 3] * 3);
+        // Tint: replace non-transparent pixels with the assigned color
+        for (let i = 0; i < raw.length; i += 4) {
+          if (raw[i + 3] > 30) {
+            raw[i] = cr; raw[i + 1] = cg; raw[i + 2] = cb;
+            raw[i + 3] = Math.min(220, raw[i + 3] * 3);
           }
         }
-        tc.putImageData(id, 0, 0);
 
-        // Composite onto base
-        ctx.globalAlpha = 0.85;
-        ctx.drawImage(tmp, 0, 0);
-        ctx.globalAlpha = 1;
+        // Convert raw back to PNG overlay
+        const overlayBuf = await sharp(raw, { raw: { width: W, height: H, channels: 4 } })
+          .png()
+          .toBuffer();
+
+        overlays.push({ input: overlayBuf, top: 0, left: 0 });
       } catch (e) {
-        console.warn("[analyze-areas] Failed to overlay stroke for", change.color, e);
+        console.warn("[analyze-areas] Failed to process stroke for", change.color, e);
       }
     }
 
-    const buf = canvas.toBuffer("image/jpeg");
-    return buf.toString("base64");
+    if (overlays.length === 0) return null;
+
+    // Composite all overlays onto the base image
+    const resultBuffer = await composite.composite(overlays).jpeg({ quality: 92 }).toBuffer();
+    console.log("[analyze-areas] Marked image built with sharp, size:", resultBuffer.length);
+    return resultBuffer.toString("base64");
   } catch (e: any) {
-    console.warn("[analyze-areas] buildMarkedImage failed:", e.message);
+    console.warn("[analyze-areas] Sharp compositing failed:", e.message);
     return null;
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const {
-      baseImage,
-      colorMapImage,
-      changes,
-    } = await req.json();
+    const { baseImage, colorMapImage, changes } = await req.json();
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     if (!apiKey) return NextResponse.json({ error: "API Key not configured" }, { status: 500 });
@@ -115,48 +114,47 @@ export async function POST(req: NextRequest) {
 
     const parts: any[] = [];
 
-    // 1. Base image (always)
+    // 1. Base image
     const parsedBase = baseImage ? await parseImage(baseImage) : null;
     if (parsedBase) {
       parts.push({ inline_data: { mime_type: parsedBase.mimeType, data: parsedBase.data } });
     }
 
-    // 2. Try to build server-side composite (base + paint strokes overlaid)
-    //    Falls back to abstract color map if canvas lib not available or build fails
-    let markedImageData: string | null = null;
+    // 2. Try to build server-side marked image (base + colored paint overlays via sharp)
     let useMarked = false;
-
     if (parsedBase) {
-      try {
-        markedImageData = await buildMarkedImage(parsedBase, changes as AreaChange[]);
-        useMarked = !!markedImageData;
-      } catch {
-        useMarked = false;
+      const markedData = await buildMarkedImageWithSharp(
+        parsedBase.data,
+        parsedBase.mimeType,
+        changes as AreaChange[]
+      );
+      if (markedData) {
+        parts.push({ inline_data: { mime_type: "image/jpeg", data: markedData } });
+        useMarked = true;
+        console.log("[analyze-areas] Using marked image approach");
       }
     }
 
-    if (useMarked && markedImageData) {
-      // Send the marked image (base + colored paint overlays) as IMAGEN 2
-      parts.push({ inline_data: { mime_type: "image/jpeg", data: markedImageData } });
-    } else {
-      // Fallback: abstract color map
-      const parsedMap = colorMapImage ? await parseImage(colorMapImage) : null;
+    // Fallback if marked build failed: use color map
+    if (!useMarked && colorMapImage) {
+      const parsedMap = await parseImage(colorMapImage);
       if (parsedMap) parts.push({ inline_data: { mime_type: parsedMap.mimeType, data: parsedMap.data } });
+      console.log("[analyze-areas] Using color map fallback");
     }
 
     // 3. Build prompt
     const changeList = (changes as AreaChange[])
       .map(c => {
         const pos = (c.posX != null && c.posY != null)
-          ? ` (posición aproximada: ${c.posX}% desde la izquierda, ${c.posY}% desde arriba)`
+          ? ` (posición: ${c.posX}% horizontal, ${c.posY}% vertical desde arriba)`
           : "";
-        return `- Área ${c.color}${pos}: ${c.description}`;
+        return `- Trazo de color ${c.color}${pos}: ${c.description}`;
       })
       .join("\n");
 
     const imagenDesc = useMarked
-      ? "- IMAGEN 2: la MISMA imagen base con trazos de pintura de colores encima. Cada trazo coloreado indica EXACTAMENTE el elemento que el usuario quiere modificar."
-      : "- IMAGEN 2: mapa de colores abstracto. Las manchas de color sobre fondo negro indican las áreas seleccionadas. Usa las coordenadas de posición para identificar el elemento en la IMAGEN 1.";
+      ? "- IMAGEN 2: la imagen original con trazos de pintura en colores sólidos superpuestos. Los trazos indican EXACTAMENTE los elementos que el usuario quiere modificar."
+      : "- IMAGEN 2: mapa abstracto de colores sobre fondo negro. Las manchas de color indican las áreas seleccionadas.";
 
     const systemPrompt = `Eres un asistente experto en prompts para generación de imágenes con IA.
 
@@ -164,28 +162,28 @@ Se te proporcionan dos imágenes:
 - IMAGEN 1: la imagen original/base
 ${imagenDesc}
 
-El usuario quiere hacer los siguientes cambios:
+Cambios solicitados:
 ${changeList}
 
 Tu tarea:
-1. Para cada área, identifica en la IMAGEN 1 el objeto concreto que corresponde al área pintada ${useMarked ? "(busca el trazo de color en la IMAGEN 2 y mira qué elemento de la IMAGEN 1 queda debajo/encima)" : "(usa las coordenadas y el mapa de la IMAGEN 2)"}.
-2. Sé MUY específico: no "el sujeto" sino "la persona tumbada en la arena a la izquierda", "el chico rubio en skate", "el pato grande con gafas de la derecha", etc.
-3. Genera un prompt en español para NanaBanana con este formato exacto:
+1. Para cada trazo de color, identifica en la IMAGEN 1 el objeto ESPECÍFICO que está ${useMarked ? "DEBAJO/ENCIMA del trazo pintado en la IMAGEN 2" : "en esa posición según el mapa de la IMAGEN 2"}.
+2. Sé EXTREMADAMENTE específico. Nunca digas "el sujeto", "la persona", "el objeto". Di: "la persona tumbada en la arena con ropa de baño azul a la izquierda", "el chico rubio en skate", "la hamaca vacía roja sobre la arena", etc.
+3. Genera el prompt con este formato exacto:
 
 REFERENCIA 1: imagen base. Mantén todo lo que no se indica cambiar, conservando composición, iluminación y estilo.
 REFERENCIA 2: mapa de colores con áreas de cambio.
 
-[Una línea por cambio: "En el área [color] de la referencia 2 (donde está [objeto identificado con precisión]): [instrucción]"]
+[Para cada cambio: "En el área [color] de la referencia 2 (donde está [descripción muy específica del objeto]): [instrucción]"]
 
-CRÍTICO: Identifica el elemento MÁS PEQUEÑO Y ESPECÍFICO en esa zona, no el más grande o dominante de la escena.
+CRÍTICO: El trazo de pintura señala un elemento CONCRETO. Si hay elementos grandes y pequeños en la misma zona, el trazo está sobre el elemento PEQUEÑO/ESPECÍFICO que se quiere cambiar. No elijas el elemento más dominante de la escena.
 
-Devuelve SOLO el prompt, sin explicaciones ni texto adicional.`;
+Devuelve SOLO el prompt, sin texto adicional.`;
 
     parts.push({ text: systemPrompt });
 
     const payload = {
       contents: [{ role: "user", parts }],
-      generationConfig: { temperature: 0.2 },
+      generationConfig: { temperature: 0.15 },
     };
 
     const response = await fetch(endpoint, {
@@ -195,9 +193,9 @@ Devuelve SOLO el prompt, sin explicaciones ni texto adicional.`;
     });
 
     const data = await response.json();
-    console.log("[analyze-areas] Gemini response status:", response.status, "| marked:", useMarked);
+    console.log("[analyze-areas] Gemini status:", response.status, "| marked:", useMarked);
     if (data.error) {
-      console.error("[analyze-areas] Gemini API error:", JSON.stringify(data.error));
+      console.error("[analyze-areas] Gemini error:", JSON.stringify(data.error));
       return NextResponse.json({ error: data.error.message || "Gemini error" }, { status: 500 });
     }
 
