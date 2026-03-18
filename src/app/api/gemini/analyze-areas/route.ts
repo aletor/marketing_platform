@@ -122,14 +122,15 @@ export async function POST(req: NextRequest) {
 
     // 2. Try to build server-side marked image (base + colored paint overlays via sharp)
     let useMarked = false;
+    let markedImgData: string | null = null;
     if (parsedBase) {
-      const markedData = await buildMarkedImageWithSharp(
+      markedImgData = await buildMarkedImageWithSharp(
         parsedBase.data,
         parsedBase.mimeType,
         changes as AreaChange[]
       );
-      if (markedData) {
-        parts.push({ inline_data: { mime_type: "image/jpeg", data: markedData } });
+      if (markedImgData) {
+        parts.push({ inline_data: { mime_type: "image/jpeg", data: markedImgData } });
         useMarked = true;
         console.log("[analyze-areas] Using marked image approach");
       }
@@ -202,7 +203,11 @@ Devuelve SOLO el prompt, sin texto adicional.`;
     const text = data.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text || "";
     if (!text) return NextResponse.json({ error: "No text response from AI" }, { status: 500 });
 
-    return NextResponse.json({ prompt: text.trim() });
+    return NextResponse.json({
+      prompt: text.trim(),
+      // Return the marked image so the client uses it as REFERENCIA 2 in generation
+      markedImageData: useMarked && markedImgData ? markedImgData : null,
+    });
 
   } catch (error: any) {
     console.error("[analyze-areas] Error:", error.message);

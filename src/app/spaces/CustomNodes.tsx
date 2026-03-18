@@ -2562,7 +2562,7 @@ const NanoBananaStudio = memo(({
   // Prompt cache: only re-call AI when changes actually change
   const [cachedPromptData, setCachedPromptData] = useState<{ changesKey: string; preview: { colorMapUrl: string; fullPrompt: string } } | null>(null);
   const [analyzingCall, setAnalyzingCall] = useState(false);
-  const [callPreview, setCallPreview] = useState<{ colorMapUrl: string; fullPrompt: string } | null>(null);
+  const [callPreview, setCallPreview] = useState<{ colorMapUrl: string; fullPrompt: string; markedRef2?: string | null } | null>(null);
   const [activeChangeId, setActiveChangeId] = useState<string|null>(null);
   const [addingChange, setAddingChange] = useState(false);
   const [newDesc, setNewDesc] = useState('');
@@ -2840,6 +2840,7 @@ const NanoBananaStudio = memo(({
     // The "marked image" = base + paint strokes overlaid directly → AI sees exactly which pixels
     setAnalyzingCall(true);
     let fullPrompt = '';
+    let markedRef2DataUrl: string | null = null;
     try {
       const validChanges = changes.filter(c => c.paintData && c.description.trim());
 
@@ -2940,6 +2941,10 @@ const NanoBananaStudio = memo(({
       const aiJson = await aiRes.json();
       if (aiRes.ok && aiJson.prompt) {
         fullPrompt = aiJson.prompt;
+        // Store the server-built marked image (base+strokes) so generation uses it as ref2
+        if (aiJson.markedImageData) {
+          markedRef2DataUrl = `data:image/jpeg;base64,${aiJson.markedImageData}`;
+        }
       } else {
         throw new Error(aiJson.error || 'No prompt returned');
       }
@@ -2957,11 +2962,11 @@ const NanoBananaStudio = memo(({
       setAnalyzingCall(false);
     }
 
-    setCallPreview({ colorMapUrl, fullPrompt });
+    setCallPreview({ colorMapUrl, fullPrompt, markedRef2: markedRef2DataUrl });
     setCachedPromptData({ changesKey, preview: { colorMapUrl, fullPrompt } });
   };
 
-    const onGenerateFromCall = async (colorMapUrl: string, customPrompt: string) => {
+    const onGenerateFromCall = async (colorMapUrl: string, customPrompt: string, markedRef2?: string | null) => {
     setCallPreview(null); // close preview
     setGenStatus('running');
     setProgress(0);
@@ -2970,10 +2975,11 @@ const NanoBananaStudio = memo(({
       setProgress(p => { const n = p + (isPro ? 0.6 : 1.2); return n > 92 ? 92 : n; });
     }, 400);
 
-    // ref1 = current base image, ref2 = color map
+    // ref1 = current base image, ref2 = marked image (base+strokes) if available, else abstract color map
+    const ref2 = markedRef2 || colorMapUrl;
     const refImages = [
       ...(currentImage ? [currentImage] : []),
-      colorMapUrl,
+      ref2,
     ];
 
     try {
@@ -3384,7 +3390,7 @@ const NanoBananaStudio = memo(({
                 Cancelar
               </button>
               <button
-                onClick={() => onGenerateFromCall(callPreview.colorMapUrl, callPreview.fullPrompt)}
+                onClick={() => onGenerateFromCall(callPreview.colorMapUrl, callPreview.fullPrompt, callPreview.markedRef2)}
                 disabled={genStatus === 'running'}
                 className="px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-2 transition-all disabled:opacity-40"
                 style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#111' }}
