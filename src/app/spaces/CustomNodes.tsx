@@ -491,7 +491,7 @@ export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) =
   };
 
   const [isStudioOpen, setIsStudioOpen] = useState(false);
-  const [isRendering, setIsRendering] = useState(false);
+  
 
   // ── Internal layers stored in node data ──────────────────────────────
   const internalLayers: ComposerLayer[] = nodeData.layers ?? [];
@@ -757,36 +757,7 @@ export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) =
           )}
         </div>
 
-        {/* Render button */}
-        <button
-          onClick={async () => {
-            if (allLayersForRender.length === 0) return;
-            setIsRendering(true);
-            try {
-              const formData = new FormData();
-              formData.append('layers', JSON.stringify(allLayersForRender));
-              formData.append('format', 'jpeg');
-              formData.append('width', '1920');
-              formData.append('height', '1080');
-              const res = await fetch('/api/spaces/compose', { method: 'POST', body: formData });
-              if (!res.ok) throw new Error('Render failed');
-              const blob = await res.blob();
-              const url = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-              });
-              updateData({ value: url, type: 'image' });
-            } catch (e: any) { console.error(e); }
-            finally { setIsRendering(false); }
-          }}
-          disabled={isRendering || allLayersForRender.length === 0}
-          className="execute-btn w-full !py-2 !text-[9px] justify-center mt-2 gap-1.5"
-        >
-          <Zap size={9} className={isRendering ? 'animate-pulse' : ''} />
-          {isRendering ? 'RENDERING...' : 'RENDER'}
-        </button>
+
       </div>
 
       <div className="handle-wrapper handle-right" style={{ top: '50%' }}>
@@ -930,8 +901,19 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
 
   // ── Save & close ───────────────────────────────────────────────────────
   const handleSave = () => {
-    // Only save non-image-input layers as internal layers
-    onUpdateLayers(layers.filter((l: any) => !l._isImageInput));
+    // Save internal layers (non-image-input)
+    const internalOnly = layers.filter((l: any) => !l._isImageInput);
+    // Also persist image input layer positions as lightweight overrides.
+    // imageLayersFromInputs reads x/y/w/h from internalLayers by matching id,
+    // so we store position-only entries here — they won't render (no src).
+    const imagePositionOverrides: ComposerLayer[] = layers
+      .filter((l: any) => l._isImageInput)
+      .map((l: any) => ({
+        id: l.id, type: 'image' as const, label: l.label,
+        x: l.x, y: l.y, w: l.w, h: l.h,
+        opacity: l.opacity, visible: l.visible, locked: l.locked,
+      }));
+    onUpdateLayers([...imagePositionOverrides, ...internalOnly]);
     onClose();
   };
 
