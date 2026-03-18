@@ -2166,11 +2166,18 @@ const SpacesContent = () => {
             
             <div className="relative z-10 flex flex-col items-center gap-8 w-full max-w-sm px-6">
                <div className="flex flex-col items-center gap-2">
-                 <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl shadow-2xl shadow-cyan-500/20 mb-4">
-                   <Layers size={32} className="text-white" />
+                 <div className="flex flex-col items-center gap-1 mb-4">
+                   {/* FOLDDER logo icon */}
+                   <svg width="64" height="64" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+                     <path d="M4 6 Q4 2 8 2 L36 2 L50 16 L50 46 Q50 50 46 50 L8 50 Q4 50 4 46 Z" fill="#6C5CE7"/>
+                     <path d="M36 2 L50 16 L36 16 Z" fill="rgba(0,0,0,0.22)"/>
+                     <rect x="14" y="15" width="5" height="22" rx="2.5" fill="white"/>
+                     <rect x="14" y="15" width="19" height="5" rx="2.5" fill="white"/>
+                     <rect x="14" y="25.5" width="14" height="5" rx="2.5" fill="white"/>
+                   </svg>
                  </div>
-                 <h1 className="text-2xl font-black text-white uppercase tracking-[8px] mr-[-8px]">Media</h1>
-                 <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-[4px] opacity-80">Composer Access</p>
+                 <h1 className="text-2xl font-black text-white uppercase tracking-[8px] mr-[-8px]">Foldder</h1>
+                 <p className="text-[10px] font-bold text-violet-400 uppercase tracking-[4px] opacity-80">Studio Access</p>
                </div>
 
                <div className="w-full flex flex-col gap-4">

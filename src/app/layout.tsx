@@ -8,8 +8,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Media Node",
-  description: "Advanced AI-powered media creation and composition engine.",
+  title: "FOLDDER",
+  description: "AI-powered visual composition studio — build, transform and generate media with precision.",
   icons: { icon: "/favicon.png", apple: "/favicon.png" },
 };
 
