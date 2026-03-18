@@ -2517,23 +2517,88 @@ const buildReferenceGrid = (
 };
 
 
-// Camera presets for NanaBanana Studio
-const CAMERA_PRESETS = [
-  { label: 'Órbita 45° izq',   prompt: 'Rotate the camera viewpoint 45 degrees to the left, keeping the scene centered and well-composed.' },
-  { label: 'Órbita 45° der',   prompt: 'Rotate the camera viewpoint 45 degrees to the right, keeping the scene centered and well-composed.' },
-  { label: 'Órbita 90° izq',   prompt: 'Rotate the camera viewpoint 90 degrees to the left, showing a side view of the scene.' },
-  { label: 'Órbita 90° der',   prompt: 'Rotate the camera viewpoint 90 degrees to the right, showing a side view of the scene.' },
-  { label: 'Vista aérea',       prompt: "Change to a bird's-eye aerial view, looking straight down at the scene from above." },
-  { label: 'Vista baja',        prompt: 'Change to a dramatic low-angle shot, looking up at the scene from below.' },
-  { label: 'Zoom in',           prompt: 'Zoom the camera in significantly closer to the main subject of the scene.' },
-  { label: 'Zoom out',          prompt: 'Zoom the camera out to show much more of the environment and surrounding context.' },
-  { label: 'Vista frontal',     prompt: 'Change to a straight-on frontal view, centered and symmetrical.' },
-  { label: 'Vista 3/4',         prompt: 'Change to a 3/4 angle view, slightly to one side for a dynamic composition.' },
-  { label: 'Plano detalle',     prompt: 'Change to a macro/close-up detail shot focusing on the main element of the scene.' },
-  { label: 'Plano general',     prompt: 'Change to a wide establishing shot showing the full environment and all elements.' },
-  { label: 'Traveling izq',     prompt: 'Simulate a lateral camera movement (traveling) to the left, revealing more of the scene on the right.' },
-  { label: 'Traveling der',     prompt: 'Simulate a lateral camera movement (traveling) to the right, revealing more of the scene on the left.' },
+// Camera presets for NanaBanana Studio — aligned with camera_transform API spec
+const CAMERA_PRESETS: { group: string; items: { label: string; prompt: string }[] }[] = [
+  {
+    group: '🔄 Órbita',
+    items: [
+      { label: 'Órbita 15° izq',  prompt: 'Orbit the camera 15 degrees to the left around the subject, keeping it centered and well-composed.' },
+      { label: 'Órbita 15° der',  prompt: 'Orbit the camera 15 degrees to the right around the subject, keeping it centered and well-composed.' },
+      { label: 'Órbita 30° izq',  prompt: 'Orbit the camera 30 degrees to the left around the subject, keeping it centered and well-composed.' },
+      { label: 'Órbita 30° der',  prompt: 'Orbit the camera 30 degrees to the right around the subject, keeping it centered and well-composed.' },
+      { label: 'Órbita 45° izq',  prompt: 'Orbit the camera 45 degrees to the left around the subject, keeping it centered and well-composed.' },
+      { label: 'Órbita 45° der',  prompt: 'Orbit the camera 45 degrees to the right around the subject, keeping it centered and well-composed.' },
+      { label: 'Órbita 90° izq',  prompt: 'Orbit the camera 90 degrees to the left around the subject, showing a profile/side view.' },
+      { label: 'Órbita 90° der',  prompt: 'Orbit the camera 90 degrees to the right around the subject, showing a profile/side view.' },
+    ],
+  },
+  {
+    group: '🔍 Zoom',
+    items: [
+      { label: 'Zoom in ×10%',    prompt: 'Zoom the camera in by 10%, slightly closer to the subject while maintaining composition.' },
+      { label: 'Zoom in ×20%',    prompt: 'Zoom the camera in by 20%, bringing the subject noticeably closer.' },
+      { label: 'Zoom in ×35%',    prompt: 'Zoom the camera in by 35%, making the subject prominently fill more of the frame.' },
+      { label: 'Zoom out ×10%',   prompt: 'Zoom the camera out by 10%, revealing slightly more of the surrounding environment.' },
+      { label: 'Zoom out ×20%',   prompt: 'Zoom the camera out by 20%, showing more context around the subject.' },
+      { label: 'Zoom out ×35%',   prompt: 'Zoom the camera out by 35%, showing significantly more of the environment.' },
+    ],
+  },
+  {
+    group: '📐 Altura cámara',
+    items: [
+      { label: 'Altura ojo',       prompt: 'Position the camera at natural eye level, standard straight-on view.' },
+      { label: 'Más alto',         prompt: 'Raise the camera slightly higher than eye level, looking slightly down at the subject.' },
+      { label: 'Más bajo',         prompt: 'Lower the camera slightly below eye level, looking slightly up at the subject.' },
+      { label: 'Picado suave',     prompt: 'Position the camera at a gentle top-down soft angle (45° elevated), looking down softly at the scene.' },
+      { label: 'Picado fuerte',    prompt: 'Position the camera at a strong top-down angle, nearly overhead, looking steeply down at the scene.' },
+      { label: 'Ángulo bajo',      prompt: 'Position the camera at a dramatic low angle, close to the ground, looking up at the subject.' },
+      { label: 'Ángulo alto',      prompt: 'Position the camera at a high angle, elevated above the subject, looking down prominently.' },
+    ],
+  },
+  {
+    group: '🎬 Tipo de plano',
+    items: [
+      { label: 'Plano general',    prompt: 'Change to a wide shot showing the full environment and all scene elements with plenty of space around the subject.' },
+      { label: 'Plano completo',   prompt: 'Change to a full body shot showing the subject from head to toe.' },
+      { label: 'Plano americano',  prompt: 'Change to an American shot showing the subject from the knees up.' },
+      { label: 'Plano medio',      prompt: 'Change to a medium shot framing the subject from the waist up.' },
+      { label: 'Primer plano',     prompt: 'Change to a close-up shot tightly framing the face or main focal point of the subject.' },
+      { label: 'Plano detalle',    prompt: 'Change to a macro/extreme close-up shot focusing on a specific detail of the subject.' },
+    ],
+  },
+  {
+    group: '👁️ Dirección vista',
+    items: [
+      { label: 'Frontal',          prompt: 'Change to a straight-on frontal view, centered and symmetrical, subject facing camera directly.' },
+      { label: '3/4 izquierda',    prompt: 'Change to a three-quarter left view, subject angled slightly to their left relative to camera.' },
+      { label: 'Perfil izquierdo', prompt: 'Change to a full left profile view, subject facing directly to their left.' },
+      { label: '3/4 derecha',      prompt: 'Change to a three-quarter right view, subject angled slightly to their right relative to camera.' },
+      { label: 'Perfil derecho',   prompt: 'Change to a full right profile view, subject facing directly to their right.' },
+    ],
+  },
+  {
+    group: '⚖️ Reencuadre',
+    items: [
+      { label: 'Centrar sujeto',   prompt: 'Reframe the shot to center the main subject perfectly in the middle of the frame.' },
+      { label: 'Regla de tercios', prompt: 'Reframe the shot placing the main subject on a rule-of-thirds intersection for a dynamic composition.' },
+      { label: 'Más aire arriba',  prompt: 'Reframe the shot giving the subject more headroom above, pulling back slightly.' },
+      { label: 'Más espacio lado', prompt: 'Reframe the shot adding more negative space to one side of the subject.' },
+      { label: 'Sujeto izquierda', prompt: 'Reframe the shot placing the main subject on the left side of the frame.' },
+      { label: 'Sujeto derecha',   prompt: 'Reframe the shot placing the main subject on the right side of the frame.' },
+      { label: 'Más simétrico',    prompt: 'Reframe the shot to achieve a more symmetric, balanced composition.' },
+    ],
+  },
+  {
+    group: '🔭 Estilo óptica',
+    items: [
+      { label: 'Más gran angular', prompt: 'Simulate a wider focal length lens giving a more expansive field of view, slight distortion at edges.' },
+      { label: 'Más teleobjetivo', prompt: 'Simulate a longer telephoto focal length compressing perspective and bringing the subject closer.' },
+      { label: 'Perspectiva natural', prompt: 'Apply a natural 50mm equivalent perspective, closest to human eye perception.' },
+      { label: 'Perspectiva cinemática', prompt: 'Apply a cinematic widescreen perspective with slight anamorphic quality and compressed depth.' },
+    ],
+  },
 ];
+
 
 interface NBChange {
   id: string;
@@ -3556,15 +3621,23 @@ const NanoBananaStudio = memo(({
                 </button>
                 {showCameraMenu && (
                   <div className="absolute bottom-full mb-2 right-0 z-[9999] rounded-xl overflow-hidden shadow-2xl"
-                       style={{ background: '#1a1a28', border: '1px solid rgba(99,102,241,0.3)', minWidth: 220 }}>
-                    <div className="px-3 py-2 text-[8px] font-black uppercase tracking-widest text-indigo-400"
-                         style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>Presets de cámara</div>
-                    {CAMERA_PRESETS.map(preset => (
-                      <button key={preset.label}
-                        onClick={() => addGlobalChange(preset.prompt)}
-                        className="w-full text-left px-3 py-2.5 text-[9px] font-medium text-zinc-300 hover:bg-indigo-500/20 hover:text-white transition-colors">
-                        {preset.label}
-                      </button>
+                       style={{ background: '#1a1a28', border: '1px solid rgba(99,102,241,0.3)', minWidth: 220, maxHeight: 320, overflowY: 'auto' }}>
+                    <div className="px-3 py-2 text-[8px] font-black uppercase tracking-widest text-indigo-400 sticky top-0"
+                         style={{ background: '#1a1a28', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>Presets de cámara</div>
+                    {CAMERA_PRESETS.map(group => (
+                      <div key={group.group}>
+                        <div className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-zinc-500"
+                             style={{ background: 'rgba(255,255,255,0.03)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                          {group.group}
+                        </div>
+                        {group.items.map(preset => (
+                          <button key={preset.label}
+                            onClick={() => { addGlobalChange(preset.prompt); setShowCameraMenu(false); }}
+                            className="w-full text-left px-4 py-2 text-[9px] font-medium text-zinc-300 hover:bg-indigo-500/20 hover:text-white transition-colors">
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
                     ))}
                   </div>
                 )}
