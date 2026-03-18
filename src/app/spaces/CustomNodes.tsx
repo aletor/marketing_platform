@@ -2406,11 +2406,25 @@ const REF_SLOTS = [
 // NanoBanana STUDIO — fullscreen iterative image generation with paint masks
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Palette of easily-distinguishable colors for NanoBanana area references
+const CHANGE_PALETTE = [
+  { name: 'azul',     hex: '#1D4ED8' },
+  { name: 'rojo',     hex: '#DC2626' },
+  { name: 'verde',    hex: '#16A34A' },
+  { name: 'naranja',  hex: '#EA580C' },
+  { name: 'amarillo', hex: '#CA8A04' },
+  { name: 'violeta',  hex: '#7C3AED' },
+  { name: 'marrón',   hex: '#92400E' },
+  { name: 'blanco',   hex: '#F9FAFB' },
+  { name: 'negro',    hex: '#111827' },
+];
+
 interface NBChange {
   id: string;
   paintData: string | null;   // canvas PNG dataURL
   description: string;
-  color: string;
+  color: string;              // brush UI color (user picks freely)
+  assignedColor: { name: string; hex: string }; // auto-assigned from CHANGE_PALETTE
 }
 
 interface NanoBananaStudioProps {
@@ -2516,6 +2530,7 @@ const NanoBananaStudio = memo(({
 
   // ── Change layers ────────────────────────────────────────────────────────
   const [changes, setChanges] = useState<NBChange[]>([]);
+  const [callPreview, setCallPreview] = useState<{ colorMapUrl: string; fullPrompt: string } | null>(null);
   const [activeChangeId, setActiveChangeId] = useState<string|null>(null);
   const [addingChange, setAddingChange] = useState(false);
   const [newDesc, setNewDesc] = useState('');
@@ -2599,7 +2614,10 @@ const NanoBananaStudio = memo(({
   const startAddChange = () => {
     if (addingChange) return;
     const id = `chg_${Date.now()}`;
-    setChanges(prev => [...prev, { id, paintData: null, description: '', color: brushColor }]);
+    setChanges(prev => {
+      const assigned = CHANGE_PALETTE[prev.length % CHANGE_PALETTE.length];
+      return [...prev, { id, paintData: null, description: '', color: brushColor, assignedColor: assigned }];
+    });
     setActiveChangeId(id);
     setAddingChange(true);
     setNewDesc('');
@@ -2633,7 +2651,106 @@ const NanoBananaStudio = memo(({
     pendingPaintRef.current = data;
   }, []);
 
-  return createPortal(
+  // ── Generate Call: build color-map image + full prompt ──────────────────
+  const onGenerateCall = async () => {
+    if (changes.filter(c => c.paintData).length === 0) {
+      alert('añade al menos un cambio con área dibujada antes de generar la llamada.');
+      return;
+    }
+
+    // Build the color-map canvas
+    // We create a canvas matching the display container size
+    const W = 1024;
+    const H = 768;
+    const offscreen = document.createElement('canvas');
+    offscreen.width  = W;
+    offscreen.height = H;
+    const ctx = offscreen.getContext('2d')!;
+
+    // Black background
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, W, H);
+
+    // For each change with paintData, blit it onto a temp canvas, detect painted bounds,
+    // then fill that bounding region with the assigned color on our offscreen canvas.
+    for (const change of changes) {
+      if (!change.paintData) continue;
+      await new Promise<void>(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          // Draw into temp canvas to read pixel data
+          const tmp = document.createElement('canvas');
+          tmp.width  = W;
+          tmp.height = H;
+          const tc = tmp.getContext('2d')!;
+          tc.drawImage(img, 0, 0, W, H);
+          const pd = tc.getImageData(0, 0, W, H);
+
+          // Find bounding box of non-transparent pixels
+          let minX = W, minY = H, maxX = 0, maxY = 0, found = false;
+          for (let y = 0; y < H; y++) {
+            for (let x = 0; x < W; x++) {
+              const a = pd.data[(y * W + x) * 4 + 3];
+              if (a > 30) {
+                if (x < minX) minX = x;
+                if (y < minY) minY = y;
+                if (x > maxX) maxX = x;
+                if (y > maxY) maxY = y;
+                found = true;
+              }
+            }
+          }
+          if (!found) { resolve(); return; }
+
+          // Expand bounds slightly for a clear filled region
+          const pad = 8;
+          const bx = Math.max(0, minX - pad);
+          const by = Math.max(0, minY - pad);
+          const bw = Math.min(W, maxX + pad) - bx;
+          const bh = Math.min(H, maxY + pad) - by;
+          const cx = bx + bw / 2;
+          const cy = by + bh / 2;
+          const rx = bw / 2;
+          const ry = bh / 2;
+
+          // Draw filled ellipse in assigned color on offscreen
+          ctx.fillStyle = change.assignedColor.hex;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Also draw the original strokes on top in white for clarity
+          ctx.globalAlpha = 0.5;
+          ctx.drawImage(img, 0, 0, W, H);
+          ctx.globalAlpha = 1;
+
+          resolve();
+        };
+        img.src = change.paintData!;
+      });
+    }
+
+    const colorMapUrl = offscreen.toDataURL('image/png');
+
+    // Build the prompt
+    const changeLines = changes
+      .filter(c => c.description.trim())
+      .map(c => `en el área ${c.assignedColor.name} de la referencia 2: ${c.description.trim()}`)
+      .join('\n');
+
+    const fullPrompt = [
+      `REFERENCIA 1: imagen base (mantén todo lo que no se indica cambiar).`,
+      `REFERENCIA 2: mapa de colores con áreas marcadas.`,
+      ``,
+      changeLines || '(sin cambios descritos)',
+      ``,
+      `Instrucción general: ${prompt}`,
+    ].join('\n');
+
+    setCallPreview({ colorMapUrl, fullPrompt });
+  };
+
+    return createPortal(
     <div className="fixed inset-0 z-[9999] flex" style={{ background: '#0f0f10' }}>
       {/* ── Canvas area ──────────────────────────────────────────────────── */}
       <div ref={containerRef} className="flex-1 relative overflow-hidden flex items-center justify-center"
@@ -2790,9 +2907,13 @@ const NanoBananaStudio = memo(({
               <div className="space-y-2">
                 {changes.filter(c => c.id !== activeChangeId || !addingChange).map((c, idx) => (
                   <div key={c.id} className="flex items-start gap-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                    <div className="w-2 h-2 rounded-full mt-1 flex-shrink-0" style={{ background: c.color }} />
+                    <div className="w-3 h-3 rounded-full mt-0.5 flex-shrink-0 border-2 border-black/30"
+                         style={{ background: c.assignedColor?.hex || c.color }} title={c.assignedColor?.name} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-[8px] font-black text-zinc-500 uppercase tracking-wider mb-0.5">Cambio {idx + 1}</p>
+                      <p className="text-[8px] font-black uppercase tracking-wider mb-0.5"
+                         style={{ color: c.assignedColor?.hex || '#888' }}>
+                        Cambio {idx + 1} · {c.assignedColor?.name || 'color'}
+                      </p>
                       <p className="text-[9px] text-zinc-400 leading-snug">{c.description || '(sin descripción)'}</p>
                       {c.paintData && (
                         <img src={c.paintData} alt="" className="mt-1.5 w-full h-8 object-cover rounded opacity-60" />
@@ -2814,8 +2935,19 @@ const NanoBananaStudio = memo(({
           </div>
         </div>
 
-        {/* Generate button */}
-        <div className="px-5 py-4 border-t border-white/[0.07]">
+        {/* Buttons area */}
+        <div className="px-5 py-4 border-t border-white/[0.07] space-y-2">
+          {/* "Generar llamada" preview button */}
+          <button
+            onClick={onGenerateCall}
+            disabled={addingChange || changes.filter(c=>c.paintData).length === 0}
+            className="w-full py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-30 border"
+            style={{ borderColor: 'rgba(99,102,241,0.5)', background: 'rgba(99,102,241,0.12)', color: '#a5b4fc' }}
+          >
+            <Eye size={13} /> Generar llamada
+          </button>
+
+          {/* "Generar imagen" main button */}
           <button
             onClick={onGenerate}
             disabled={genStatus === 'running' || addingChange}
@@ -2829,6 +2961,52 @@ const NanoBananaStudio = memo(({
           </button>
         </div>
       </div>
+      {/* ── Call Preview Modal ─────────────────────────────────────────── */}
+      {callPreview && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6"
+             style={{ background: 'rgba(0,0,0,0.88)' }}>
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl flex flex-col"
+               style={{ background: '#16161a', border: '1px solid rgba(255,255,255,0.1)' }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07]">
+              <span className="text-[11px] font-black uppercase tracking-widest text-indigo-400">Vista previa de llamada a NanoBanana</span>
+              <button onClick={() => setCallPreview(null)} className="text-zinc-500 hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 grid grid-cols-2 gap-6">
+              {/* Color map preview */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Mapa de colores (Referencia 2)</p>
+                <img src={callPreview.colorMapUrl} alt="Color map"
+                     className="w-full rounded-2xl border border-white/10 object-contain" />
+                <div className="flex flex-wrap gap-1.5">
+                  {changes.filter(c=>c.paintData).map(c => (
+                    <div key={c.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider"
+                         style={{ background: c.assignedColor.hex + '22', border: `1px solid ${c.assignedColor.hex}55`, color: c.assignedColor.hex }}>
+                      <div className="w-2 h-2 rounded-full" style={{ background: c.assignedColor.hex }} />
+                      {c.assignedColor.name} — {c.description || '(sin texto)'}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Prompt preview */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Prompt completo (editable)</p>
+                <textarea
+                  value={callPreview.fullPrompt}
+                  onChange={e => setCallPreview(prev => prev ? { ...prev, fullPrompt: e.target.value } : null)}
+                  rows={18}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-[10px] text-zinc-300 font-mono leading-relaxed resize-none"
+                />
+                <p className="text-[8px] text-zinc-600">Las referencias se mandan en el orden: ref1=imagen base, ref2=mapa de colores. El prompt es el texto de arriba.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );
