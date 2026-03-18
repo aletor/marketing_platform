@@ -2440,26 +2440,34 @@ interface NanoBananaStudioProps {
   onGenerated: (dataUrl: string) => void;
 }
 
+// NanaBananaPaintCanvas: draws ONLY over the actual image pixels.
+// bounds = { left, top, w, h } pixel coords within the container div.
+// natW/natH = image natural dimensions (canvas resolution).
 const NanaBananaPaintCanvas = memo(({
-  width, height, color, brushSize, active, onSave,
+  natW, natH, bounds, color, brushSize, active, onSave,
 }: {
-  width: number; height: number; color: string; brushSize: number;
+  natW: number; natH: number;
+  bounds: { left: number; top: number; w: number; h: number };
+  color: string; brushSize: number;
   active: boolean; onSave: (data: string) => void;
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
 
+  // Canvas resolution = natural image size so strokes map 1:1 to image pixels
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.width = width;
-    canvas.height = height;
-  }, [width, height]);
+    if (!canvas || !natW || !natH) return;
+    canvas.width  = natW;
+    canvas.height = natH;
+  }, [natW, natH]);
 
   const getXY = (e: PointerEvent, canvas: HTMLCanvasElement) => {
     const r = canvas.getBoundingClientRect();
-    return { x: (e.clientX - r.left) * (canvas.width / r.width),
-             y: (e.clientY - r.top)  * (canvas.height / r.height) };
+    return {
+      x: (e.clientX - r.left) * (natW / r.width),
+      y: (e.clientY - r.top)  * (natH / r.height),
+    };
   };
 
   useEffect(() => {
@@ -2479,7 +2487,8 @@ const NanaBananaPaintCanvas = memo(({
       const {x,y} = getXY(e, canvas);
       ctx.lineTo(x,y);
       ctx.strokeStyle = color;
-      ctx.lineWidth = brushSize;
+      // Scale lineWidth from display px to natural px
+      ctx.lineWidth = brushSize * (natW / (bounds.w || natW));
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.globalAlpha = 0.85;
@@ -2501,13 +2510,17 @@ const NanaBananaPaintCanvas = memo(({
       canvas.removeEventListener('pointermove', onMove);
       canvas.removeEventListener('pointerup', onUp);
     };
-  }, [active, color, brushSize, onSave]);
+  }, [active, color, brushSize, natW, natH, bounds.w, onSave]);
 
   return (
     <canvas
       ref={canvasRef}
       style={{
-        position: 'absolute', inset: 0, width: '100%', height: '100%',
+        position: 'absolute',
+        left: bounds.left,
+        top:  bounds.top,
+        width:  bounds.w,
+        height: bounds.h,
         cursor: active ? 'crosshair' : 'default',
         pointerEvents: active ? 'all' : 'none',
         zIndex: 10,
@@ -2539,17 +2552,34 @@ const NanoBananaStudio = memo(({
   const pendingPaintRef = useRef<string|null>(null);
 
   // ── Canvas size ─────────────────────────────────────────────────────────
-  const [canvasSize, setCanvasSize] = useState({ w: 800, h: 600 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  // Natural image dimensions (resolution for the color map canvas)
+  const [imgNat, setImgNat] = useState({ w: 1280, h: 720 });
+  // Where the image actually renders inside the container (object-contain bounds)
+  const [imgBounds, setImgBounds] = useState({ left: 0, top: 0, w: 1280, h: 720 });
+
+  const recalcBounds = useCallback(() => {
+    const img = imgRef.current;
+    const cont = containerRef.current;
+    if (!img || !cont || !img.naturalWidth) return;
+    const natW = img.naturalWidth;
+    const natH = img.naturalHeight;
+    const cW   = cont.clientWidth;
+    const cH   = cont.clientHeight;
+    const scale = Math.min(cW / natW, cH / natH);
+    const rW    = natW * scale;
+    const rH    = natH * scale;
+    setImgNat({ w: natW, h: natH });
+    setImgBounds({ left: (cW - rW) / 2, top: (cH - rH) / 2, w: rW, h: rH });
+  }, []);
+
   useEffect(() => {
     if (!containerRef.current) return;
-    const ro = new ResizeObserver(entries => {
-      const e = entries[0];
-      setCanvasSize({ w: e.contentRect.width, h: e.contentRect.height });
-    });
+    const ro = new ResizeObserver(recalcBounds);
     ro.observe(containerRef.current);
     return () => ro.disconnect();
-  }, []);
+  }, [recalcBounds]);
 
   const isPro = modelKey === 'pro3';
   const isFlash25 = modelKey === 'flash25';
@@ -2660,8 +2690,9 @@ const NanoBananaStudio = memo(({
 
     // Build the color-map canvas
     // We create a canvas matching the display container size
-    const W = 1024;
-    const H = 768;
+    // Use the actual image natural dimensions so the color map pixel-matches the base image
+    const W = imgNat.w || 1280;
+    const H = imgNat.h || 720;
     const offscreen = document.createElement('canvas');
     offscreen.width  = W;
     offscreen.height = H;
@@ -2805,8 +2836,10 @@ const NanoBananaStudio = memo(({
         {/* Image */}
         {currentImage ? (
           <img
+            ref={imgRef}
             src={currentImage}
             alt="Generated"
+            onLoad={recalcBounds}
             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
           />
         ) : (
@@ -2819,8 +2852,9 @@ const NanoBananaStudio = memo(({
         {/* Paint overlay for active change */}
         {addingChange && activeChangeId && (
           <NanaBananaPaintCanvas
-            width={canvasSize.w}
-            height={canvasSize.h}
+            natW={imgNat.w}
+            natH={imgNat.h}
+            bounds={imgBounds}
             color={brushColor}
             brushSize={brushSize}
             active={true}
@@ -2831,7 +2865,14 @@ const NanoBananaStudio = memo(({
         {/* Completed change overlays (display only) */}
         {changes.filter(c => c.id !== activeChangeId && c.paintData).map(c => (
           <img key={c.id} src={c.paintData!} alt=""
-            style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'fill', pointerEvents:'none', opacity:0.6 }}
+            style={{
+              position: 'absolute',
+              left: imgBounds.left, top: imgBounds.top,
+              width: imgBounds.w, height: imgBounds.h,
+              objectFit: 'fill',
+              pointerEvents: 'none',
+              opacity: 0.6,
+            }}
           />
         ))}
 
