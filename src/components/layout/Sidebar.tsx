@@ -34,18 +34,24 @@ export function Sidebar() {
       <div className="sidebar-header">
         <div className="logo-container">
           <div className="flex flex-col items-center gap-1">
-            <div className="w-14 h-14 bg-[#1A1B1E] rounded-2xl flex items-center justify-center shadow-xl border border-[#333] mb-2">
-              {/* Media Node icon — three circles connected in a triangle (node graph) */}
-              <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="18" cy="7" r="4" stroke="#FFBD1B" strokeWidth="2.2"/>
-                <circle cx="7" cy="27" r="4" stroke="#FFBD1B" strokeWidth="2.2"/>
-                <circle cx="29" cy="27" r="4" stroke="#FFBD1B" strokeWidth="2.2"/>
-                <line x1="14.3" y1="10.1" x2="9.2" y2="23.4" stroke="#FFBD1B" strokeWidth="2" strokeLinecap="round"/>
-                <line x1="21.7" y1="10.1" x2="26.8" y2="23.4" stroke="#FFBD1B" strokeWidth="2" strokeLinecap="round"/>
-                <line x1="11" y1="27" x2="25" y2="27" stroke="#FFBD1B" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
+            {/* FOLDDER Logo — purple square with beveled corner + white F icon + wordmark */}
+            <div className="flex flex-col items-center gap-0">
+              {/* Icon mark */}
+              <div className="w-12 h-12 flex items-center justify-center" style={{ marginBottom: '4px' }}>
+                <svg width="44" height="44" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Purple square with beveled top-right corner (like page fold) */}
+                  <path d="M4 6 Q4 2 8 2 L36 2 L50 16 L50 46 Q50 50 46 50 L8 50 Q4 50 4 46 Z" fill="#6C5CE7"/>
+                  {/* Bevel shadow triangle */}
+                  <path d="M36 2 L50 16 L36 16 Z" fill="rgba(0,0,0,0.22)"/>
+                  {/* White F symbol */}
+                  <rect x="14" y="15" width="5" height="22" rx="2.5" fill="white"/>
+                  <rect x="14" y="15" width="19" height="5" rx="2.5" fill="white"/>
+                  <rect x="14" y="25.5" width="14" height="5" rx="2.5" fill="white"/>
+                </svg>
+              </div>
+              {/* Wordmark */}
+              <span className="logo-text" style={{ letterSpacing: '0.08em', fontSize: '11px', fontWeight: 900 }}>FOLD<span className="logo-highlight font-black">DER</span></span>
             </div>
-            <span className="logo-text">MEDIA<span className="logo-highlight font-black">NODE</span></span>
           </div>
         </div>
       </div>
