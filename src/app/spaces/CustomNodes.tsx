@@ -47,8 +47,7 @@ import {
   Pencil,
   Square,
   Trash2,
-  EyeOff
-} from 'lucide-react';
+  EyeOff} from 'lucide-react';
 import './spaces.css';
 import { NODE_REGISTRY } from './nodeRegistry';
 
@@ -2402,6 +2401,441 @@ const REF_SLOTS = [
   { id: 'image4', label: 'Ref 4', top: '66%' },
 ] as const;
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NanoBanana STUDIO — fullscreen iterative image generation with paint masks
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface NBChange {
+  id: string;
+  paintData: string | null;   // canvas PNG dataURL
+  description: string;
+  color: string;
+}
+
+interface NanoBananaStudioProps {
+  nodeId: string;
+  initialImage: string | null;   // connected image (ref slot 0)
+  lastGenerated: string | null;  // last generated image
+  modelKey: string;
+  aspectRatio: string;
+  resolution: string;
+  thinking: boolean;
+  prompt: string;
+  onClose: () => void;
+  onGenerated: (dataUrl: string) => void;
+}
+
+const NanaBananaPaintCanvas = memo(({
+  width, height, color, brushSize, active, onSave,
+}: {
+  width: number; height: number; color: string; brushSize: number;
+  active: boolean; onSave: (data: string) => void;
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.width = width;
+    canvas.height = height;
+  }, [width, height]);
+
+  const getXY = (e: PointerEvent, canvas: HTMLCanvasElement) => {
+    const r = canvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * (canvas.width / r.width),
+             y: (e.clientY - r.top)  * (canvas.height / r.height) };
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !active) return;
+    const ctx = canvas.getContext('2d')!;
+
+    const onDown = (e: PointerEvent) => {
+      drawing.current = true;
+      ctx.beginPath();
+      const {x,y} = getXY(e, canvas);
+      ctx.moveTo(x,y);
+      canvas.setPointerCapture(e.pointerId);
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!drawing.current) return;
+      const {x,y} = getXY(e, canvas);
+      ctx.lineTo(x,y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = brushSize;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.globalAlpha = 0.85;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x,y);
+    };
+    const onUp = () => {
+      if (!drawing.current) return;
+      drawing.current = false;
+      onSave(canvas.toDataURL('image/png'));
+    };
+
+    canvas.addEventListener('pointerdown', onDown);
+    canvas.addEventListener('pointermove', onMove);
+    canvas.addEventListener('pointerup', onUp);
+    return () => {
+      canvas.removeEventListener('pointerdown', onDown);
+      canvas.removeEventListener('pointermove', onMove);
+      canvas.removeEventListener('pointerup', onUp);
+    };
+  }, [active, color, brushSize, onSave]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'absolute', inset: 0, width: '100%', height: '100%',
+        cursor: active ? 'crosshair' : 'default',
+        pointerEvents: active ? 'all' : 'none',
+        zIndex: 10,
+      }}
+    />
+  );
+});
+NanaBananaPaintCanvas.displayName = 'NanaBananaPaintCanvas';
+
+const NanoBananaStudio = memo(({
+  nodeId, initialImage, lastGenerated, modelKey, aspectRatio, resolution,
+  thinking, prompt, onClose, onGenerated,
+}: NanoBananaStudioProps) => {
+  // ── Generation state ────────────────────────────────────────────────────
+  const [genStatus, setGenStatus] = useState<'idle'|'running'|'success'|'error'>('idle');
+  const [progress, setProgress] = useState(0);
+  const [currentImage, setCurrentImage] = useState<string|null>(lastGenerated || initialImage);
+  const [generatedOnce, setGeneratedOnce] = useState(!!lastGenerated);
+  const [reSendGenerated, setReSendGenerated] = useState(true);
+
+  // ── Change layers ────────────────────────────────────────────────────────
+  const [changes, setChanges] = useState<NBChange[]>([]);
+  const [activeChangeId, setActiveChangeId] = useState<string|null>(null);
+  const [addingChange, setAddingChange] = useState(false);
+  const [newDesc, setNewDesc] = useState('');
+  const [brushColor, setBrushColor] = useState('#ff3366');
+  const [brushSize, setBrushSize] = useState(12);
+  const pendingPaintRef = useRef<string|null>(null);
+
+  // ── Canvas size ─────────────────────────────────────────────────────────
+  const [canvasSize, setCanvasSize] = useState({ w: 800, h: 600 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      const e = entries[0];
+      setCanvasSize({ w: e.contentRect.width, h: e.contentRect.height });
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  const isPro = modelKey === 'pro3';
+  const isFlash25 = modelKey === 'flash25';
+
+  // ── Generate ──────────────────────────────────────────────────────────────
+  const onGenerate = async () => {
+    if (!prompt) return alert('No hay prompt conectado.');
+    setGenStatus('running');
+    setProgress(0);
+    const interval = setInterval(() => {
+      setProgress(p => { const n = p + (isPro ? 0.6 : 1.2); return n > 92 ? 92 : n; });
+    }, 400);
+
+    // Select which image to send
+    const imageToSend = (generatedOnce && reSendGenerated && currentImage)
+      ? currentImage  // send last generated
+      : initialImage; // send connected image
+
+    // Collect change masks as additional context (merge all paint layers into prompt addition)
+    const changeDescriptions = changes.map(c => c.description).filter(Boolean).join('. ');
+    const fullPrompt = changeDescriptions
+      ? `${prompt}. INSTRUCCIONES DE CAMBIO: ${changeDescriptions}`
+      : prompt;
+
+    // Collect paint masks as reference images
+    const maskImages = changes.map(c => c.paintData).filter(Boolean) as string[];
+    const refImages = [...(imageToSend ? [imageToSend] : []), ...maskImages];
+
+    try {
+      const res = await fetch('/api/gemini/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: fullPrompt,
+          images: refImages,
+          aspect_ratio: aspectRatio,
+          resolution: isFlash25 ? '1k' : resolution,
+          model: modelKey,
+          thinking: thinking && isPro,
+        }),
+      });
+      clearInterval(interval);
+      setProgress(100);
+      if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || `HTTP ${res.status}`); }
+      const json = await res.json();
+      if (json.output) {
+        setCurrentImage(json.output);
+        setGeneratedOnce(true);
+        setGenStatus('success');
+        onGenerated(json.output);
+      } else throw new Error('No output');
+    } catch (e: any) {
+      clearInterval(interval);
+      alert('Error: ' + e.message);
+      setGenStatus('error');
+    } finally {
+      setTimeout(() => setProgress(0), 1000);
+    }
+  };
+
+  // ── Changes ───────────────────────────────────────────────────────────────
+  const startAddChange = () => {
+    if (addingChange) return;
+    const id = `chg_${Date.now()}`;
+    setChanges(prev => [...prev, { id, paintData: null, description: '', color: brushColor }]);
+    setActiveChangeId(id);
+    setAddingChange(true);
+    setNewDesc('');
+    pendingPaintRef.current = null;
+  };
+
+  const confirmChange = () => {
+    if (!activeChangeId) return;
+    setChanges(prev => prev.map(c => c.id === activeChangeId
+      ? { ...c, paintData: pendingPaintRef.current, description: newDesc }
+      : c
+    ));
+    setActiveChangeId(null);
+    setAddingChange(false);
+    setNewDesc('');
+  };
+
+  const cancelChange = () => {
+    setChanges(prev => prev.filter(c => c.id !== activeChangeId));
+    setActiveChangeId(null);
+    setAddingChange(false);
+    setNewDesc('');
+  };
+
+  const deleteChange = (id: string) => {
+    setChanges(prev => prev.filter(c => c.id !== id));
+    if (activeChangeId === id) { setActiveChangeId(null); setAddingChange(false); }
+  };
+
+  const handlePaintSave = useCallback((data: string) => {
+    pendingPaintRef.current = data;
+  }, []);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex" style={{ background: '#0f0f10' }}>
+      {/* ── Canvas area ──────────────────────────────────────────────────── */}
+      <div ref={containerRef} className="flex-1 relative overflow-hidden flex items-center justify-center"
+           style={{ background: '#111' }}>
+        {/* Image */}
+        {currentImage ? (
+          <img
+            src={currentImage}
+            alt="Generated"
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-4 opacity-30">
+            <ImageIcon size={64} className="text-zinc-500" />
+            <span className="text-zinc-500 text-sm font-black uppercase tracking-widest">Generate to start</span>
+          </div>
+        )}
+
+        {/* Paint overlay for active change */}
+        {addingChange && activeChangeId && (
+          <NanaBananaPaintCanvas
+            width={canvasSize.w}
+            height={canvasSize.h}
+            color={brushColor}
+            brushSize={brushSize}
+            active={true}
+            onSave={handlePaintSave}
+          />
+        )}
+
+        {/* Completed change overlays (display only) */}
+        {changes.filter(c => c.id !== activeChangeId && c.paintData).map(c => (
+          <img key={c.id} src={c.paintData!} alt=""
+            style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'fill', pointerEvents:'none', opacity:0.6 }}
+          />
+        ))}
+
+        {/* Progress bar */}
+        {genStatus === 'running' && (
+          <div className="absolute bottom-0 left-0 right-0">
+            <div className="w-full bg-black/60 h-1">
+              <div className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-500"
+                   style={{ width: `${progress}%` }} />
+            </div>
+            <p className="text-[10px] text-yellow-400 font-black text-center py-1 bg-black/70 animate-pulse uppercase tracking-widest">
+              {isPro && thinking ? `Thinking… ${Math.round(progress)}%` : `Generating… ${Math.round(progress)}%`}
+            </p>
+          </div>
+        )}
+
+        {/* Adding change hint */}
+        {addingChange && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded-full flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            Dibuja el área a cambiar
+          </div>
+        )}
+      </div>
+
+      {/* ── Right panel ───────────────────────────────────────────────────── */}
+      <div className="w-[320px] flex flex-col" style={{ background: '#16161a', borderLeft: '1px solid rgba(255,255,255,0.07)' }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-yellow-400">🍌 NanoBanana Studio</span>
+          </div>
+          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+            <X size={18} strokeWidth={2} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+
+          {/* Re-send toggle */}
+          {generatedOnce && (
+            <div className="p-3 rounded-xl border border-white/[0.08] bg-white/[0.02]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-zinc-300 uppercase tracking-wider">Reenviar imagen generada</p>
+                  <p className="text-[9px] text-zinc-600 mt-0.5">
+                    {reSendGenerated ? 'Usando imagen generada' : 'Usando imagen conectada'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setReSendGenerated(v => !v)}
+                  className={`w-10 h-5 rounded-full flex items-center px-0.5 transition-all ${reSendGenerated ? 'bg-yellow-500 justify-end' : 'bg-white/10 justify-start'}`}
+                >
+                  <div className={`w-4 h-4 rounded-full shadow ${reSendGenerated ? 'bg-white' : 'bg-zinc-600'}`} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Changes section */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Cambios a realizar</span>
+              {!addingChange && (
+                <button
+                  onClick={startAddChange}
+                  className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500/25 transition-colors"
+                >
+                  <Plus size={11} /> Añadir cambio
+                </button>
+              )}
+            </div>
+
+            {/* Active change being drawn */}
+            {addingChange && activeChangeId && (
+              <div className="p-3 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] mb-3 space-y-3">
+                <p className="text-[9px] font-black text-rose-400 uppercase tracking-wider">Dibujando cambio…</p>
+
+                {/* Brush controls */}
+                <div className="flex items-center gap-3">
+                  <div>
+                    <p className="text-[8px] text-zinc-500 mb-1">Color</p>
+                    <input type="color" value={brushColor} onChange={e => setBrushColor(e.target.value)}
+                      className="w-8 h-8 rounded-lg border border-white/10 cursor-pointer" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[8px] text-zinc-500 mb-1">Grosor ({brushSize}px)</p>
+                    <input type="range" min={4} max={48} value={brushSize} onChange={e => setBrushSize(+e.target.value)}
+                      className="w-full" />
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <p className="text-[8px] text-zinc-500 mb-1">Descripción del cambio</p>
+                  <textarea
+                    value={newDesc}
+                    onChange={e => setNewDesc(e.target.value)}
+                    placeholder="Ej: eliminar la botella de este área"
+                    rows={3}
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1.5 text-[9px] text-zinc-300 resize-none placeholder-zinc-600"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button onClick={confirmChange}
+                    className="flex-1 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/40 text-[9px] font-black uppercase tracking-wider hover:bg-rose-500/30 transition-colors">
+                    ✓ Confirmar
+                  </button>
+                  <button onClick={cancelChange}
+                    className="flex-1 py-1.5 rounded-lg bg-white/[0.03] text-zinc-500 border border-white/[0.08] text-[9px] font-black uppercase tracking-wider hover:text-zinc-300 transition-colors">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Confirmed changes list */}
+            {changes.filter(c => c.id !== activeChangeId || !addingChange).length > 0 && (
+              <div className="space-y-2">
+                {changes.filter(c => c.id !== activeChangeId || !addingChange).map((c, idx) => (
+                  <div key={c.id} className="flex items-start gap-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                    <div className="w-2 h-2 rounded-full mt-1 flex-shrink-0" style={{ background: c.color }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[8px] font-black text-zinc-500 uppercase tracking-wider mb-0.5">Cambio {idx + 1}</p>
+                      <p className="text-[9px] text-zinc-400 leading-snug">{c.description || '(sin descripción)'}</p>
+                      {c.paintData && (
+                        <img src={c.paintData} alt="" className="mt-1.5 w-full h-8 object-cover rounded opacity-60" />
+                      )}
+                    </div>
+                    <button onClick={() => deleteChange(c.id)} className="text-zinc-600 hover:text-rose-400 transition-colors flex-shrink-0 mt-0.5">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {changes.length === 0 && !addingChange && (
+              <p className="text-[9px] text-zinc-600 text-center py-4">
+                Sin cambios añadidos.<br/>Pulsa "Añadir cambio" para indicar áreas a modificar.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Generate button */}
+        <div className="px-5 py-4 border-t border-white/[0.07]">
+          <button
+            onClick={onGenerate}
+            disabled={genStatus === 'running' || addingChange}
+            className="w-full py-3.5 rounded-2xl font-black text-[12px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+            style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#111' }}
+          >
+            {genStatus === 'running'
+              ? <><Loader2 size={14} className="animate-spin" /> Generando…</>
+              : <><Sparkles size={14} /> Generar imagen</>
+            }
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+});
+NanoBananaStudio.displayName = 'NanoBananaStudio';
+
+
 export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const nodeData = data as BaseNodeData & {
     aspect_ratio?: string;
@@ -2416,6 +2850,7 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<string | null>(null);
   const [showFullSize, setShowFullSize] = useState(false);
+  const [showStudio, setShowStudio] = useState(false);
 
   const selectedModel = nodeData.modelKey || 'flash31';
   const modelInfo = NB_MODELS.find(m => m.id === selectedModel) || NB_MODELS[0];
@@ -2674,17 +3109,26 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
           </div>
         )}
 
-        {/* Generate button */}
-        <button
-          className="execute-btn w-full !py-2.5 !text-[10px]"
-          onClick={onRun}
-          disabled={status === 'running'}
-        >
-          {status === 'running'
-            ? <><Loader2 size={11} className="animate-spin" /><span className="ml-1.5">{isPro && nodeData.thinking ? 'THINKING...' : 'GENERATING...'}</span></>
-            : <><Sparkles size={11} /><span className="ml-1.5">GENERATE IMAGE</span></>
-          }
-        </button>
+        {/* Generate + Studio button row */}
+        <div className="flex gap-2">
+          <button
+            className="execute-btn flex-1 !py-2.5 !text-[10px]"
+            onClick={onRun}
+            disabled={status === 'running'}
+          >
+            {status === 'running'
+              ? <><Loader2 size={11} className="animate-spin" /><span className="ml-1.5">{isPro && nodeData.thinking ? 'THINKING...' : 'GENERATING...'}</span></>
+              : <><Sparkles size={11} /><span className="ml-1.5">GENERATE</span></>
+            }
+          </button>
+          <button
+            onClick={() => setShowStudio(true)}
+            title="Abrir NanoBanana Studio"
+            className="py-2.5 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest border border-yellow-500/40 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-colors flex items-center gap-1"
+          >
+            <Maximize2 size={11} /> Studio
+          </button>
+        </div>
       </div>
 
       {/* ── Output handle ─── */}
@@ -2692,6 +3136,33 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
         <span className="handle-label">Image out</span>
         <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
+
+      {/* ── NanoBanana Studio ── */}
+      {showStudio && (() => {
+        const promptEdge = edges.find((e: any) => e.target === id && e.targetHandle === 'prompt');
+        const promptVal = nodes.find((n: any) => n.id === promptEdge?.source)?.data?.value || '';
+        const refImgs = getRefImages();
+        const connected0 = (refImgs[0] as string | null | undefined) ?? null;
+        return (
+          <NanoBananaStudio
+            nodeId={id}
+            initialImage={connected0}
+            lastGenerated={result}
+            modelKey={nodeData.modelKey || 'flash31'}
+            aspectRatio={nodeData.aspect_ratio || '16:9'}
+            resolution={nodeData.resolution || '1k'}
+            thinking={!!nodeData.thinking}
+            prompt={promptVal}
+            onClose={() => setShowStudio(false)}
+            onGenerated={(url) => {
+              setResult(url);
+              setNodes((nds: any) => nds.map((n: any) =>
+                n.id === id ? { ...n, data: { ...n.data, value: url, type: 'image' } } : n
+              ));
+            }}
+          />
+        );
+      })()}
 
       {/* ── Fullscreen overlay ─── */}
       {showFullSize && result && (
