@@ -3096,15 +3096,121 @@ const NanoBananaStudio = memo(({
   };
 
     return createPortal(
-    <div className="fixed inset-0 z-[9999] flex" style={{ background: '#0f0f10' }}>
-      {/* ── Canvas area ──────────────────────────────────────────────────── */}
+    <div className="fixed inset-0 z-[9999] flex flex-col" style={{ background: '#0d0d12' }}>
+
+      {/* ══ TOP BAR: Header + Model + Resolution + Usar generada ══════════════ */}
+      <div className="flex items-center gap-3 px-4 py-2.5 flex-shrink-0"
+           style={{ background: '#13131c', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+
+        {/* Logo / title */}
+        <div className="flex items-center gap-2 pr-4" style={{ borderRight: '1px solid rgba(255,255,255,0.08)' }}>
+          <Sparkles size={13} className="text-yellow-400" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-300">Studio</span>
+          <span className="text-[9px] text-zinc-600 font-mono">NanaBanana</span>
+        </div>
+
+        {/* Model pills */}
+        <div className="flex items-center gap-1.5">
+          {[
+            { key: 'flash25',  label: 'NB 1',  sub: 'Rápido',   color: '#6ee7b7' },
+            { key: 'flash31',  label: 'NB 2',  sub: 'Calidad',  color: '#60a5fa' },
+            { key: 'pro3',     label: 'Pro',   sub: 'Máximo',   color: '#f59e0b' },
+          ].map(m => (
+            <button key={m.key}
+              onClick={() => setStudioModelKey(m.key)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all"
+              style={studioModelKey === m.key
+                ? { background: m.color + '20', color: m.color, border: '1px solid ' + m.color + '50' }
+                : { background: 'rgba(255,255,255,0.03)', color: '#555', border: '1px solid rgba(255,255,255,0.05)' }
+              }
+            >
+              {m.label}
+              <span className="opacity-60 font-normal normal-case tracking-normal">{m.sub}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Divider */}
+        <div className="h-5 w-px bg-white/[0.07]" />
+
+        {/* Resolution chips — only non-flash25 */}
+        {studioModelKey !== 'flash25' && (
+          <div className="flex items-center gap-1">
+            <span className="text-[8px] font-black text-zinc-600 uppercase tracking-wider mr-1">Res</span>
+            {['1k', '2k', '4k'].map(r => (
+              <button key={r}
+                onClick={() => setStudioResolution(r)}
+                className="px-2 py-1 rounded text-[8px] font-black uppercase tracking-wider transition-all"
+                style={studioResolution === r
+                  ? { background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.4)' }
+                  : { background: 'rgba(255,255,255,0.03)', color: '#444', border: '1px solid rgba(255,255,255,0.05)' }
+                }
+              >{r}</button>
+            ))}
+          </div>
+        )}
+
+        {/* Divider */}
+        {generatedOnce && <div className="h-5 w-px bg-white/[0.07]" />}
+
+        {/* Usar generada toggle */}
+        {generatedOnce && (
+          <div className="flex items-center gap-2">
+            {lastGenerated && (
+              <img src={lastGenerated} alt="" className="w-8 h-6 object-cover rounded border border-white/10 flex-shrink-0" />
+            )}
+            <span className="text-[8px] font-black text-zinc-500 uppercase tracking-wider">
+              {reSendGenerated ? 'Usando generada' : 'Usando original'}
+            </span>
+            <button
+              onClick={() => setReSendGenerated(v => !v)}
+              className="w-8 h-4 rounded-full flex items-center px-0.5 transition-all"
+              style={{ background: reSendGenerated ? '#f59e0b' : 'rgba(255,255,255,0.1)', justifyContent: reSendGenerated ? 'flex-end' : 'flex-start' }}
+            >
+              <div className="w-3 h-3 rounded-full" style={{ background: reSendGenerated ? '#111' : '#555' }} />
+            </button>
+          </div>
+        )}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Generate buttons in top bar */}
+        <button
+          onClick={onGenerateCall}
+          disabled={addingChange || analyzingCall || changes.filter(c=>c.paintData && c.description.trim()).length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all disabled:opacity-30"
+          style={{ background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}
+        >
+          {analyzingCall ? <><Loader2 size={10} className="animate-spin" /> Analizando…</> : <><Eye size={10} /> Ver llamada</>}
+        </button>
+        <button
+          onClick={onGenerate}
+          disabled={genStatus === 'running' || addingChange}
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all disabled:opacity-40"
+          style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#111' }}
+        >
+          {genStatus === 'running'
+            ? <><Loader2 size={11} className="animate-spin" /> Generando…</>
+            : <><Sparkles size={11} /> Generar</>
+          }
+        </button>
+
+        {/* Close */}
+        <button onClick={onClose}
+          className="ml-2 w-7 h-7 rounded-lg hover:bg-white/[0.08] flex items-center justify-center text-zinc-600 hover:text-zinc-300 transition-all">
+          <X size={14} strokeWidth={2.5} />
+        </button>
+      </div>
+
+      {/* ══ CANVAS (flex-1) ════════════════════════════════════════════════════ */}
       <div
           ref={containerRef}
           className="flex-1 relative overflow-hidden"
-          style={{ background: '#111', cursor: addingChange ? 'crosshair' : 'grab' }}
+          style={{ background: '#0a0a0f', cursor: addingChange ? 'crosshair' : 'grab' }}
           onWheel={e => {
             e.preventDefault();
-            const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
+            const factor = e.deltaY < 0 ? 1.03 : 1 / 1.03;
             const rect = containerRef.current!.getBoundingClientRect();
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
@@ -3115,7 +3221,6 @@ const NanoBananaStudio = memo(({
             applyViewTransform();
           }}
           onPointerDown={e => {
-            // pan on any left click when NOT drawing (addingChange handled by canvas on top)
             if (e.button === 0 && !addingChange) {
               e.preventDefault();
               vIsDragging.current = true;
@@ -3135,7 +3240,7 @@ const NanoBananaStudio = memo(({
           }}
           onDoubleClick={() => resetViewTransform()}
         >
-        {/* Zoom/pan inner wrapper — direct DOM, no React setState */}
+        {/* Zoom/pan inner wrapper */}
         <div ref={zoomWrapRef} style={{
           position: 'absolute', inset: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -3154,13 +3259,11 @@ const NanoBananaStudio = memo(({
         ) : (
           <div className="flex flex-col items-center gap-4 opacity-30">
             <ImageIcon size={64} className="text-zinc-500" />
-            <span className="text-zinc-500 text-sm font-black uppercase tracking-widest">Generate to start</span>
+            <span className="text-zinc-500 text-sm font-black uppercase tracking-widest">Genera para empezar</span>
           </div>
         )}
 
-        {/* Paint overlay — INSIDE zoom wrapper so it moves with image visually.
-             getXY() uses getBoundingClientRect which auto-accounts for CSS transform,
-             so natural pixel coords are correct at any zoom level. */}
+        {/* Paint overlay */}
         {addingChange && activeChangeId && (
           <NanaBananaPaintCanvas
             natW={imgNat.w}
@@ -3173,7 +3276,7 @@ const NanoBananaStudio = memo(({
           />
         )}
 
-        {/* Completed change overlays (display only) */}
+        {/* Completed change overlays */}
         {changes.filter(c => c.id !== activeChangeId && c.paintData).map(c => (
           <img key={c.id} src={c.paintData!} alt=""
             style={{
@@ -3186,326 +3289,153 @@ const NanoBananaStudio = memo(({
             }}
           />
         ))}
-
-        </div>{/* end zoom-transform inner wrapper */}
+        </div>{/* end zoom-transform */}
 
         {/* Progress bar */}
         {genStatus === 'running' && (
           <div className="absolute bottom-0 left-0 right-0">
-            <div className="w-full bg-black/60 h-1">
+            <div className="w-full h-1 bg-black/50">
               <div className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-500"
                    style={{ width: `${progress}%` }} />
             </div>
-            <p className="text-[10px] text-yellow-400 font-black text-center py-1 bg-black/70 animate-pulse uppercase tracking-widest">
+            <p className="text-[9px] text-yellow-400 font-black text-center py-1 bg-black/70 animate-pulse uppercase tracking-widest">
               {isPro && thinking ? `Thinking… ${Math.round(progress)}%` : `Generating… ${Math.round(progress)}%`}
             </p>
           </div>
         )}
 
-        {/* Adding change hint */}
+        {/* Drawing-mode hint */}
         {addingChange && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded-full flex items-center gap-2">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest text-white"
+               style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', border: '1px solid rgba(251,113,133,0.4)' }}>
             <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-            Dibuja el área a cambiar · arrastra para mover la vista
+            Dibuja el área · Arrastra para mover la vista
+          </div>
+        )}
 
-        {/* Zoom level reset — controlled via DOM ref */}
+        {/* Zoom reset label */}
         <button
           ref={zoomLabelRef}
           onClick={() => resetViewTransform()}
-          style={{ display: 'none' }}
-          className="absolute bottom-4 right-4 text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg bg-black/80 border border-white/10 text-zinc-300 hover:text-white backdrop-blur-sm transition-colors"
+          style={{ display: 'none', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.08)' }}
         />
-          </div>
-        )}
       </div>
 
-      {/* ── Right panel ───────────────────────────────────────────────────── */}
-      <div className="w-[300px] flex flex-col" style={{ background: '#13131a', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(251,191,36,0.15)' }}>
-              <Sparkles size={12} className="text-yellow-400" />
+      {/* ══ BOTTOM BAR: Changes ════════════════════════════════════════════════ */}
+      <div className="flex-shrink-0" style={{ background: '#13131c', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+
+        {/* Active drawing controls */}
+        {addingChange && activeChangeId && (
+          <div className="flex items-center gap-4 px-4 py-3"
+               style={{ background: 'rgba(251,113,133,0.05)', borderBottom: '1px solid rgba(251,113,133,0.15)' }}>
+            <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-rose-400 flex-shrink-0">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              Dibujando área
+            </span>
+            {/* Color */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] text-zinc-500">Color</span>
+              <input type="color" value={brushColor} onChange={e => setBrushColor(e.target.value)}
+                className="w-8 h-8 rounded-lg border border-white/10 cursor-pointer" />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-300">Studio</span>
-            <span className="text-[8px] text-zinc-600 font-mono">NanaBanana</span>
+            {/* Brush size */}
+            <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+              <span className="text-[9px] text-zinc-500 flex-shrink-0">Grosor {brushSize}px</span>
+              <input type="range" min={4} max={48} value={brushSize} onChange={e => setBrushSize(+e.target.value)}
+                className="flex-1" />
+            </div>
+            {/* Description */}
+            <input
+              value={newDesc}
+              onChange={e => setNewDesc(e.target.value)}
+              placeholder="¿Qué quieres cambiar en esta área?…"
+              className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-zinc-300 placeholder-zinc-600 outline-none focus:border-rose-500/40"
+            />
+            <button onClick={confirmChange}
+              className="px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap"
+              style={{ background: 'rgba(251,113,133,0.2)', color: '#fb7185', border: '1px solid rgba(251,113,133,0.4)' }}>
+              ✓ Confirmar
+            </button>
+            <button onClick={cancelChange}
+              className="px-4 py-2 rounded-lg bg-white/[0.04] text-zinc-500 border border-white/[0.08] text-[10px] font-black uppercase tracking-wider hover:text-zinc-300 transition-colors whitespace-nowrap">
+              Cancelar
+            </button>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg hover:bg-white/[0.06] flex items-center justify-center text-zinc-600 hover:text-zinc-300 transition-all">
-            <X size={14} strokeWidth={2.5} />
-          </button>
-        </div>
+        )}
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        {/* Changes list row — taller, more spacious */}
+        <div className="flex items-center gap-3 px-4 py-4 overflow-x-auto" style={{ minHeight: 68 }}>
+          <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest flex-shrink-0 pr-2"
+                style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>Cambios</span>
 
-          {/* Model + Resolution selectors */}
-          <div className="rounded-xl border border-white/[0.07] overflow-hidden">
-            <div className="px-3 py-2 border-b border-white/[0.06]" style={{background:"rgba(255,255,255,0.02)"}}>
-              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Modelo</p>
-            </div>
-            <div className="p-3 space-y-3">
-            <div className="grid grid-cols-1 gap-1.5">
-              {[
-                { key: 'flash25',  label: 'NanaBanana 1', sub: 'Rápido y económico', price: '~$0.003/img', color: '#6ee7b7' },
-                { key: 'flash31',  label: 'NanaBanana 2', sub: 'Calidad + velocidad', price: '~$0.006/img', color: '#60a5fa' },
-                { key: 'pro3',     label: 'NanaBanana Pro', sub: 'Máxima calidad', price: '~$0.05/img',  color: '#f59e0b' },
-              ].map(m => (
-                <button key={m.key}
-                  onClick={() => setStudioModelKey(m.key)}
-                  className={`flex items-center justify-between px-3 py-2 rounded-lg border text-left transition-all ${
-                    studioModelKey === m.key ? 'border-opacity-60' : 'border-white/[0.06] bg-transparent'
-                  }`}
-                  style={studioModelKey === m.key ? { borderColor: m.color + '99', background: m.color + '15' } : {}}
-                >
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-wider" style={{ color: studioModelKey === m.key ? m.color : '#777' }}>{m.label}</p>
-                    <p className="text-[8px] text-zinc-600">{m.sub}</p>
-                  </div>
-                  <span className="text-[8px] font-mono font-bold" style={{ color: studioModelKey === m.key ? m.color : '#555' }}>{m.price}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Resolution — only for non-flash25 */}
-            {studioModelKey !== 'flash25' && (
-              <div>
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">Resolución</p>
-                <div className="flex gap-1.5 flex-wrap">
-                  {['1k', '2k', '4k'].map(r => (
-                    <button key={r}
-                      onClick={() => setStudioResolution(r)}
-                      className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all ${
-                        studioResolution === r
-                          ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300'
-                          : 'bg-transparent border-white/[0.07] text-zinc-600 hover:text-zinc-400'
-                      }`}
-                    >{r}</button>
-                  ))}
-                </div>
-                <p className="text-[8px] text-zinc-700 mt-1">Flash25 usa 1k fijo · Pro soporta hasta 4k</p>
-              </div>
-            )}
-          </div></div>
-
-          {/* Re-send toggle */}
-          {generatedOnce && (
-            <div className="flex items-center gap-3 px-3 py-2 rounded-xl border border-white/[0.07] bg-white/[0.02]">
-              {/* Tiny thumb of last generated */}
-              {lastGenerated && (
-                <img src={lastGenerated} alt="" className="w-10 h-7 object-cover rounded-md border border-white/10 flex-shrink-0" />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-[8px] font-black text-zinc-400 uppercase tracking-wider truncate">Usar imagen generada</p>
-                <p className="text-[7px] text-zinc-600">{reSendGenerated ? "Como base ✓" : "Usando original"}</p>
-              </div>
-              <button
-                onClick={() => setReSendGenerated(v => !v)}
-                className={`w-9 h-5 rounded-full flex items-center px-0.5 transition-all flex-shrink-0 ${reSendGenerated ? "bg-yellow-500 justify-end" : "bg-white/10 justify-start"}`}
-              >
-                <div className={`w-4 h-4 rounded-full shadow ${reSendGenerated ? "bg-white" : "bg-zinc-600"}`} />
-              </button>
-            </div>
+          {changes.length === 0 && (
+            <span className="text-[9px] text-zinc-600 italic">Sin cambios aún · añade uno para empezar</span>
           )}
 
-          {/* Changes section */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Cambios a realizar</span>
-              {!addingChange && (
-                <button
-                  onClick={startAddChange}
-                  className="flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-lg transition-colors"
-                  style={{ background: "rgba(251,113,133,0.12)", color: "#fb7185", border: "1px solid rgba(251,113,133,0.3)" }}
-                >
-                  <Plus size={10} /> Añadir cambio
-                </button>
-              )}
-            </div>
-
-            {/* Active change being drawn */}
-            {addingChange && activeChangeId && (
-              <div className="rounded-xl mb-3 space-y-3 overflow-hidden border border-rose-500/25"
-                   style={{ background: "rgba(251,113,133,0.05)" }}>
-                <div className="px-3 py-2 flex items-center gap-2 border-b border-rose-500/15">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                  <p className="text-[9px] font-black text-rose-400 uppercase tracking-wider">Dibujando cambio…</p>
-                </div>
-                <div className="px-3 pb-3 space-y-3">
-
-                {/* Brush controls */}
-                <div className="flex items-center gap-3">
-                  <div>
-                    <p className="text-[8px] text-zinc-500 mb-1">Color</p>
-                    <input type="color" value={brushColor} onChange={e => setBrushColor(e.target.value)}
-                      className="w-8 h-8 rounded-lg border border-white/10 cursor-pointer" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[8px] text-zinc-500 mb-1">Grosor ({brushSize}px)</p>
-                    <input type="range" min={4} max={48} value={brushSize} onChange={e => setBrushSize(+e.target.value)}
-                      className="w-full" />
-                  </div>
-                </div>
+          {/* Change chips — larger and with ref upload */}
+          {changes.map((ch, idx) => {
+            const pal = CHANGE_PALETTE[idx % CHANGE_PALETTE.length];
+            const hex = pal.hex;
+            return (
+              <div key={ch.id}
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl flex-shrink-0 transition-all"
+                style={ch.paintData && ch.description.trim()
+                  ? { background: hex + '18', color: hex, border: '1px solid ' + hex + '50' }
+                  : { background: 'rgba(255,255,255,0.04)', color: '#666', border: '1px solid rgba(255,255,255,0.08)' }
+                }
+              >
+                {/* Color dot */}
+                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: hex }} />
 
                 {/* Description */}
-                <div>
-                  <p className="text-[8px] text-zinc-500 mb-1">¿Qué quieres hacer en esta área? <span className="text-zinc-600 italic">(la IA detects el objeto automáticamente)</span></p>
-                  <textarea
-                    value={newDesc}
-                    onChange={e => setNewDesc(e.target.value)}
-                    placeholder="Ej: ponerle la cara de Goku, eliminar, cambiar por una cebra…"
-                    rows={3}
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1.5 text-[9px] text-zinc-300 resize-none placeholder-zinc-600"
+                <span className="text-[10px] font-black uppercase tracking-wide max-w-[160px] truncate">
+                  {ch.description || 'Sin descripción'}
+                </span>
+
+                {/* Reference image preview or upload */}
+                <label className="flex items-center gap-1 cursor-pointer flex-shrink-0">
+                  {ch.referenceImage ? (
+                    <img src={ch.referenceImage} alt="ref"
+                      className="w-8 h-8 rounded-lg object-cover border-2 flex-shrink-0"
+                      style={{ borderColor: hex + '80' }} />
+                  ) : (
+                    <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wide transition-all hover:opacity-80"
+                      style={{ background: hex + '15', color: hex, border: '1px dashed ' + hex + '50' }}>
+                      <ImageIcon size={10} /> Ref
+                    </span>
+                  )}
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = ev => {
+                        const url = ev.target?.result as string;
+                        setChanges(prev => prev.map(c => c.id === ch.id ? { ...c, referenceImage: url } : c));
+                      };
+                      reader.readAsDataURL(file);
+                      e.target.value = '';
+                    }}
                   />
-                </div>
+                </label>
 
-                <div className="flex gap-2">
-                  <button onClick={confirmChange}
-                    className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all hover:opacity-90"
-                    style={{ background: "rgba(251,113,133,0.2)", color: "#fb7185", border: "1px solid rgba(251,113,133,0.4)" }}>
-                    ✓ Confirmar
-                  </button>
-                  <button onClick={cancelChange}
-                    className="flex-1 py-2 rounded-lg bg-white/[0.03] text-zinc-500 border border-white/[0.08] text-[9px] font-black uppercase tracking-wider hover:text-zinc-300 transition-colors">
-                    Cancelar
-                  </button>
-                </div>
-                </div>{/* end px-3 pb-3 wrapper */}
+                {/* Delete */}
+                <button onClick={() => deleteChange(ch.id)}
+                  className="text-zinc-600 hover:text-rose-400 transition-colors flex-shrink-0 ml-1">
+                  <Trash2 size={11} />
+                </button>
               </div>
-            )}
+            );
+          })}
 
-            {/* Confirmed changes list */}
-            {changes.filter(c => c.id !== activeChangeId || !addingChange).length > 0 && (
-              <div className="space-y-2">
-                {changes.filter(c => c.id !== activeChangeId || !addingChange).map((c, idx) => (
-                  <div key={c.id} className="rounded-xl overflow-hidden border border-white/[0.06]"
-                       style={{ background: 'rgba(255,255,255,0.025)' }}>
-
-                    {/* ── Top row: color dot + label + trash ── */}
-                    <div className="flex items-center gap-2 px-2.5 pt-2 pb-1">
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-black/20"
-                           style={{ background: c.assignedColor?.hex || c.color }} />
-                      <p className="flex-1 text-[8px] font-black uppercase tracking-wider truncate"
-                         style={{ color: c.assignedColor?.hex || '#888' }}>
-                        Cambio {idx + 1} · {c.assignedColor?.name || 'color'}
-                      </p>
-                      <button onClick={() => deleteChange(c.id)}
-                              className="text-zinc-700 hover:text-rose-400 transition-colors flex-shrink-0">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-
-                    {/* ── Description ── */}
-                    <p className="text-[9px] text-zinc-400 leading-snug px-2.5 pb-2">
-                      {c.description || '(sin descripción)'}
-                    </p>
-
-                    {/* ── Paint stroke thumbnail ── */}
-                    {c.paintData && (
-                      <img src={c.paintData} alt="" className="w-full h-6 object-cover opacity-50" />
-                    )}
-
-                    {/* ── Reference image zone ── */}
-                    <label className="block cursor-pointer group/ref">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={e => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = ev => {
-                            const dataUrl = ev.target?.result as string;
-                            setChanges(prev => prev.map(ch => ch.id === c.id ? { ...ch, referenceImage: dataUrl } : ch));
-                          };
-                          reader.readAsDataURL(file);
-                          e.target.value = '';
-                        }}
-                      />
-
-                      {c.referenceImage ? (
-                        /* Has reference — show thumbnail with replace overlay */
-                        <div className="relative">
-                          <img src={c.referenceImage} alt="ref"
-                               className="w-full h-20 object-cover" />
-                          {/* Overlay on hover: replace */}
-                          <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-1
-                                          opacity-0 group-hover/ref:opacity-100 transition-opacity">
-                            <ImageIcon size={14} className="text-violet-300" />
-                            <span className="text-[7px] font-black uppercase text-violet-300 tracking-wider">Cambiar ref</span>
-                          </div>
-                          {/* Delete ref button */}
-                          <button
-                            onClick={e => {
-                              e.preventDefault();
-                              setChanges(prev => prev.map(ch => ch.id === c.id ? { ...ch, referenceImage: null } : ch));
-                            }}
-                            className="absolute top-1 right-1 bg-black/70 rounded-full p-0.5 text-zinc-400
-                                       hover:text-rose-400 transition-colors"
-                          >
-                            <X size={9} />
-                          </button>
-                          <span className="absolute bottom-1 left-1.5 text-[6px] font-black uppercase text-violet-300"
-                                style={{ textShadow: '0 1px 3px #000' }}>REF VISUAL</span>
-                        </div>
-                      ) : (
-                        /* No reference — dashed upload CTA */
-                        <div className="mx-2 mb-2 mt-1 rounded-lg border border-dashed border-white/[0.12]
-                                        group-hover/ref:border-violet-500/50 transition-colors
-                                        flex items-center gap-2 px-3 py-2">
-                          <div className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center
-                                          bg-violet-500/10 group-hover/ref:bg-violet-500/20 transition-colors">
-                            <ImageIcon size={13} className="text-violet-400" />
-                          </div>
-                          <div>
-                            <p className="text-[8px] font-black text-zinc-400 group-hover/ref:text-violet-400 transition-colors">
-                              Añadir referencia visual
-                            </p>
-                            <p className="text-[7px] text-zinc-600">Ej: &quot;sustituir por esta silla&quot;</p>
-                          </div>
-                        </div>
-                      )}
-                    </label>
-
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {changes.length === 0 && !addingChange && (
-              <p className="text-[9px] text-zinc-600 text-center py-4">
-                Sin cambios añadidos.<br/>Pulsa "Añadir cambio" para indicar áreas a modificar.
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* ── Sticky action footer */}
-        <div className="px-4 py-3 space-y-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#0e0e14' }}>
-          {/* "Generar llamada" — secondary */}
-          <button
-            onClick={onGenerateCall}
-            disabled={addingChange || analyzingCall || changes.filter(c=>c.paintData && c.description.trim()).length === 0}
-            className="w-full py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-30"
-            style={{ borderColor: 'rgba(99,102,241,0.4)', border: '1px solid rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.10)', color: '#a5b4fc' }}
-          >
-            {analyzingCall
-              ? <><Loader2 size={12} className="animate-spin" /> Analizando…</>
-              : <><Eye size={12} /> Generar llamada</>
-            }
-          </button>
-
-          {/* "Generar imagen" — primary CTA */}
-          <button
-            onClick={onGenerate}
-            disabled={genStatus === 'running' || addingChange}
-            className="w-full py-3 rounded-xl font-black text-[12px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-40"
-            style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#111' }}
-          >
-            {genStatus === 'running'
-              ? <><Loader2 size={13} className="animate-spin" /> Generando…</>
-              : <><Sparkles size={13} /> Generar imagen</>
-            }
-          </button>
+          {/* Add change button — larger */}
+          {!addingChange && (
+            <button onClick={startAddChange}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex-shrink-0"
+              style={{ background: 'rgba(251,113,133,0.12)', color: '#fb7185', border: '1px solid rgba(251,113,133,0.3)' }}>
+              <Plus size={11} /> Añadir cambio
+            </button>
+          )}
         </div>
       </div>
 
