@@ -85,8 +85,18 @@ a {
 * {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
+  /* Prevent accidental text selection on UI elements (labels, buttons, logos) */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 *::-webkit-scrollbar {
   display: none; /* Chrome, Safari and Opera */
+}
+
+/* Re-enable text selection in actual editable / readable elements */
+input, textarea, [contenteditable="true"],
+input *, textarea *, [contenteditable="true"] * {
+  user-select: text;
+  -webkit-user-select: text;
 }
