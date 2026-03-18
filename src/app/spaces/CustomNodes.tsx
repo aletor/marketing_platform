@@ -3220,22 +3220,29 @@ const NanoBananaStudio = memo(({
       </div>
 
       {/* ── Right panel ───────────────────────────────────────────────────── */}
-      <div className="w-[320px] flex flex-col" style={{ background: '#16161a', borderLeft: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="w-[300px] flex flex-col" style={{ background: '#13131a', borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
+        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-yellow-400">🍌 NanoBanana Studio</span>
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(251,191,36,0.15)' }}>
+              <Sparkles size={12} className="text-yellow-400" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-300">Studio</span>
+            <span className="text-[8px] text-zinc-600 font-mono">NanaBanana</span>
           </div>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
-            <X size={18} strokeWidth={2} />
+          <button onClick={onClose} className="w-7 h-7 rounded-lg hover:bg-white/[0.06] flex items-center justify-center text-zinc-600 hover:text-zinc-300 transition-all">
+            <X size={14} strokeWidth={2.5} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
 
           {/* Model + Resolution selectors */}
-          <div className="p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] space-y-3">
-            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Modelo</p>
+          <div className="rounded-xl border border-white/[0.07] overflow-hidden">
+            <div className="px-3 py-2 border-b border-white/[0.06]" style={{background:"rgba(255,255,255,0.02)"}}>
+              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Modelo</p>
+            </div>
+            <div className="p-3 space-y-3">
             <div className="grid grid-cols-1 gap-1.5">
               {[
                 { key: 'flash25',  label: 'NanaBanana 1', sub: 'Rápido y económico', price: '~$0.003/img', color: '#6ee7b7' },
@@ -3277,46 +3284,52 @@ const NanoBananaStudio = memo(({
                 <p className="text-[8px] text-zinc-700 mt-1">Flash25 usa 1k fijo · Pro soporta hasta 4k</p>
               </div>
             )}
-          </div>
+          </div></div>
 
           {/* Re-send toggle */}
           {generatedOnce && (
-            <div className="p-3 rounded-xl border border-white/[0.08] bg-white/[0.02]">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-black text-zinc-300 uppercase tracking-wider">Reenviar imagen generada</p>
-                  <p className="text-[9px] text-zinc-600 mt-0.5">
-                    {reSendGenerated ? 'Usando imagen generada' : 'Usando imagen conectada'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setReSendGenerated(v => !v)}
-                  className={`w-10 h-5 rounded-full flex items-center px-0.5 transition-all ${reSendGenerated ? 'bg-yellow-500 justify-end' : 'bg-white/10 justify-start'}`}
-                >
-                  <div className={`w-4 h-4 rounded-full shadow ${reSendGenerated ? 'bg-white' : 'bg-zinc-600'}`} />
-                </button>
+            <div className="flex items-center gap-3 px-3 py-2 rounded-xl border border-white/[0.07] bg-white/[0.02]">
+              {/* Tiny thumb of last generated */}
+              {lastGenerated && (
+                <img src={lastGenerated} alt="" className="w-10 h-7 object-cover rounded-md border border-white/10 flex-shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-[8px] font-black text-zinc-400 uppercase tracking-wider truncate">Usar imagen generada</p>
+                <p className="text-[7px] text-zinc-600">{reSendGenerated ? "Como base ✓" : "Usando original"}</p>
               </div>
+              <button
+                onClick={() => setReSendGenerated(v => !v)}
+                className={`w-9 h-5 rounded-full flex items-center px-0.5 transition-all flex-shrink-0 ${reSendGenerated ? "bg-yellow-500 justify-end" : "bg-white/10 justify-start"}`}
+              >
+                <div className={`w-4 h-4 rounded-full shadow ${reSendGenerated ? "bg-white" : "bg-zinc-600"}`} />
+              </button>
             </div>
           )}
 
           {/* Changes section */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Cambios a realizar</span>
+              <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Cambios a realizar</span>
               {!addingChange && (
                 <button
                   onClick={startAddChange}
-                  className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500/25 transition-colors"
+                  className="flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-lg transition-colors"
+                  style={{ background: "rgba(251,113,133,0.12)", color: "#fb7185", border: "1px solid rgba(251,113,133,0.3)" }}
                 >
-                  <Plus size={11} /> Añadir cambio
+                  <Plus size={10} /> Añadir cambio
                 </button>
               )}
             </div>
 
             {/* Active change being drawn */}
             {addingChange && activeChangeId && (
-              <div className="p-3 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] mb-3 space-y-3">
-                <p className="text-[9px] font-black text-rose-400 uppercase tracking-wider">Dibujando cambio…</p>
+              <div className="rounded-xl mb-3 space-y-3 overflow-hidden border border-rose-500/25"
+                   style={{ background: "rgba(251,113,133,0.05)" }}>
+                <div className="px-3 py-2 flex items-center gap-2 border-b border-rose-500/15">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                  <p className="text-[9px] font-black text-rose-400 uppercase tracking-wider">Dibujando cambio…</p>
+                </div>
+                <div className="px-3 pb-3 space-y-3">
 
                 {/* Brush controls */}
                 <div className="flex items-center gap-3">
@@ -3346,14 +3359,16 @@ const NanoBananaStudio = memo(({
 
                 <div className="flex gap-2">
                   <button onClick={confirmChange}
-                    className="flex-1 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/40 text-[9px] font-black uppercase tracking-wider hover:bg-rose-500/30 transition-colors">
+                    className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all hover:opacity-90"
+                    style={{ background: "rgba(251,113,133,0.2)", color: "#fb7185", border: "1px solid rgba(251,113,133,0.4)" }}>
                     ✓ Confirmar
                   </button>
                   <button onClick={cancelChange}
-                    className="flex-1 py-1.5 rounded-lg bg-white/[0.03] text-zinc-500 border border-white/[0.08] text-[9px] font-black uppercase tracking-wider hover:text-zinc-300 transition-colors">
+                    className="flex-1 py-2 rounded-lg bg-white/[0.03] text-zinc-500 border border-white/[0.08] text-[9px] font-black uppercase tracking-wider hover:text-zinc-300 transition-colors">
                     Cancelar
                   </button>
                 </div>
+                </div>{/* end px-3 pb-3 wrapper */}
               </div>
             )}
 
@@ -3464,35 +3479,36 @@ const NanoBananaStudio = memo(({
           </div>
         </div>
 
-        {/* Buttons area */}
-        <div className="px-5 py-4 border-t border-white/[0.07] space-y-2">
-          {/* "Generar llamada" preview button */}
+        {/* ── Sticky action footer */}
+        <div className="px-4 py-3 space-y-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: '#0e0e14' }}>
+          {/* "Generar llamada" — secondary */}
           <button
             onClick={onGenerateCall}
             disabled={addingChange || analyzingCall || changes.filter(c=>c.paintData && c.description.trim()).length === 0}
-            className="w-full py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-30 border"
-            style={{ borderColor: 'rgba(99,102,241,0.5)', background: 'rgba(99,102,241,0.12)', color: '#a5b4fc' }}
+            className="w-full py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-30"
+            style={{ borderColor: 'rgba(99,102,241,0.4)', border: '1px solid rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.10)', color: '#a5b4fc' }}
           >
             {analyzingCall
-              ? <><Loader2 size={13} className="animate-spin" /> Analizando…</>
-              : <><Eye size={13} /> Generar llamada</>
+              ? <><Loader2 size={12} className="animate-spin" /> Analizando…</>
+              : <><Eye size={12} /> Generar llamada</>
             }
           </button>
 
-          {/* "Generar imagen" main button */}
+          {/* "Generar imagen" — primary CTA */}
           <button
             onClick={onGenerate}
             disabled={genStatus === 'running' || addingChange}
-            className="w-full py-3.5 rounded-2xl font-black text-[12px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+            className="w-full py-3 rounded-xl font-black text-[12px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-40"
             style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#111' }}
           >
             {genStatus === 'running'
-              ? <><Loader2 size={14} className="animate-spin" /> Generando…</>
-              : <><Sparkles size={14} /> Generar imagen</>
+              ? <><Loader2 size={13} className="animate-spin" /> Generando…</>
+              : <><Sparkles size={13} /> Generar imagen</>
             }
           </button>
         </div>
       </div>
+
       {/* ── Call Preview Modal ─────────────────────────────────────────── */}
       {callPreview && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6"
@@ -3690,11 +3706,18 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
     }
   };
 
+  // Preview of connected ref slot 0 (the base image)
+  const refImgPreview = (() => {
+    const edge = edges.find(e => e.target === id && e.targetHandle === 'ref0');
+    const srcNode = edge ? nodes.find(n => n.id === edge.source) : null;
+    const v = srcNode?.data?.value;
+    return typeof v === 'string' ? v : null;
+  })();
+
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}
-         style={{ minWidth: 320 }}>
-      <NodeResizer minWidth={320} minHeight={350} isVisible={selected} />
-      <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana 2" />
+         style={{ minWidth: 240, width: 240 }}>
+      <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana" />
 
       {/* ── Ref image handles (4 slots) ─── */}
       {REF_SLOTS.map((slot, i) => (
@@ -3716,175 +3739,93 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
         <span className="handle-label">Prompt</span>
       </div>
 
-      {/* ── Standard node header ─── */}
+      {/* ── Header ─── */}
       <div className="node-header bg-gradient-to-r from-yellow-600/20 to-orange-600/20">
-        <Sparkles size={15} className="text-yellow-400" />
-        <span>Nano Banana</span>
+        <Sparkles size={14} className="text-yellow-400" />
+        <span className="flex-1">Nano Banana</span>
         <div className={`node-badge ${modelInfo.bg} ${modelInfo.color} border ${modelInfo.borderColor}`}>
           {modelInfo.badge}
         </div>
       </div>
 
-      {/* ── Result preview — fixed height ─── */}
-      <div className="relative w-full bg-[#0a0a0a] group/media" style={{ flex: '1 1 0', minHeight: 120, overflow: 'hidden' }}>
+      {/* ── INPUT IMAGE (ref slot 0) ─── */}
+      <div className="px-2 pt-2 pb-1">
+        <span className="text-[7px] font-black text-zinc-600 uppercase tracking-widest">Imagen base</span>
+      </div>
+      <div className="mx-2 mb-2 rounded-lg overflow-hidden bg-black/40 border border-white/[0.06]"
+           style={{ height: 72 }}>
+        {refImgPreview ? (
+          <img src={refImgPreview} alt="Input" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center gap-1.5 opacity-25">
+            <ImageIcon size={16} className="text-zinc-500" />
+            <span className="text-[7px] font-black uppercase tracking-widest text-zinc-600">Conectar imagen</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── SEPARATOR ─── */}
+      <div className="mx-2 border-t border-white/[0.05] mb-2" />
+
+      {/* ── OUTPUT IMAGE (generated) ─── */}
+      <div className="px-2 pb-1">
+        <span className="text-[7px] font-black text-zinc-600 uppercase tracking-widest">Resultado generado</span>
+      </div>
+      <div className="mx-2 mb-2 rounded-lg overflow-hidden bg-black/40 border border-white/[0.06] relative group/out"
+           style={{ height: 120 }}>
         {result ? (
           <>
-            <img src={result} className="w-full h-full object-cover" alt="Result" />
-            {/* overlay controls on hover */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover/media:opacity-100 transition-opacity duration-300 pointer-events-none" />
-            <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between opacity-0 group-hover/media:opacity-100 transition-opacity duration-300">
-              <span className="text-[7px] font-black uppercase tracking-widest text-white/60 bg-black/50 px-1.5 py-0.5 rounded backdrop-blur-sm">
-                {modelInfo.badge} · {nodeData.aspect_ratio || '16:9'} · {!isFlash25 ? (nodeData.resolution || '1k').toUpperCase() : ''}
-              </span>
-              <button
-                onClick={() => setShowFullSize(true)}
-                className="bg-black/60 hover:bg-black/90 text-white text-[7px] font-black px-2 py-1 rounded-lg flex items-center gap-1 pointer-events-auto"
-              >
-                <Maximize2 size={9} /> EXPAND
-              </button>
-            </div>
+            <img src={result} alt="Generated" className="w-full h-full object-cover" />
+            {/* Hover overlay with expand */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent
+                            opacity-0 group-hover/out:opacity-100 transition-opacity pointer-events-none" />
+            <button
+              onClick={() => setShowFullSize(true)}
+              className="absolute bottom-1.5 right-1.5 bg-black/60 hover:bg-black/90 text-white
+                         text-[7px] font-black px-2 py-1 rounded-lg flex items-center gap-1
+                         opacity-0 group-hover/out:opacity-100 transition-opacity pointer-events-auto"
+            >
+              <Maximize2 size={9} /> EXPAND
+            </button>
+            <span className="absolute bottom-1.5 left-1.5 text-[6px] font-black uppercase tracking-wider
+                             text-white/50 bg-black/50 px-1.5 py-0.5 rounded opacity-0 group-hover/out:opacity-100 transition-opacity">
+              {modelInfo.badge} · {nodeData.aspect_ratio || '16:9'}
+            </span>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-3 opacity-25 py-12">
-            <ImageIcon className="text-zinc-400" size={36} />
-            <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">No image generated</span>
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-25">
+            <Sparkles size={20} className="text-yellow-500" />
+            <span className="text-[7px] font-black uppercase tracking-widest text-zinc-500 text-center leading-snug">
+              Abre Studio<br/>para generar
+            </span>
           </div>
         )}
 
-        {/* Progress bar — absolutely over image */}
+        {/* Progress bar while generating */}
         {status === 'running' && (
           <div className="absolute bottom-0 left-0 right-0">
             <div className="w-full bg-black/60 h-0.5">
-              <div
-                className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
+              <div className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-500"
+                   style={{ width: `${progress}%` }} />
             </div>
-            <p className="text-[6px] text-yellow-400/80 font-black text-center uppercase tracking-widest py-0.5 bg-black/70 animate-pulse">
+            <p className="text-[6px] text-yellow-400/80 font-black text-center uppercase tracking-widest
+                          py-0.5 bg-black/70 animate-pulse">
               {isPro && nodeData.thinking ? `Thinking… ${Math.round(progress)}%` : `Generating… ${Math.round(progress)}%`}
             </p>
           </div>
         )}
       </div>
 
-      {/* ── Controls panel ─── */}
-      <div className="px-3 pt-3 pb-3 space-y-2.5" style={{ flexShrink: 0 }}>
-
-        {/* Model pills row */}
-        <div className="flex gap-1">
-          {NB_MODELS.map(m => (
-            <button
-              key={m.id}
-              onClick={() => updateData('modelKey', m.id)}
-              className={`flex-1 py-1 rounded-md text-[7px] font-black uppercase tracking-widest border transition-all
-                ${selectedModel === m.id
-                  ? `${m.bg} ${m.color} ${m.borderColor}`
-                  : 'bg-white/[0.03] text-zinc-600 border-white/5 hover:border-white/15 hover:text-zinc-400'
-                }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Ratio + Resolution + Thinking in one compact row */}
-        <div className="flex gap-2 items-start">
-          {/* Ratio dropdown */}
-          <div className="flex-1 space-y-1">
-            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Ratio</span>
-            <select
-              value={nodeData.aspect_ratio || '16:9'}
-              onChange={e => updateData('aspect_ratio', e.target.value)}
-              className="w-full bg-[#1a1a1a] text-zinc-300 border border-white/10 rounded-lg px-2 py-1.5 text-[8px] font-black cursor-pointer hover:border-white/20 transition-colors"
-            >
-              {ASPECT_RATIOS.map(r => (
-                <option key={r.value} value={r.value} disabled={r.category === 'extreme' && isFlash25}>
-                  {r.value}{r.category === 'extreme' && isFlash25 ? ' (3.1+)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Resolution */}
-          <div className="space-y-1">
-            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Res</span>
-            <div className="grid grid-cols-2 gap-0.5 w-[72px]">
-              {[{ v: '0.5k', l: '0.5K' }, { v: '1k', l: '1K' }, { v: '2k', l: '2K' }, { v: '4k', l: '4K' }].map(({ v, l }) => (
-                <button key={v}
-                  onClick={() => !isFlash25 && updateData('resolution', v)}
-                  disabled={isFlash25}
-                  className={`py-1 rounded text-[7px] font-black border transition-all
-                    ${isFlash25 ? 'opacity-25 cursor-not-allowed text-zinc-700 border-white/5' :
-                      (nodeData.resolution === v || (!nodeData.resolution && v === '1k'))
-                        ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40'
-                        : 'bg-white/[0.02] text-zinc-600 border-white/5 hover:text-zinc-400'
-                    }`}
-                >{l}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* Thinking toggle */}
-          <div className="space-y-1">
-            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Think</span>
-            <button
-              onClick={() => isPro && updateData('thinking', !nodeData.thinking)}
-              title={isPro ? 'Thinking mode' : 'Pro 3 required'}
-              className={`w-full flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg border transition-all
-                ${isPro
-                  ? nodeData.thinking
-                    ? 'bg-violet-500/15 border-violet-500/40 text-violet-300'
-                    : 'bg-white/[0.03] border-white/5 text-zinc-500 hover:border-white/15'
-                  : 'opacity-25 cursor-not-allowed bg-white/[0.02] border-white/5 text-zinc-700'
-                }`}
-            >
-              <span className="text-[10px]">🧠</span>
-              <div className={`w-6 h-3 rounded-full flex items-center px-0.5 transition-all
-                ${isPro && nodeData.thinking ? 'bg-violet-500 justify-end' : 'bg-white/10 justify-start'}`}>
-                <div className={`w-2 h-2 rounded-full ${isPro && nodeData.thinking ? 'bg-white' : 'bg-zinc-600'}`} />
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Ref images indicator (if any connected) */}
-        {connectedSlots.some(Boolean) && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-[7px] font-black text-amber-500 uppercase tracking-widest">Refs</span>
-            {REF_SLOTS.map((slot, i) => (
-              <div key={slot.id}
-                className={`w-4 h-4 rounded border text-[5px] font-black flex items-center justify-center
-                  ${connectedSlots[i]
-                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
-                    : 'bg-white/[0.02] border-white/5 text-zinc-700'
-                  }`}
-              >
-                {i + 1}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Generate + Studio button row */}
-        <div className="flex gap-2">
-          <button
-            className="execute-btn flex-1 !py-2.5 !text-[10px]"
-            onClick={onRun}
-            disabled={status === 'running'}
-          >
-            {status === 'running'
-              ? <><Loader2 size={11} className="animate-spin" /><span className="ml-1.5">{isPro && nodeData.thinking ? 'THINKING...' : 'GENERATING...'}</span></>
-              : <><Sparkles size={11} /><span className="ml-1.5">GENERATE</span></>
-            }
-          </button>
-          <button
-            onClick={() => setShowStudio(true)}
-            title="Abrir NanoBanana Studio"
-            className="py-2.5 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest border border-yellow-500/40 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-colors flex items-center gap-1"
-          >
-            <Maximize2 size={11} /> Studio
-          </button>
-        </div>
+      {/* ── STUDIO BUTTON ─── */}
+      <div className="px-2 pb-2.5">
+        <button
+          onClick={() => setShowStudio(true)}
+          className="w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest
+                     flex items-center justify-center gap-1.5 transition-all
+                     border border-yellow-500/40 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 hover:border-yellow-400/60"
+        >
+          <Sparkles size={12} /> Abrir Studio
+        </button>
       </div>
 
       {/* ── Output handle ─── */}
