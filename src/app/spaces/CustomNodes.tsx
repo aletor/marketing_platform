@@ -795,7 +795,11 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
   // imageLayers are merged in as _isImageInput=true, so they can be dragged
   // and reordered. On save, we split them back out.
   const [layers, setLayers] = useState<ComposerLayer[]>(() => {
-    const imgAsLayers: ComposerLayer[] = imageLayers.map(il => ({
+    const imageInputIds = new Set(imageLayers.map((il: any) => il.id));
+    // Filter out position-override entries that were saved for image inputs
+    // (they have no _src and their id matches an actual image input)
+    const realInternalLayers = initLayers.filter(l => !imageInputIds.has(l.id));
+    const imgAsLayers: ComposerLayer[] = imageLayers.map((il: any) => ({
       id: il.id,
       type: 'image' as const,
       label: il.label || 'Image Input',
@@ -803,9 +807,11 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
       opacity: il.opacity ?? 1, visible: il.visible !== false, locked: false,
       _src: il.src, _isImageInput: true,
     } as any));
-    return [...imgAsLayers, ...initLayers];
+    return [...imgAsLayers, ...realInternalLayers];
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [dragLayerId, setDragLayerId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [drag, setDrag] = useState<{
     id: string; sx: number; sy: number;
     ix: number; iy: number; iw: number; ih: number; mode: string;
@@ -828,6 +834,21 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
     if (i <= 0) return prev;
     const n = [...prev]; [n[i], n[i - 1]] = [n[i - 1], n[i]]; return n;
   });
+
+  const handleLayerDrop = (targetId: string) => {
+    if (!dragLayerId || dragLayerId === targetId) { setDragLayerId(null); setDragOverId(null); return; }
+    setLayers(prev => {
+      const from = prev.findIndex(l => l.id === dragLayerId);
+      const to = prev.findIndex(l => l.id === targetId);
+      if (from === -1 || to === -1) return prev;
+      const n = [...prev];
+      const [moved] = n.splice(from, 1);
+      n.splice(to, 0, moved);
+      return n;
+    });
+    setDragLayerId(null);
+    setDragOverId(null);
+  };
 
   // ── Add shapes ─────────────────────────────────────────────────────────
   const addShape = (type: ComposerLayer['type'], extra: Partial<ComposerLayer> & Record<string, any> = {}) => {
@@ -853,7 +874,7 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
         e.preventDefault();
         return;
       }
-      const step = e.shiftKey ? 10 : 1;
+      const step = e.shiftKey ? 50 : 5;
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         setLayers(prev => prev.map(l => {
           if (l.id !== selectedId) return l;
@@ -1014,9 +1035,10 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
                   style={{ left: lx, top: ly, width: lw, height: lh, zIndex: idx, opacity: layer.opacity }}
                   onPointerDown={e => {
                     e.stopPropagation();
-                    setSelectedId(layer.id);
-                    if (!layer.locked)
+                    // Only start drag if this layer is already selected via the panel
+                    if (!layer.locked && selectedId === layer.id)
                       setDrag({ id: layer.id, sx: e.clientX, sy: e.clientY, ix: layer.x, iy: layer.y, iw: layer.w, ih: layer.h, mode: 'move' });
+                    // Do NOT select on canvas click — use layer panel to select
                   }}
                 >
                   {isImg && imgSrc
@@ -1066,7 +1088,12 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
                 return (
                   <div key={l.id}
                     onClick={() => setSelectedId(l.id)}
-                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border cursor-pointer transition-all group ${isSel ? 'bg-cyan-500/20 border-cyan-500/40 text-white' : 'bg-white/[0.03] border-white/5 text-white/50 hover:bg-white/5 hover:text-white/80'}`}
+                    draggable
+                    onDragStart={() => setDragLayerId(l.id)}
+                    onDragOver={e => { e.preventDefault(); setDragOverId(l.id); }}
+                    onDragLeave={() => setDragOverId(null)}
+                    onDrop={() => handleLayerDrop(l.id)}
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border cursor-pointer transition-all group ${isSel ? 'bg-cyan-500/20 border-cyan-500/40 text-white' : 'bg-white/[0.03] border-white/5 text-white/50 hover:bg-white/5 hover:text-white/80'} ${dragOverId === l.id ? 'border-cyan-400/60 bg-cyan-500/10' : ''}`}
                   >
                     {/* Thumbnail */}
                     <div className="w-5 h-5 rounded-md flex-shrink-0 border border-white/10 overflow-hidden flex items-center justify-center"
