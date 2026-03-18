@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Cheapest Gemini model with vision capability (text output only)
-const VISION_MODEL = "gemini-2.0-flash";
+// gemini-2.0-flash is deprecated for new users — use gemini-2.5-flash
+const VISION_MODEL = "gemini-2.5-flash";
 
 interface AreaChange {
   color: string;       // color name, e.g. "azul"
@@ -78,8 +79,8 @@ Devuelve SOLO el prompt, sin explicaciones ni texto adicional.`;
     const payload = {
       contents: [{ role: "user", parts }],
       generationConfig: {
-        responseModalities: ["TEXT"],
         temperature: 0.2,
+        // No responseModalities — text-only models don't need it (it's for image generation)
       },
     };
 
@@ -90,11 +91,14 @@ Devuelve SOLO el prompt, sin explicaciones ni texto adicional.`;
     });
 
     const data = await response.json();
+    console.log("[analyze-areas] Gemini response status:", response.status);
     if (data.error) {
+      console.error("[analyze-areas] Gemini API error:", JSON.stringify(data.error));
       return NextResponse.json({ error: data.error.message || "Gemini error" }, { status: 500 });
     }
 
     const text = data.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text || "";
+    console.log("[analyze-areas] Got text response, length:", text.length);
     if (!text) return NextResponse.json({ error: "No text response from AI" }, { status: 500 });
 
     return NextResponse.json({ prompt: text.trim() });

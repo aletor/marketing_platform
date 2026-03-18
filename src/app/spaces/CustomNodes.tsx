@@ -2544,6 +2544,7 @@ const NanoBananaStudio = memo(({
 
   // ── Change layers ────────────────────────────────────────────────────────
   const [changes, setChanges] = useState<NBChange[]>([]);
+  const [analyzingCall, setAnalyzingCall] = useState(false);
   const [callPreview, setCallPreview] = useState<{ colorMapUrl: string; fullPrompt: string } | null>(null);
   const [activeChangeId, setActiveChangeId] = useState<string|null>(null);
   const [addingChange, setAddingChange] = useState(false);
@@ -2809,8 +2810,6 @@ const NanoBananaStudio = memo(({
 
     setCallPreview({ colorMapUrl, fullPrompt });
   };
-
-  const [analyzingCall, setAnalyzingCall] = useState(false);
 
     const onGenerateFromCall = async (colorMapUrl: string, customPrompt: string) => {
     setCallPreview(null); // close preview
