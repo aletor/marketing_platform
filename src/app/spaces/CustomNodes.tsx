@@ -2779,13 +2779,54 @@ const NanoBananaStudio = memo(({
     let fullPrompt = '';
     try {
       const validChanges = changes.filter(c => c.paintData && c.description.trim());
+
+      // Build position metadata: center of each area as % of image (for AI spatial guidance)
+      const positionData: Record<string, { cx: number; cy: number }> = {};
+      for (const change of validChanges) {
+        if (!change.paintData) continue;
+        await new Promise<void>(resolve => {
+          const tmp2 = document.createElement('canvas');
+          tmp2.width = W; tmp2.height = H;
+          const tc2 = tmp2.getContext('2d')!;
+          const img2 = new Image();
+          img2.onload = () => {
+            tc2.drawImage(img2, 0, 0, W, H);
+            const pd2 = tc2.getImageData(0, 0, W, H);
+            let mx = W, my = H, Mx = 0, My = 0, found2 = false;
+            for (let y = 0; y < H; y++) {
+              for (let x = 0; x < W; x++) {
+                if (pd2.data[(y * W + x) * 4 + 3] > 30) {
+                  if (x < mx) mx = x; if (y < my) my = y;
+                  if (x > Mx) Mx = x; if (y > My) My = y;
+                  found2 = true;
+                }
+              }
+            }
+            if (found2) {
+              positionData[change.assignedColor.name] = {
+                cx: Math.round(((mx + Mx) / 2 / W) * 100),
+                cy: Math.round(((my + My) / 2 / H) * 100),
+              };
+            }
+            resolve();
+          };
+          img2.src = change.paintData!;
+        });
+      }
+
       const aiRes = await fetch('/api/gemini/analyze-areas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           baseImage: currentImage,
           colorMapImage: colorMapUrl,
-          changes: validChanges.map(c => ({ color: c.assignedColor.name, description: c.description.trim() })),
+          changes: validChanges.map(c => ({
+            color: c.assignedColor.name,
+            description: c.description.trim(),
+            // Position as % from top-left (helps AI cross-ref with base image)
+            posX: positionData[c.assignedColor.name]?.cx ?? null,
+            posY: positionData[c.assignedColor.name]?.cy ?? null,
+          })),
         }),
       });
       const aiJson = await aiRes.json();

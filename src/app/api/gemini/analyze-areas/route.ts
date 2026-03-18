@@ -7,6 +7,8 @@ const VISION_MODEL = "gemini-2.5-flash";
 interface AreaChange {
   color: string;       // color name, e.g. "azul"
   description: string; // what the user wants to do in this area
+  posX?: number | null; // center X as % of image width (0-100)
+  posY?: number | null; // center Y as % of image height (0-100)
 }
 
 async function parseImage(image: string): Promise<{ data: string; mimeType: string } | null> {
@@ -64,31 +66,36 @@ export async function POST(req: NextRequest) {
       if (parsed) parts.push({ inline_data: { mime_type: parsed.mimeType, data: parsed.data } });
     }
 
-    // 3. Analysis prompt
+    // 3. Analysis prompt — include position data for spatial accuracy
     const changeList = (changes as AreaChange[])
-      .map(c => `- Área ${c.color}: ${c.description}`)
+      .map(c => {
+        const pos = (c.posX != null && c.posY != null)
+          ? ` (posición en la imagen: ${c.posX}% desde la izquierda, ${c.posY}% desde arriba)`
+          : "";
+        return `- Área ${c.color}${pos}: ${c.description}`;
+      })
       .join("\n");
 
     const systemPrompt = `Eres un asistente experto en prompts para generación de imágenes con IA.
 
 Se te proporcionan dos imágenes:
 - IMAGEN 1: la imagen original/base
-- IMAGEN 2: un mapa de colores donde cada región de color sólido (azul, rojo, verde, naranja, amarillo, violeta, marrón, blanco, negro) señala un área específica
+- IMAGEN 2: un mapa de colores donde cada región de color sólido señala un área específica
 
-El usuario quiere hacer los siguientes cambios en cada zona marcada:
+El usuario quiere hacer los siguientes cambios. Para cada área se indica su COLOR y su POSICIÓN EXACTA en la imagen (porcentaje desde izquierda y desde arriba):
 ${changeList}
 
 Tu tarea:
-1. Observa la IMAGEN 1 y la IMAGEN 2 cuidadosamente
-2. Identifica qué objeto concreto de la IMAGEN 1 se corresponde con cada área de color de la IMAGEN 2
-3. Genera un prompt completo y preciso en español para NanaBanana (Gemini imagen), con este formato exacto:
+1. Para cada área, localiza en la IMAGEN 1 el objeto que está en esa posición exacta (usa las coordenadas porcentuales como guía principal)
+2. Identifica qué objeto concreto es ese — sé muy específico (no "el sujeto" sino "la señora de camisa blanca del centro", "el chico en skate de la izquierda", "el pato grande de la derecha", etc.)
+3. Genera un prompt en español para NanaBanana con este formato exacto:
 
 REFERENCIA 1: imagen base. Mantén todo lo que no se indica cambiar, conservando composición, iluminación y estilo.
 REFERENCIA 2: mapa de colores con áreas de cambio.
 
-[Una línea por cada cambio, formato: "En el área [color] de la referencia 2 (donde está [objeto identificado]): [instrucción concreta de cambio]"]
+[Una línea por cambio: "En el área [color] de la referencia 2 (donde está [objeto identificado precisamente]): [instrucción]"]
 
-IMPORTANTE: sé muy específico sobre el objeto identificado. No digas "el sujeto", di exactamente qué es (mosquito gigante, pato con gorra, chico en skate, cerdo volador, mujer paracaidista, etc.).
+ADVERTENCIA: NO confundas objetos cercanos. Si la posición dice 55% izquierda/45% arriba, busca el objeto en ESA posición exacta en la IMAGEN 1, no el objeto más cercano.
 
 Devuelve SOLO el prompt, sin explicaciones ni texto adicional.`;
 
