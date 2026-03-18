@@ -2538,12 +2538,21 @@ const NanoBananaStudio = memo(({
   // ── Generation state ────────────────────────────────────────────────────
   const [genStatus, setGenStatus] = useState<'idle'|'running'|'success'|'error'>('idle');
   const [progress, setProgress] = useState(0);
-  const [currentImage, setCurrentImage] = useState<string|null>(lastGenerated || initialImage);
   const [generatedOnce, setGeneratedOnce] = useState(!!lastGenerated);
-  const [reSendGenerated, setReSendGenerated] = useState(true);
+  const [reSendGenerated, setReSendGenerated] = useState(!!lastGenerated); // default ON only if already has generated image
+
+  // currentImage: the one to DISPLAY in studio (affected by reSendGenerated toggle)
+  const displayedImage = reSendGenerated ? (lastGenerated || initialImage) : initialImage;
+  const [currentImage, setCurrentImage] = useState<string|null>(displayedImage);
+
+  // ── Studio-local model/resolution overrides ──────────────────────────────
+  const [studioModelKey, setStudioModelKey] = useState(modelKey);
+  const [studioResolution, setStudioResolution] = useState(resolution);
 
   // ── Change layers ────────────────────────────────────────────────────────
   const [changes, setChanges] = useState<NBChange[]>([]);
+  // Prompt cache: only re-call AI when changes actually change
+  const [cachedPromptData, setCachedPromptData] = useState<{ changesKey: string; preview: { colorMapUrl: string; fullPrompt: string } } | null>(null);
   const [analyzingCall, setAnalyzingCall] = useState(false);
   const [callPreview, setCallPreview] = useState<{ colorMapUrl: string; fullPrompt: string } | null>(null);
   const [activeChangeId, setActiveChangeId] = useState<string|null>(null);
@@ -2584,8 +2593,17 @@ const NanoBananaStudio = memo(({
     return () => ro.disconnect();
   }, [recalcBounds]);
 
-  const isPro = modelKey === 'pro3';
-  const isFlash25 = modelKey === 'flash25';
+  // Update displayedImage when toggle changes
+  useEffect(() => {
+    if (reSendGenerated) {
+      setCurrentImage(lastGenerated || initialImage);
+    } else {
+      setCurrentImage(initialImage);
+    }
+  }, [reSendGenerated, lastGenerated, initialImage]);
+
+  const isPro = studioModelKey === 'pro3';
+  const isFlash25 = studioModelKey === 'flash25';
 
   // Block left sidebar hover while studio is fullscreen
   useEffect(() => {
@@ -2625,8 +2643,8 @@ const NanoBananaStudio = memo(({
           prompt: fullPrompt,
           images: refImages,
           aspect_ratio: aspectRatio,
-          resolution: isFlash25 ? '1k' : resolution,
-          model: modelKey,
+          resolution: isFlash25 ? '1k' : studioResolution,
+          model: studioModelKey,
           thinking: thinking && isPro,
         }),
       });
@@ -2665,6 +2683,7 @@ const NanoBananaStudio = memo(({
 
   const confirmChange = () => {
     if (!activeChangeId) return;
+    setCachedPromptData(null); // invalidate cache when change is updated
     setChanges(prev => prev.map(c => c.id === activeChangeId
       ? { ...c, paintData: pendingPaintRef.current, description: newDesc, targetObject: newTargetObject }
       : c
@@ -2683,6 +2702,7 @@ const NanoBananaStudio = memo(({
   };
 
   const deleteChange = (id: string) => {
+    setCachedPromptData(null); // invalidate cache
     setChanges(prev => prev.filter(c => c.id !== id));
     if (activeChangeId === id) { setActiveChangeId(null); setAddingChange(false); }
   };
@@ -2693,8 +2713,9 @@ const NanoBananaStudio = memo(({
 
   // ── Generate Call: build color-map image + full prompt ──────────────────
   const onGenerateCall = async () => {
-    if (changes.filter(c => c.paintData).length === 0) {
-      alert('añade al menos un cambio con área dibujada antes de generar la llamada.');
+    const validChanges = changes.filter(c => c.paintData && c.description.trim());
+    if (validChanges.length === 0) {
+      alert('Añade al menos un cambio con área dibujada y descripción antes de generar la llamada.');
       return;
     }
 
@@ -2773,6 +2794,16 @@ const NanoBananaStudio = memo(({
 
     const colorMapUrl = offscreen.toDataURL('image/png');
 
+    // ── Prompt cache: skip AI call if changes haven't changed ──────────────────
+    const changesKey = JSON.stringify(
+      validChanges.map(c => ({ id: c.id, desc: c.description, color: c.assignedColor.name, hasPaint: !!c.paintData }))
+    );
+    if (cachedPromptData && cachedPromptData.changesKey === changesKey) {
+      // No changes since last call — reuse cached preview (only update colorMap URL)
+      setCallPreview({ colorMapUrl, fullPrompt: cachedPromptData.preview.fullPrompt });
+      return;
+    }
+
     // ── Single AI call: Gemini Flash sees base image + color map + descriptions ──
     // Returns a complete, object-aware prompt in one shot.
     setAnalyzingCall(true);
@@ -2850,6 +2881,7 @@ const NanoBananaStudio = memo(({
     }
 
     setCallPreview({ colorMapUrl, fullPrompt });
+    setCachedPromptData({ changesKey, preview: { colorMapUrl, fullPrompt } });
   };
 
     const onGenerateFromCall = async (colorMapUrl: string, customPrompt: string) => {
@@ -2875,8 +2907,8 @@ const NanoBananaStudio = memo(({
           prompt: customPrompt,
           images: refImages,
           aspect_ratio: aspectRatio,
-          resolution: isFlash25 ? '1k' : resolution,
-          model: modelKey,
+          resolution: isFlash25 ? '1k' : studioResolution,
+          model: studioModelKey,
           thinking: thinking && isPro,
         }),
       });
@@ -2982,6 +3014,52 @@ const NanoBananaStudio = memo(({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+
+          {/* Model + Resolution selectors */}
+          <div className="p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] space-y-3">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Modelo</p>
+            <div className="grid grid-cols-1 gap-1.5">
+              {[
+                { key: 'flash25',  label: 'NanaBanana 1', sub: 'Rápido y económico', price: '~$0.003/img', color: '#6ee7b7' },
+                { key: 'flash31',  label: 'NanaBanana 2', sub: 'Calidad + velocidad', price: '~$0.006/img', color: '#60a5fa' },
+                { key: 'pro3',     label: 'NanaBanana Pro', sub: 'Máxima calidad', price: '~$0.05/img',  color: '#f59e0b' },
+              ].map(m => (
+                <button key={m.key}
+                  onClick={() => setStudioModelKey(m.key)}
+                  className={`flex items-center justify-between px-3 py-2 rounded-lg border text-left transition-all ${
+                    studioModelKey === m.key ? 'border-opacity-60' : 'border-white/[0.06] bg-transparent'
+                  }`}
+                  style={studioModelKey === m.key ? { borderColor: m.color + '99', background: m.color + '15' } : {}}
+                >
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-wider" style={{ color: studioModelKey === m.key ? m.color : '#777' }}>{m.label}</p>
+                    <p className="text-[8px] text-zinc-600">{m.sub}</p>
+                  </div>
+                  <span className="text-[8px] font-mono font-bold" style={{ color: studioModelKey === m.key ? m.color : '#555' }}>{m.price}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Resolution — only for non-flash25 */}
+            {studioModelKey !== 'flash25' && (
+              <div>
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">Resolución</p>
+                <div className="flex gap-1.5 flex-wrap">
+                  {['1k', '2k', '4k'].map(r => (
+                    <button key={r}
+                      onClick={() => setStudioResolution(r)}
+                      className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all ${
+                        studioResolution === r
+                          ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300'
+                          : 'bg-transparent border-white/[0.07] text-zinc-600 hover:text-zinc-400'
+                      }`}
+                    >{r}</button>
+                  ))}
+                </div>
+                <p className="text-[8px] text-zinc-700 mt-1">Flash25 usa 1k fijo · Pro soporta hasta 4k</p>
+              </div>
+            )}
+          </div>
 
           {/* Re-send toggle */}
           {generatedOnce && (
