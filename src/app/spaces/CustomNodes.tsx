@@ -554,6 +554,35 @@ export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) =
 
   // All layers for rendering (internal first = bottom, image inputs on top)
   const allLayersForRender = useMemo(() => {
+    // Build a map of live image layers by id for quick lookup
+    const imageMap = new Map(imageLayersFromInputs.map(il => [il.id, il]));
+    // Check if we have any saved order stubs / mixed array
+    const hasOrderInfo = internalLayers.some(l => (l as any)._orderStub || imageMap.has(l.id));
+
+    if (hasOrderInfo) {
+      // Reconstruct z-order from saved mixed array:
+      // replace image stubs with live image data, keep internal layers in place
+      const seen = new Set<string>();
+      const ordered = internalLayers
+        .map(l => {
+          if ((l as any)._orderStub || imageMap.has(l.id)) {
+            const live = imageMap.get(l.id);
+            if (!live || seen.has(l.id)) return null;
+            seen.add(l.id);
+            return { ...live, visible: l.visible !== false ? live.visible : false };
+          }
+          return l; // internal layer — keep as-is
+        })
+        .filter((l): l is ComposerLayer => l !== null && l.visible !== false);
+
+      // Append any live image inputs not yet in the saved order (new connections)
+      imageLayersFromInputs.forEach(il => {
+        if (!seen.has(il.id) && il.visible !== false) ordered.push(il);
+      });
+      return ordered;
+    }
+
+    // Fallback (no saved order yet): internal bottom, images on top
     const int = internalLayers.filter(l => l.visible !== false);
     const img = imageLayersFromInputs.filter(l => l.visible !== false);
     return [...int, ...img];
