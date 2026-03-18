@@ -3718,10 +3718,10 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}
          style={{ minWidth: 240 }}>
-      <NodeResizer minWidth={240} minHeight={300} isVisible={selected} />
+      <NodeResizer minWidth={240} minHeight={280} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana" />
 
-      {/* ── Ref image handles (4 slots) ─── */}
+      {/* ── Handles ── */}
       {REF_SLOTS.map((slot, i) => (
         <div key={slot.id} className="handle-wrapper handle-left"
              style={{ top: slot.top, opacity: i === 0 || connectedSlots[i - 1] ? 1 : 0.35 }}>
@@ -3734,107 +3734,107 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
           </span>
         </div>
       ))}
-
-      {/* ── Prompt handle ─── */}
-      <div className="handle-wrapper handle-left" style={{ top: '92%' }}>
+      <div className="handle-wrapper handle-left" style={{ top: '94%' }}>
         <Handle type="target" position={Position.Left} id="prompt" className="handle-prompt" />
         <span className="handle-label">Prompt</span>
       </div>
+      <div className="handle-wrapper handle-right" style={{ top: '50%' }}>
+        <span className="handle-label">Image out</span>
+        <Handle type="source" position={Position.Right} id="image" className="handle-image" />
+      </div>
 
-      {/* ── Header ─── */}
-      <div className="node-header bg-gradient-to-r from-yellow-600/20 to-orange-600/20">
-        <Sparkles size={14} className="text-yellow-400" />
-        <span className="flex-1">Nano Banana</span>
-        <div className={`node-badge ${modelInfo.bg} ${modelInfo.color} border ${modelInfo.borderColor}`}>
+      {/* ── Compact header strip ── */}
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-black/10"
+           style={{ background: 'rgba(0,0,0,0.06)' }}>
+        <Sparkles size={11} className="text-amber-500 flex-shrink-0" />
+        <span className="text-[9px] font-black uppercase tracking-wider text-zinc-500 flex-1">Nano Banana</span>
+        <div className={`text-[7px] font-black px-1.5 py-0.5 rounded-md ${modelInfo.bg} ${modelInfo.color} border ${modelInfo.borderColor}`}>
           {modelInfo.badge}
         </div>
       </div>
 
-      {/* ── INPUT IMAGE (ref slot 0) ─── */}
-      <div className="px-2 pt-2 pb-1">
-        <span className="text-[7px] font-black text-zinc-600 uppercase tracking-widest">Imagen base</span>
-      </div>
-      <div className="mx-2 mb-2 rounded-lg overflow-hidden bg-black/40 border border-white/[0.06]"
-           style={{ height: 72 }}>
-        {refImgPreview ? (
-          <img src={refImgPreview} alt="Input" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center gap-1.5 opacity-25">
-            <ImageIcon size={16} className="text-zinc-500" />
-            <span className="text-[7px] font-black uppercase tracking-widest text-zinc-600">Conectar imagen</span>
-          </div>
-        )}
-      </div>
+      {/* ── Main image area (flex-1, fills all remaining height) ── */}
+      <div className="relative flex-1 overflow-hidden group/out" style={{ minHeight: 160 }}>
 
-      {/* ── SEPARATOR ─── */}
-      <div className="mx-2 border-t border-white/[0.05] mb-2" />
-
-      {/* ── OUTPUT IMAGE (generated) ─── */}
-      <div className="px-2 pb-1">
-        <span className="text-[7px] font-black text-zinc-600 uppercase tracking-widest">Resultado generado</span>
-      </div>
-      <div className="mx-2 mb-2 rounded-lg overflow-hidden bg-black/40 border border-white/[0.06] relative group/out"
-           style={{ height: 120 }}>
+        {/* OUTPUT image — fills entire area */}
         {result ? (
           <>
             <img src={result} alt="Generated" className="w-full h-full object-cover" />
-            {/* Hover overlay with expand */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent
-                            opacity-0 group-hover/out:opacity-100 transition-opacity pointer-events-none" />
+            {/* Hover gradient + actions */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent
+                            opacity-0 group-hover/out:opacity-100 transition-opacity" />
             <button
               onClick={() => setShowFullSize(true)}
-              className="absolute bottom-1.5 right-1.5 bg-black/60 hover:bg-black/90 text-white
-                         text-[7px] font-black px-2 py-1 rounded-lg flex items-center gap-1
-                         opacity-0 group-hover/out:opacity-100 transition-opacity pointer-events-auto"
+              className="absolute top-2 right-2 bg-black/60 hover:bg-black/90 text-white
+                         text-[7px] font-black px-2 py-1 rounded flex items-center gap-1
+                         opacity-0 group-hover/out:opacity-100 transition-opacity"
             >
-              <Maximize2 size={9} /> EXPAND
+              <Maximize2 size={8} /> EXPAND
             </button>
-            <span className="absolute bottom-1.5 left-1.5 text-[6px] font-black uppercase tracking-wider
-                             text-white/50 bg-black/50 px-1.5 py-0.5 rounded opacity-0 group-hover/out:opacity-100 transition-opacity">
+            {/* Model info badge on hover */}
+            <span className="absolute top-2 left-2 text-[6px] font-black uppercase text-white/70
+                             bg-black/50 px-1.5 py-0.5 rounded
+                             opacity-0 group-hover/out:opacity-100 transition-opacity">
               {modelInfo.badge} · {nodeData.aspect_ratio || '16:9'}
             </span>
           </>
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-25">
-            <Sparkles size={20} className="text-yellow-500" />
-            <span className="text-[7px] font-black uppercase tracking-widest text-zinc-500 text-center leading-snug">
-              Abre Studio<br/>para generar
-            </span>
+          /* No output yet — show input image faded OR placeholder */
+          refImgPreview ? (
+            <>
+              <img src={refImgPreview} alt="Input" className="w-full h-full object-cover opacity-30" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+                <Sparkles size={22} className="text-amber-500/60" />
+                <span className="text-[8px] font-black uppercase tracking-wider text-zinc-500">Abre Studio</span>
+              </div>
+            </>
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2"
+                 style={{ background: 'rgba(0,0,0,0.04)' }}>
+              <ImageIcon size={28} className="text-zinc-400/50" />
+              <span className="text-[7px] font-black uppercase tracking-widest text-zinc-400/60 text-center leading-tight">
+                Conecta Ref 1<br/>y abre Studio
+              </span>
+            </div>
+          )
+        )}
+
+        {/* INPUT image badge — bottom-left corner overlay (always visible when connected) */}
+        {refImgPreview && result && (
+          <div className="absolute bottom-2 left-2 rounded overflow-hidden border-2 border-white/60 shadow-lg"
+               style={{ width: 56, height: 40 }}>
+            <img src={refImgPreview} alt="ref" className="w-full h-full object-cover" />
+            <span className="absolute bottom-0 left-0 right-0 text-[5px] font-black uppercase text-white bg-black/60 text-center py-px">BASE</span>
           </div>
         )}
 
         {/* Progress bar while generating */}
         {status === 'running' && (
           <div className="absolute bottom-0 left-0 right-0">
-            <div className="w-full bg-black/60 h-0.5">
+            <div className="w-full h-1 bg-black/40">
               <div className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-500"
                    style={{ width: `${progress}%` }} />
             </div>
-            <p className="text-[6px] text-yellow-400/80 font-black text-center uppercase tracking-widest
-                          py-0.5 bg-black/70 animate-pulse">
+            <p className="text-[6px] text-yellow-600 font-black text-center uppercase tracking-widest
+                          py-0.5 bg-white/70 animate-pulse">
               {isPro && nodeData.thinking ? `Thinking… ${Math.round(progress)}%` : `Generating… ${Math.round(progress)}%`}
             </p>
           </div>
         )}
       </div>
 
-      {/* ── STUDIO BUTTON ─── */}
-      <div className="px-2 pb-2.5">
-        <button
-          onClick={() => setShowStudio(true)}
-          className="w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest
-                     flex items-center justify-center gap-1.5 transition-all
-                     border border-yellow-500/40 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 hover:border-yellow-400/60"
-        >
-          <Sparkles size={12} /> Abrir Studio
-        </button>
-      </div>
+      {/* ── Studio button — compact bottom strip ── */}
+      <button
+        onClick={() => setShowStudio(true)}
+        className="w-full flex items-center justify-center gap-1.5 py-2
+                   text-[9px] font-black uppercase tracking-widest transition-all
+                   bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 border-t border-amber-500/20
+                   hover:text-amber-700"
+      >
+        <Sparkles size={10} /> Abrir Studio
+      </button>
 
-      {/* ── Output handle ─── */}
-      <div className="handle-wrapper handle-right" style={{ top: '50%' }}>
-        <span className="handle-label">Image out</span>
-        <Handle type="source" position={Position.Right} id="image" className="handle-image" />
-      </div>
+
 
       {/* ── NanoBanana Studio ── */}
       {showStudio && (() => {
