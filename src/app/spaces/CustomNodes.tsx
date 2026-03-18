@@ -729,9 +729,9 @@ export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) =
         <div className="node-badge">{allLayersForRender.length} layers</div>
         <button
           onClick={() => setIsStudioOpen(true)}
-          className="ml-auto nodrag bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-tight hover:bg-cyan-500/30 transition-all flex items-center gap-1"
+          className="node-badge !bg-cyan-500/20 !text-cyan-400 hover:!bg-cyan-500/40 transition-colors pointer-events-auto cursor-pointer flex items-center gap-1.5 border-none outline-none nodrag"
         >
-          <Maximize2 size={8} /> Studio
+          <Maximize2 size={10} /> STUDIO
         </button>
       </div>
 
@@ -3743,13 +3743,19 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
         <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
 
-      {/* ── Header — standard node-header class matches all other nodes ── */}
+      {/* ── Header ── */}
       <div className="node-header bg-gradient-to-r from-yellow-600/20 to-orange-600/20">
         <Sparkles size={14} className="text-yellow-500 flex-shrink-0" />
         <span className="flex-1 text-yellow-700">Nano Banana</span>
         <div className={`node-badge ${modelInfo.bg} ${modelInfo.color} border ${modelInfo.borderColor}`}>
           {modelInfo.badge}
         </div>
+        <button
+          onClick={() => setShowStudio(true)}
+          className="node-badge !bg-yellow-500/20 !text-yellow-600 hover:!bg-yellow-500/35 transition-colors pointer-events-auto cursor-pointer flex items-center gap-1.5 border-none outline-none nodrag"
+        >
+          <Maximize2 size={10} /> STUDIO
+        </button>
       </div>
 
       {/* ── Main image area (flex-1, fills all remaining height) ── */}
@@ -3822,16 +3828,7 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
         )}
       </div>
 
-      {/* ── Studio button — compact bottom strip ── */}
-      <button
-        onClick={() => setShowStudio(true)}
-        className="w-full flex items-center justify-center gap-1.5 py-2
-                   text-[9px] font-black uppercase tracking-widest transition-all
-                   bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 border-t border-amber-500/20
-                   hover:text-amber-700"
-      >
-        <Sparkles size={10} /> Abrir Studio
-      </button>
+
 
 
 
