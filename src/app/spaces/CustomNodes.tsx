@@ -3743,12 +3743,11 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
         <Handle type="source" position={Position.Right} id="image" className="handle-image" />
       </div>
 
-      {/* ── Compact header strip ── */}
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-black/10"
-           style={{ background: 'rgba(0,0,0,0.06)' }}>
-        <Sparkles size={11} className="text-amber-500 flex-shrink-0" />
-        <span className="text-[9px] font-black uppercase tracking-wider text-zinc-500 flex-1">Nano Banana</span>
-        <div className={`text-[7px] font-black px-1.5 py-0.5 rounded-md ${modelInfo.bg} ${modelInfo.color} border ${modelInfo.borderColor}`}>
+      {/* ── Header — standard node-header class matches all other nodes ── */}
+      <div className="node-header bg-gradient-to-r from-yellow-600/20 to-orange-600/20">
+        <Sparkles size={14} className="text-yellow-500 flex-shrink-0" />
+        <span className="flex-1 text-yellow-700">Nano Banana</span>
+        <div className={`node-badge ${modelInfo.bg} ${modelInfo.color} border ${modelInfo.borderColor}`}>
           {modelInfo.badge}
         </div>
       </div>
