@@ -177,27 +177,39 @@ function useNodeCollapse(id: string, data: any) {
         // EXPAND: restore saved dimensions
         const savedH = n.data._savedH;
         const savedW = n.data._savedW;
+        const newStyle = { ...n.style };
+        // Restore exact saved values OR delete the constraint entirely so the
+        // node falls back to its content / NodeResizer minimum
+        if (savedH !== undefined) newStyle.height = savedH;
+        else delete newStyle.height;
+        if (savedW !== undefined) newStyle.width = savedW;
+        // Always clear the forced minHeight we set during collapse
+        delete newStyle.minHeight;
         return {
           ...n,
-          style: {
-            ...n.style,
-            height: savedH !== undefined ? savedH : undefined,
-            width: savedW !== undefined ? savedW : n.style?.width,
-            minHeight: undefined, // clear collapse override
-          },
+          style: newStyle,
           data: { ...n.data, collapsed: false, _savedH: undefined, _savedW: undefined },
         };
       } else {
-        // COLLAPSE: save current dimensions, force to header height
-        const currentH = n.style?.height ?? (n as any).measured?.height ?? 300;
-        const currentW = n.style?.width ?? (n as any).measured?.width;
+        // COLLAPSE: save current dimensions before squishing to header height
+        // Prefer style values (user-resized), then measured (auto-sized), then defaults
+        const currentH =
+          n.style?.height ??
+          (n as any).measured?.height ??
+          300;
+        const currentW =
+          n.style?.width ??
+          (n as any).measured?.width;
+
         return {
           ...n,
           style: {
             ...n.style,
             height: COLLAPSED_H,
-            minHeight: COLLAPSED_H, // override NodeResizer's minHeight enforcement
-            width: currentW,        // keep width unchanged
+            // NodeResizer enforces its own minHeight via the wrapper style;
+            // we override it here at the reactflow node level.
+            minHeight: COLLAPSED_H,
+            ...(currentW !== undefined ? { width: currentW } : {}),
           },
           data: { ...n.data, collapsed: true, _savedH: currentH, _savedW: currentW },
         };
@@ -454,7 +466,7 @@ export const UrlImageNode = memo(({ id, data, selected }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node url-image-node border-cyan-500/30 ${loading ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 280, minHeight: 320 }}>
+    <div className={`custom-node url-image-node border-cyan-500/30 ${loading ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 280 }}>
       <NodeResizer minWidth={280} minHeight={320} keepAspectRatio isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Image Search" />
       <div className="node-header text-cyan-400">
@@ -710,7 +722,7 @@ export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) =
   const selectedId = nodeData.selectedLayerId;
 
   return (
-    <div className={`custom-node composer-node ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 340, minHeight: 300 }}>
+    <div className={`custom-node composer-node ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 340 }}>
       <NodeResizer minWidth={340} minHeight={300} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Composer" />
 
@@ -875,7 +887,25 @@ interface ComposerStudioProps {
 }
 
 const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClose }: ComposerStudioProps) => {
-  const [layers, setLayers] = useState<ComposerLayer[]>(initLayers);
+  // Merge imageLayers into a single unified layer list tagged with _isImageInput
+  // so they can be positioned/reordered just like internal layers.
+  const [layers, setLayers] = useState<ComposerLayer[]>(() => {
+    const imgAsLayers: ComposerLayer[] = imageLayers.map(il => ({
+      id: il.id,
+      type: 'image' as const,
+      label: il.label || il.id,
+      x: il.x ?? 0,
+      y: il.y ?? 0,
+      w: il.w ?? 960,
+      h: il.h ?? 540,
+      opacity: il.opacity ?? 1,
+      visible: il.visible !== false,
+      locked: il.locked ?? false,
+      _src: il.src,          // store original src
+      _isImageInput: true,   // flag to identify on save
+    } as any));
+    return [...imgAsLayers, ...initLayers];
+  });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drag, setDrag] = useState<{ id: string; sx: number; sy: number; ix: number; iy: number; iw: number; ih: number; mode: string } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -884,19 +914,25 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!selectedId) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Hard-delete: remove layer entirely
+        setLayers(prev => prev.filter(l => l.id !== selectedId));
+        setSelectedId(null);
+        e.preventDefault();
+        return;
+      }
       const step = e.shiftKey ? 10 : 1;
-      setLayers(prev => prev.map(l => {
-        if (l.id !== selectedId) return l;
-        if (e.key === 'ArrowUp') return { ...l, y: l.y - step };
-        if (e.key === 'ArrowDown') return { ...l, y: l.y + step };
-        if (e.key === 'ArrowLeft') return { ...l, x: l.x - step };
-        if (e.key === 'ArrowRight') return { ...l, x: l.x + step };
-        if (e.key === 'Delete' || e.key === 'Backspace') {
-          return { ...l, visible: false }; // soft delete via visibility
-        }
-        return l;
-      }));
-      e.preventDefault();
+      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+        setLayers(prev => prev.map(l => {
+          if (l.id !== selectedId) return l;
+          if (e.key === 'ArrowUp') return { ...l, y: l.y - step };
+          if (e.key === 'ArrowDown') return { ...l, y: l.y + step };
+          if (e.key === 'ArrowLeft') return { ...l, x: l.x - step };
+          if (e.key === 'ArrowRight') return { ...l, x: l.x + step };
+          return l;
+        }));
+        e.preventDefault();
+      }
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
@@ -942,13 +978,13 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
   };
   const addColor = () => {
     const l: ComposerLayer = { id: `color-${Date.now()}`, type: 'color', label: 'Solid Color', x: 0, y: 0, w: 1920, h: 1080, color: '#1e293b', opacity: 1, visible: true, locked: false };
-    setLayers(prev => [l, ...prev]);
+    setLayers(prev => [...prev, l]);
     setSelectedId(l.id);
   };
 
   const selectedLayer = layers.find(l => l.id === selectedId);
 
-  const allDisplayLayers = [...layers, ...imageLayers].filter(l => l.visible !== false);
+  const allDisplayLayers = layers.filter(l => l.visible !== false);
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex flex-col" onPointerDown={() => setSelectedId(null)}>
@@ -960,7 +996,11 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
         <button onClick={addColor} className="nodrag text-[9px] font-black px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors">+ Color</button>
         <button onClick={addRect} className="nodrag text-[9px] font-black px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors flex items-center gap-1"><Square size={9} /> Rect</button>
         <div className="ml-auto flex items-center gap-3">
-          <button onClick={() => { onUpdateLayers(layers); onClose(); }} className="bg-cyan-500 hover:bg-cyan-400 text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all">
+          <button onClick={() => {
+            // Split back: only save non-image-input layers as internal layers
+            onUpdateLayers(layers.filter((l: any) => !l._isImageInput));
+            onClose();
+          }} className="bg-cyan-500 hover:bg-cyan-400 text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all">
             Save & Close
           </button>
           <button onClick={onClose} className="text-white/40 hover:text-white transition-colors"><X size={18} /></button>
@@ -982,12 +1022,13 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
             onPointerDown={() => setSelectedId(null)}
           >
             {allDisplayLayers.map((layer, idx) => {
-              const isImg = !!layer.src;
+              const isImg = !!(layer as any)._src || !!(layer as any).src || !!(layer as any)._isImageInput;
+              const imgSrc = (layer as any)._src || (layer as any).src;
               const isSel = selectedId === layer.id;
               const lx = (layer.x / 1920) * 100;
               const ly = (layer.y / 1080) * 100;
-              const lw = isImg && !layer.w ? '40%' : layer.w ? `${(layer.w / 1920) * 100}%` : '100%';
-              const lh = isImg ? 'auto' : layer.h ? `${(layer.h / 1080) * 100}%` : '100%';
+              const lw = layer.w ? `${(layer.w / 1920) * 100}%` : '100%';
+              const lh = layer.h ? `${(layer.h / 1080) * 100}%` : '100%';
               const bgColor = layer.fill || layer.color;
 
               return (
@@ -998,7 +1039,7 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
                   onPointerDown={(e) => { e.stopPropagation(); setSelectedId(layer.id); if (!layer.locked) setDrag({ id: layer.id, sx: e.clientX, sy: e.clientY, ix: layer.x, iy: layer.y, iw: layer.w, ih: layer.h, mode: 'move' }); }}
                 >
                   {isImg ? (
-                    <img src={layer.src} className="w-full h-auto block pointer-events-none" alt="" />
+                    <img src={imgSrc} className="w-full h-full object-contain block pointer-events-none" alt="" />
                   ) : (
                     <div className="w-full h-full" style={{ backgroundColor: bgColor || '#888', borderRadius: layer.radius ? `${layer.radius}px` : 0 }} />
                   )}
@@ -1030,27 +1071,27 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
           <div className="p-3 border-b border-white/5">
             <div className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-2">Layers</div>
             <div className="space-y-1">
-              {[...layers].reverse().map(l => (
+              {[...layers].reverse().map(l => {
+                const isImgInput = (l as any)._isImageInput;
+                return (
                 <div key={l.id} onClick={() => setSelectedId(l.id)}
                   className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border cursor-pointer transition-all ${selectedId === l.id ? 'bg-cyan-500/20 border-cyan-500/30 text-white' : 'bg-white/[0.02] border-white/5 text-white/50 hover:bg-white/5'}`}>
-                  <div className="w-3 h-3 rounded-sm border border-white/10 flex-shrink-0" style={{ backgroundColor: l.fill || l.color || '#888' }} />
+                  {isImgInput
+                    ? <ImageIcon size={9} className="flex-shrink-0 text-pink-400" />
+                    : <div className="w-3 h-3 rounded-sm border border-white/10 flex-shrink-0" style={{ backgroundColor: (l as any).fill || (l as any).color || '#888' }} />
+                  }
                   <span className="text-[9px] font-bold flex-1 truncate">{l.label}</span>
                   <button onClick={(e) => { e.stopPropagation(); setLayers(prev => prev.map(x => x.id === l.id ? { ...x, visible: !x.visible } : x)); }} className="opacity-40 hover:opacity-100">
                     {l.visible !== false ? <Eye size={9} /> : <EyeOff size={9} />}
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); setLayers(prev => prev.filter(x => x.id !== l.id)); if (selectedId === l.id) setSelectedId(null); }} className="opacity-40 hover:opacity-100 hover:text-rose-400">
-                    <Trash2 size={9} />
-                  </button>
+                  {!isImgInput && (
+                    <button onClick={(e) => { e.stopPropagation(); setLayers(prev => prev.filter(x => x.id !== l.id)); if (selectedId === l.id) setSelectedId(null); }} className="opacity-40 hover:opacity-100 hover:text-rose-400">
+                      <Trash2 size={9} />
+                    </button>
+                  )}
                 </div>
-              ))}
-              {imageLayers.map(l => (
-                <div key={l.id} onClick={() => setSelectedId(l.id)}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border cursor-pointer transition-all ${selectedId === l.id ? 'bg-cyan-500/20 border-cyan-500/30 text-white' : 'bg-white/[0.02] border-white/5 text-white/50 hover:bg-white/5'}`}>
-                  <ImageIcon size={9} className="flex-shrink-0 text-pink-400" />
-                  <span className="text-[9px] font-bold flex-1 truncate">{l.label}</span>
-                  <Eye size={9} className="opacity-40" />
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -1644,7 +1685,7 @@ export const PromptNode = memo(({ id, data, selected }: NodeProps<any>) => {
   const { collapsed: _nc, toggle: _nct } = useNodeCollapse(id, data);
   const { setNodes } = useReactFlow();
   return (
-    <div className={`custom-node prompt-node ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 280, minHeight: 160 }}>
+    <div className={`custom-node prompt-node ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 280 }}>
       <NodeResizer minWidth={280} minHeight={160} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Prompt" />
       <div className="node-header">
@@ -1701,7 +1742,7 @@ export const ConcatenatorNode = memo(({ id, data, selected }: NodeProps<any>) =>
   const handleIds = ['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'];
 
   return (
-    <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 240, minHeight: 180 }}>
+    <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 240 }}>
       <NodeResizer minWidth={240} minHeight={180} maxWidth={600} maxHeight={520} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Concatenator" />
       {handleIds.map((hId: any, index: number) => (
@@ -1789,7 +1830,7 @@ export const EnhancerNode = memo(({ id, data, selected }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 280, minHeight: 200 }}>
+    <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 280 }}>
       <NodeResizer minWidth={280} minHeight={200} maxWidth={620} maxHeight={660} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Enhancer" />
 
@@ -1912,7 +1953,7 @@ export const GrokNode = memo(({ id, data, selected }: NodeProps<any>) => {
   };
 
   return (
-    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 300, minHeight: 280 }}>
+    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 300 }}>
       <NodeResizer minWidth={300} minHeight={280} maxWidth={620} maxHeight={620} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Grok Imagine" />
       <div className="handle-wrapper handle-left" style={{ top: '30%' }}>
@@ -2076,7 +2117,7 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`}
-         style={{ minWidth: 320, minHeight: 350 }}>
+         style={{ minWidth: 320 }}>
       <NodeResizer minWidth={320} minHeight={350} keepAspectRatio isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana 2" />
 
@@ -2383,7 +2424,7 @@ export const TextOverlayNode = memo(({ id, data, selected }: NodeProps<any>) => 
   }, [text, fontFamily, fontSize, color, fontWeight, textAlign, canvasW, canvasH, id, setNodes]);
 
   return (
-    <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 300, minHeight: 280 }}>
+    <div className={`custom-node tool-node ${_nc ? 'node-collapsed' : ''}` } style={{ minWidth: 300 }}>
       <NodeResizer minWidth={300} minHeight={280} maxWidth={700} maxHeight={720} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Text Overlay" />
 
@@ -2652,7 +2693,7 @@ export const BackgroundRemoverNode = memo(({ id, data, selected }: NodeProps<any
   };
 
   return (
-    <div className={`custom-node mask-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 320, minHeight: 320 }}>
+    <div className={`custom-node mask-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 320 }}>
       <NodeResizer minWidth={320} minHeight={320} maxWidth={700} maxHeight={700} isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Background Remover" />
       <div className="handle-wrapper handle-left">
@@ -3337,7 +3378,7 @@ export const MediaDescriberNode = memo(({ id, data, selected }: NodeProps<any>) 
   };
 
   return (
-    <div className={`custom-node describer-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 300, minHeight: 300 }}>
+    <div className={`custom-node describer-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 300 }}>
       <NodeResizer minWidth={300} minHeight={300} maxWidth={700} maxHeight={720} isVisible={selected && !_nc} />
       <div className="handle-wrapper handle-left">
         <Handle type="target" position={Position.Left} id="media" />
@@ -3516,7 +3557,7 @@ export const GeminiVideoNode = memo(({ id, data, selected }: NodeProps<any>) => 
   };
 
   return (
-    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 320, minHeight: 320 }}>
+    <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''} ${_nc ? 'node-collapsed' : ''}`} style={{ minWidth: 320 }}>
       <NodeResizer minWidth={320} minHeight={320} keepAspectRatio isVisible={selected && !_nc} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Gemini Video" />
 
