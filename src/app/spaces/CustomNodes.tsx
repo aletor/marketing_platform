@@ -3708,7 +3708,8 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
   // Preview of connected ref slot 0 (the base image)
   const refImgPreview = (() => {
-    const edge = edges.find(e => e.target === id && e.targetHandle === 'ref0');
+    // REF_SLOTS[0].id === 'image' — the first/main reference slot
+    const edge = edges.find(e => e.target === id && e.targetHandle === 'image');
     const srcNode = edge ? nodes.find(n => n.id === edge.source) : null;
     const v = srcNode?.data?.value;
     return typeof v === 'string' ? v : null;
@@ -3716,7 +3717,8 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
 
   return (
     <div className={`custom-node processor-node ${status === 'running' ? 'node-glow-running' : ''}`}
-         style={{ minWidth: 240, width: 240 }}>
+         style={{ minWidth: 240 }}>
+      <NodeResizer minWidth={240} minHeight={300} isVisible={selected} />
       <NodeLabel id={id} label={nodeData.label} defaultLabel="Nano Banana" />
 
       {/* ── Ref image handles (4 slots) ─── */}
