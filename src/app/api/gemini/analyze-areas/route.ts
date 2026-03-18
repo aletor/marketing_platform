@@ -9,8 +9,9 @@ interface AreaChange {
   description: string;
   posX?: number | null;
   posY?: number | null;
-  paintData?: string | null;      // data:image/png;base64,...
-  assignedColorHex?: string;      // e.g. "#ff0000"
+  paintData?: string | null;         // data:image/png;base64,...
+  assignedColorHex?: string;         // e.g. "#ff0000"
+  referenceImageData?: string | null; // data URL of visual reference uploaded by user
 }
 
 async function parseImage(image: string): Promise<{ data: string; mimeType: string } | null> {
@@ -144,12 +145,17 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Build prompt
-    const changeList = (changes as AreaChange[])
+    const typedChanges = changes as AreaChange[];
+    const hasAnyRef = typedChanges.some(c => c.referenceImageData);
+    const changeList = typedChanges
       .map(c => {
         const pos = (c.posX != null && c.posY != null)
           ? ` (posición: ${c.posX}% horizontal, ${c.posY}% vertical desde arriba)`
           : "";
-        return `- Trazo de color ${c.color}${pos}: ${c.description}`;
+        const refNote = c.referenceImageData
+          ? ` [TIENE REFERENCIA VISUAL: celda ${c.color.toUpperCase()} en la IMAGEN 3 (grid de referencias)]`
+          : "";
+        return `- Trazo de color ${c.color}${pos}: ${c.description}${refNote}`;
       })
       .join("\n");
 
@@ -157,11 +163,19 @@ export async function POST(req: NextRequest) {
       ? "- IMAGEN 2: la imagen original con trazos de pintura en colores sólidos superpuestos. Los trazos indican EXACTAMENTE los elementos que el usuario quiere modificar."
       : "- IMAGEN 2: mapa abstracto de colores sobre fondo negro. Las manchas de color indican las áreas seleccionadas.";
 
+    const imagen3Desc = hasAnyRef
+      ? "\n- IMAGEN 3: grid de referencias visuales. Cada celda tiene una cabecera del color del cambio y la imagen de referencia visual que el usuario quiere usar como guía de estilo."
+      : "";
+
+    const referenceOutputLine = hasAnyRef
+      ? "\nREFERENCIA 3: grid de referencias visuales — cada celda etiquetada con el color del cambio."
+      : "";
+
     const systemPrompt = `Eres un asistente experto en prompts para generación de imágenes con IA.
 
-Se te proporcionan dos imágenes:
+Se te proporcionan ${hasAnyRef ? "tres" : "dos"} imágenes:
 - IMAGEN 1: la imagen original/base
-${imagenDesc}
+${imagenDesc}${imagen3Desc}
 
 Cambios solicitados:
 ${changeList}
@@ -169,16 +183,18 @@ ${changeList}
 Tu tarea:
 1. Para cada trazo de color, identifica en la IMAGEN 1 el objeto ESPECÍFICO que está ${useMarked ? "DEBAJO/ENCIMA del trazo pintado en la IMAGEN 2" : "en esa posición según el mapa de la IMAGEN 2"}.
 2. Sé EXTREMADAMENTE específico. Nunca digas "el sujeto", "la persona", "el objeto". Di: "la persona tumbada en la arena con ropa de baño azul a la izquierda", "el chico rubio en skate", "la hamaca vacía roja sobre la arena", etc.
-3. Genera el prompt con este formato exacto:
+3. Si un cambio tiene REFERENCIA VISUAL (nota [TIENE REFERENCIA VISUAL] en la lista), añade en esa instrucción: "siguiendo el estilo visual de la celda [COLOR] de la REFERENCIA 3".
+4. Genera el prompt con este formato exacto:
 
 REFERENCIA 1: imagen base. Mantén todo lo que no se indica cambiar, conservando composición, iluminación y estilo.
-REFERENCIA 2: mapa de colores con áreas de cambio.
+REFERENCIA 2: mapa de colores con áreas de cambio.${referenceOutputLine}
 
-[Para cada cambio: "En el área [color] de la referencia 2 (donde está [descripción muy específica del objeto]): [instrucción]"]
+[Para cada cambio: "En el área [color] de la referencia 2 (donde está [descripción muy específica del objeto]): [instrucción][, siguiendo el estilo visual de la celda [COLOR] de la REFERENCIA 3 si aplica]"]
 
 CRÍTICO: El trazo de pintura señala un elemento CONCRETO. Si hay elementos grandes y pequeños en la misma zona, el trazo está sobre el elemento PEQUEÑO/ESPECÍFICO que se quiere cambiar. No elijas el elemento más dominante de la escena.
 
 Devuelve SOLO el prompt, sin texto adicional.`;
+
 
     parts.push({ text: systemPrompt });
 

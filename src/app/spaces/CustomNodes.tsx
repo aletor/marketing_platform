@@ -2419,6 +2419,80 @@ const CHANGE_PALETTE = [
   { name: 'negro',    hex: '#111827' },
 ];
 
+// Build a labeled reference grid from per-change reference images.
+// Returns a data URL (JPEG) or null if no changes have reference images.
+const buildReferenceGrid = (
+  changes: Array<{ referenceImage: string | null; assignedColor: { name: string; hex: string }; description: string }>
+): Promise<string | null> => {
+  const withRefs = changes.filter(c => c.referenceImage);
+  if (withRefs.length === 0) return Promise.resolve(null);
+
+  const CELL_W = 400;
+  const CELL_H = 320;
+  const HEADER_H = 36;
+  const COLS = Math.min(2, withRefs.length);
+  const ROWS = Math.ceil(withRefs.length / COLS);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = COLS * CELL_W;
+  canvas.height = ROWS * CELL_H;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#f4f4f5';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const loadImg = (src: string): Promise<HTMLImageElement> =>
+    new Promise((res, rej) => {
+      const img = new Image();
+      img.onload = () => res(img);
+      img.onerror = rej;
+      img.src = src;
+    });
+
+  return Promise.all(
+    withRefs.map(async (c, i) => {
+      const col = i % COLS;
+      const row = Math.floor(i / COLS);
+      const x = col * CELL_W;
+      const y = row * CELL_H;
+
+      // Header bar in change color
+      ctx.fillStyle = c.assignedColor.hex;
+      ctx.fillRect(x, y, CELL_W, HEADER_H);
+
+      // Color label
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.fillText(
+        `● ${c.assignedColor.name.toUpperCase()} — ${c.description.slice(0, 38)}`,
+        x + 10,
+        y + HEADER_H / 2 + 5
+      );
+
+      // Image area (white bg)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x, y + HEADER_H, CELL_W, CELL_H - HEADER_H);
+
+      if (c.referenceImage) {
+        try {
+          const img = await loadImg(c.referenceImage);
+          const iw = img.width, ih = img.height;
+          const scale = Math.min((CELL_W - 8) / iw, (CELL_H - HEADER_H - 8) / ih);
+          const dw = iw * scale, dh = ih * scale;
+          const dx = x + (CELL_W - dw) / 2;
+          const dy = y + HEADER_H + (CELL_H - HEADER_H - dh) / 2;
+          ctx.drawImage(img, dx, dy, dw, dh);
+        } catch { /* skip if image fails */ }
+      }
+
+      // Cell border
+      ctx.strokeStyle = '#e4e4e7';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 0.5, y + 0.5, CELL_W - 1, CELL_H - 1);
+    })
+  ).then(() => canvas.toDataURL('image/jpeg', 0.85));
+};
+
+
 interface NBChange {
   id: string;
   paintData: string | null;   // canvas PNG dataURL
@@ -2426,6 +2500,7 @@ interface NBChange {
   targetObject: string;       // what object is in this area (e.g. "mosquito gigante")
   color: string;              // brush UI color (user picks freely)
   assignedColor: { name: string; hex: string }; // auto-assigned from CHANGE_PALETTE
+  referenceImage: string | null; // optional visual reference (data URL) for this change
 }
 
 interface NanoBananaStudioProps {
@@ -2562,7 +2637,7 @@ const NanoBananaStudio = memo(({
   // Prompt cache: only re-call AI when changes actually change
   const [cachedPromptData, setCachedPromptData] = useState<{ changesKey: string; preview: { colorMapUrl: string; fullPrompt: string } } | null>(null);
   const [analyzingCall, setAnalyzingCall] = useState(false);
-  const [callPreview, setCallPreview] = useState<{ colorMapUrl: string; fullPrompt: string; markedRef2?: string | null } | null>(null);
+  const [callPreview, setCallPreview] = useState<{ colorMapUrl: string; fullPrompt: string; markedRef2?: string | null; referenceGridUrl?: string | null } | null>(null);
   const [activeChangeId, setActiveChangeId] = useState<string|null>(null);
   const [addingChange, setAddingChange] = useState(false);
   const [newDesc, setNewDesc] = useState('');
@@ -2705,7 +2780,7 @@ const NanoBananaStudio = memo(({
     const id = `chg_${Date.now()}`;
     setChanges(prev => {
       const assigned = CHANGE_PALETTE[prev.length % CHANGE_PALETTE.length];
-      return [...prev, { id, paintData: null, description: '', targetObject: '', color: brushColor, assignedColor: assigned }];
+      return [...prev, { id, paintData: null, description: '', targetObject: '', color: brushColor, assignedColor: assigned, referenceImage: null }];
     });
     setActiveChangeId(id);
     setAddingChange(true);
@@ -2935,6 +3010,7 @@ const NanoBananaStudio = memo(({
             posY: positionData[c.assignedColor.name]?.cy ?? null,
             paintData: c.paintData ?? null,
             assignedColorHex: c.assignedColor.hex,
+            referenceImageData: c.referenceImage ?? null,
           })),
         }),
       });
@@ -2962,11 +3038,14 @@ const NanoBananaStudio = memo(({
       setAnalyzingCall(false);
     }
 
-    setCallPreview({ colorMapUrl, fullPrompt, markedRef2: markedRef2DataUrl });
+    // Build reference grid from per-change images
+    const referenceGridUrl = await buildReferenceGrid(validChanges);
+
+    setCallPreview({ colorMapUrl, fullPrompt, markedRef2: markedRef2DataUrl, referenceGridUrl });
     setCachedPromptData({ changesKey, preview: { colorMapUrl, fullPrompt } });
   };
 
-    const onGenerateFromCall = async (colorMapUrl: string, customPrompt: string, markedRef2?: string | null) => {
+    const onGenerateFromCall = async (colorMapUrl: string, customPrompt: string, markedRef2?: string | null, referenceGridUrl?: string | null) => {
     setCallPreview(null); // close preview
     setGenStatus('running');
     setProgress(0);
@@ -2975,11 +3054,12 @@ const NanoBananaStudio = memo(({
       setProgress(p => { const n = p + (isPro ? 0.6 : 1.2); return n > 92 ? 92 : n; });
     }, 400);
 
-    // ref1 = current base image, ref2 = marked image (base+strokes) if available, else abstract color map
+    // ref1 = current base image, ref2 = marked image (base+strokes) if available, ref3 = reference grid
     const ref2 = markedRef2 || colorMapUrl;
     const refImages = [
       ...(currentImage ? [currentImage] : []),
       ref2,
+      ...(referenceGridUrl ? [referenceGridUrl] : []),
     ];
 
     try {
@@ -3294,10 +3374,48 @@ const NanoBananaStudio = memo(({
                       {c.paintData && (
                         <img src={c.paintData} alt="" className="mt-1.5 w-full h-8 object-cover rounded opacity-60" />
                       )}
+                      {/* Reference image thumbnail */}
+                      {c.referenceImage && (
+                        <div className="mt-1.5 relative group/ref">
+                          <img src={c.referenceImage} alt="ref" className="w-full h-10 object-cover rounded border border-violet-500/30" />
+                          <button
+                            onClick={() => setChanges(prev => prev.map(ch => ch.id === c.id ? { ...ch, referenceImage: null } : ch))}
+                            className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-0.5 text-zinc-400 hover:text-rose-400 opacity-0 group-hover/ref:opacity-100 transition-opacity"
+                          >
+                            <X size={8} />
+                          </button>
+                          <span className="absolute bottom-0.5 left-1 text-[6px] text-violet-300 font-black uppercase opacity-80">REF</span>
+                        </div>
+                      )}
                     </div>
-                    <button onClick={() => deleteChange(c.id)} className="text-zinc-600 hover:text-rose-400 transition-colors flex-shrink-0 mt-0.5">
-                      <Trash2 size={13} />
-                    </button>
+                    <div className="flex flex-col gap-1 items-end flex-shrink-0">
+                      {/* 📎 Reference image upload */}
+                      <label
+                        title="Añadir imagen de referencia visual"
+                        className="cursor-pointer text-zinc-600 hover:text-violet-400 transition-colors"
+                      >
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = ev => {
+                              const dataUrl = ev.target?.result as string;
+                              setChanges(prev => prev.map(ch => ch.id === c.id ? { ...ch, referenceImage: dataUrl } : ch));
+                            };
+                            reader.readAsDataURL(file);
+                            e.target.value = '';
+                          }}
+                        />
+                        <ImageIcon size={12} />
+                      </label>
+                      <button onClick={() => deleteChange(c.id)} className="text-zinc-600 hover:text-rose-400 transition-colors">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -3354,34 +3472,65 @@ const NanoBananaStudio = memo(({
               </button>
             </div>
 
-            <div className="p-6 grid grid-cols-2 gap-6">
-              {/* Color map preview */}
-              <div className="space-y-3">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Mapa de colores (Referencia 2)</p>
-                <img src={callPreview.colorMapUrl} alt="Color map"
-                     className="w-full rounded-2xl border border-white/10 object-contain" />
-                <div className="flex flex-wrap gap-1.5">
+            {/* ── 3-image panels ── */}
+            <div className="p-6 grid grid-cols-3 gap-4 border-b border-white/[0.06]">
+              {/* REF 1 — Base image */}
+              <div className="space-y-2">
+                <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Ref 1 · Imagen base</p>
+                {currentImage ? (
+                  <img src={currentImage} alt="Base" className="w-full rounded-xl border border-white/10 object-contain max-h-40" />
+                ) : (
+                  <div className="w-full h-32 rounded-xl border border-white/10 flex items-center justify-center text-[9px] text-zinc-600">Sin imagen base</div>
+                )}
+              </div>
+
+              {/* REF 2 — Marked image (base + strokes, fallback to color map) */}
+              <div className="space-y-2">
+                <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Ref 2 · Mapa de zonas</p>
+                <img
+                  src={callPreview.markedRef2 || callPreview.colorMapUrl}
+                  alt="Color map"
+                  className="w-full rounded-xl border border-white/10 object-contain max-h-40"
+                />
+                <div className="flex flex-wrap gap-1">
                   {changes.filter(c=>c.paintData).map(c => (
-                    <div key={c.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider"
-                         style={{ background: c.assignedColor.hex + '22', border: `1px solid ${c.assignedColor.hex}55`, color: c.assignedColor.hex }}>
-                      <div className="w-2 h-2 rounded-full" style={{ background: c.assignedColor.hex }} />
-                      {c.assignedColor.name} — {c.description || '(sin texto)'}
+                    <div key={c.id} className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[7px] font-black uppercase"
+                         style={{ background: c.assignedColor.hex + '22', color: c.assignedColor.hex }}>
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: c.assignedColor.hex }} />
+                      {c.assignedColor.name}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Prompt preview */}
-              <div className="space-y-3">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Prompt completo (editable)</p>
-                <textarea
-                  value={callPreview.fullPrompt}
-                  onChange={e => setCallPreview(prev => prev ? { ...prev, fullPrompt: e.target.value } : null)}
-                  rows={18}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-[10px] text-zinc-300 font-mono leading-relaxed resize-none"
-                />
-                <p className="text-[8px] text-zinc-600">Las referencias se mandan en el orden: ref1=imagen base, ref2=mapa de colores. El prompt es el texto de arriba.</p>
+              {/* REF 3 — Reference grid */}
+              <div className="space-y-2">
+                <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Ref 3 · Grid de referencias</p>
+                {callPreview.referenceGridUrl ? (
+                  <img
+                    src={callPreview.referenceGridUrl}
+                    alt="Reference grid"
+                    className="w-full rounded-xl border border-violet-500/20 object-contain max-h-40"
+                  />
+                ) : (
+                  <div className="w-full h-32 rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-2 text-center px-3">
+                    <ImageIcon size={20} className="text-zinc-700" />
+                    <p className="text-[8px] text-zinc-600 leading-snug">Sin imágenes de referencia.<br/>Súbelas en cada cambio con el ícono 📎.</p>
+                  </div>
+                )}
               </div>
+            </div>
+
+            {/* ── Prompt (full width) ── */}
+            <div className="p-6 space-y-3">
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Prompt completo (editable)</p>
+              <textarea
+                value={callPreview.fullPrompt}
+                onChange={e => setCallPreview(prev => prev ? { ...prev, fullPrompt: e.target.value } : null)}
+                rows={8}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-[10px] text-zinc-300 font-mono leading-relaxed resize-none"
+              />
+              <p className="text-[8px] text-zinc-600">ref1=imagen base · ref2=zonas pintadas · ref3=grid de referencias visuales</p>
             </div>
             {/* Send button */}
             <div className="px-6 py-4 border-t border-white/[0.07] flex justify-end gap-3">
@@ -3390,7 +3539,7 @@ const NanoBananaStudio = memo(({
                 Cancelar
               </button>
               <button
-                onClick={() => onGenerateFromCall(callPreview.colorMapUrl, callPreview.fullPrompt, callPreview.markedRef2)}
+                onClick={() => onGenerateFromCall(callPreview.colorMapUrl, callPreview.fullPrompt, callPreview.markedRef2, callPreview.referenceGridUrl)}
                 disabled={genStatus === 'running'}
                 className="px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-2 transition-all disabled:opacity-40"
                 style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#111' }}
