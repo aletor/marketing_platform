@@ -3015,10 +3015,9 @@ const NanoBananaStudio = memo(({
           </div>
         )}
 
-        </div>{/* end zoom-transform inner wrapper */}
-
-        {/* Paint overlays are OUTSIDE the zoom wrapper so coords match imgBounds (outer container space) */}
-        {/* Paint overlay for active change */}
+        {/* Paint overlay — INSIDE zoom wrapper so it moves with image visually.
+             getXY() uses getBoundingClientRect which auto-accounts for CSS transform,
+             so natural pixel coords are correct at any zoom level. */}
         {addingChange && activeChangeId && (
           <NanaBananaPaintCanvas
             natW={imgNat.w}
@@ -3044,6 +3043,8 @@ const NanoBananaStudio = memo(({
             }}
           />
         ))}
+
+        </div>{/* end zoom-transform inner wrapper */}
 
         {/* Progress bar */}
         {genStatus === 'running' && (
