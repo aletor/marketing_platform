@@ -1098,15 +1098,20 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
   // ── Keyboard ───────────────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!selectedId) return;
       const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT') return; // don't capture when typing
+      // ALWAYS stop Delete/Backspace from reaching ReactFlow (which would delete the whole node)
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        const l = layers.find(x => x.id === selectedId);
-        if (l && !(l as any)._isImageInput) deleteLayer(selectedId);
+        e.stopPropagation();   // block ReactFlow's node-delete shortcut
+        if (target.tagName === 'INPUT') return; // still allow browser input clearing
+        if (selectedId) {
+          const l = layers.find(x => x.id === selectedId);
+          if (l && !(l as any)._isImageInput) deleteLayer(selectedId);
+        }
         e.preventDefault();
         return;
       }
+      if (!selectedId) return;
+      if (target.tagName === 'INPUT') return;
       const step = e.shiftKey ? 50 : 5;
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         setLayers(prev => prev.map(l => {
