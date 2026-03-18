@@ -616,6 +616,7 @@ export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) =
           const paintSrc = (layer as any).paintData;
           if (paintSrc) {
             try {
+              // Paint canvas is always 1920x1080, same as compositor — draw full-stretch (no distortion)
               const img = await loadCanvasImage(paintSrc);
               ctx.drawImage(img, lx, ly, lw, lh);
             } catch (e) { console.warn('[Composer] paint layer load fail', e); }
@@ -625,7 +626,20 @@ export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) =
           if (imgSrc) {
             try {
               const img = await loadCanvasImage(imgSrc);
-              ctx.drawImage(img, lx, ly, lw, lh);
+              // object-contain: preserve aspect ratio, center in layer box
+              const natW = img.naturalWidth  || img.width;
+              const natH = img.naturalHeight || img.height;
+              const boxRatio = lw / lh;
+              const imgRatio = natW / natH;
+              let dw: number, dh: number, dx: number, dy: number;
+              if (imgRatio > boxRatio) {
+                dw = lw; dh = lw / imgRatio;
+                dx = lx; dy = ly + (lh - dh) / 2;
+              } else {
+                dh = lh; dw = lh * imgRatio;
+                dy = ly; dx = lx + (lw - dw) / 2;
+              }
+              ctx.drawImage(img, dx, dy, dw, dh);
             } catch (e) { console.warn('[Composer] layer load fail', e); }
           }
         }
