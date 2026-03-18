@@ -2614,14 +2614,16 @@ const NanoBananaStudio = memo(({
     return () => ro.disconnect();
   }, [recalcBounds]);
 
-  // Update displayedImage when toggle changes
+  // Update displayed image when toggle changes — BUT only before any generation has happened.
+  // After generation, the toggle controls the BASE image for next gen, not the viewer display.
   useEffect(() => {
+    if (generatedOnce) return; // don't override after user has generated something
     if (reSendGenerated) {
       setCurrentImage(lastGenerated || initialImage);
     } else {
       setCurrentImage(initialImage);
     }
-  }, [reSendGenerated, lastGenerated, initialImage]);
+  }, [reSendGenerated, lastGenerated, initialImage, generatedOnce]);
 
   const isPro = studioModelKey === 'pro3';
   const isFlash25 = studioModelKey === 'flash25';
@@ -2676,6 +2678,7 @@ const NanoBananaStudio = memo(({
       if (json.output) {
         setCurrentImage(json.output);
         setGeneratedOnce(true);
+        setReSendGenerated(true); // auto-enable so toggle is consistent
         setGenStatus('success');
         onGenerated(json.output);
       } else throw new Error('No output');
@@ -2940,6 +2943,7 @@ const NanoBananaStudio = memo(({
       if (json.output) {
         setCurrentImage(json.output);
         setGeneratedOnce(true);
+        setReSendGenerated(true); // auto-enable resend after generation
         setGenStatus('success');
         onGenerated(json.output);
       } else throw new Error('No output');
