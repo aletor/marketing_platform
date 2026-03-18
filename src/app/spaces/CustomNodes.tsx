@@ -3015,6 +3015,9 @@ const NanoBananaStudio = memo(({
           </div>
         )}
 
+        </div>{/* end zoom-transform inner wrapper */}
+
+        {/* Paint overlays are OUTSIDE the zoom wrapper so coords match imgBounds (outer container space) */}
         {/* Paint overlay for active change */}
         {addingChange && activeChangeId && (
           <NanaBananaPaintCanvas
@@ -3041,8 +3044,6 @@ const NanoBananaStudio = memo(({
             }}
           />
         ))}
-
-        </div>{/* end zoom-transform inner wrapper */}
 
         {/* Progress bar */}
         {genStatus === 'running' && (
