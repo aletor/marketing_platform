@@ -737,13 +737,17 @@ const SpacesContent = () => {
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement;
-      const isNumberInput = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'number';
-      if (isNumberInput) {
-        e.preventDefault(); // stop browser from changing the number value
+      const tag = target.tagName;
+      // Number inputs capture wheel to change value; textareas capture to scroll.
+      // Block both so ReactFlow zoom always fires.
+      const isNumberInput = tag === 'INPUT' && (target as HTMLInputElement).type === 'number';
+      const isTextarea    = tag === 'TEXTAREA';
+      if (isNumberInput || isTextarea) {
+        e.preventDefault(); // stop browser's default (value change / scroll)
         // Event still propagates → ReactFlow zoom fires normally
       }
     };
-    // { capture: true } fires before the input's own handler
+    // { capture: true } fires before the element's own handler
     window.addEventListener('wheel', onWheel, { capture: true, passive: false });
     return () => window.removeEventListener('wheel', onWheel, { capture: true });
   }, []);

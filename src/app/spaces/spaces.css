@@ -313,11 +313,16 @@
 .handle-rose   { border-color: #f43f5e !important; }
 .handle-emerald{ border-color: #10b981 !important; }
 
+/* Handle hover: MUST compose with ReactFlow's own translate transform per side */
+/* ReactFlow uses translateX(±50%) / translateY(±50%) to center handles on the node border */
+/* If we only write transform:scale, we lose that translate → handle jumps inward */
+.react-flow__handle-left:hover  { transform: translateX(-50%) scaleX(1.4) scaleY(1.4) !important; }
+.react-flow__handle-right:hover { transform: translateX(50%)  scaleX(1.4) scaleY(1.4) !important; }
+.react-flow__handle-top:hover   { transform: translateY(-50%) scaleX(1.4) scaleY(1.4) !important; }
+.react-flow__handle-bottom:hover{ transform: translateY(50%)  scaleX(1.4) scaleY(1.4) !important; }
 .react-flow__handle:hover {
-  transform: scale(1.4);
-  transform-origin: center center;
   background: #fff !important;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.28);
 }
 
 /* Animations */
