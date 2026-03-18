@@ -3430,143 +3430,150 @@ const NanoBananaStudio = memo(({
           </div>
         )}
 
-        {/* Changes list row — taller, more spacious */}
-        <div className="flex items-center gap-3 px-4 py-4 overflow-x-auto" style={{ minHeight: 68 }}>
-          <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest flex-shrink-0 pr-2"
+        {/* Changes list row — chips in scrollable section, buttons outside scroll */}
+        <div className="flex items-center gap-0 px-4 py-4" style={{ minHeight: 68 }}>
+          {/* Label */}
+          <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest flex-shrink-0 pr-2 mr-2"
                 style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>Cambios</span>
 
-          {changes.length === 0 && (
-            <span className="text-[9px] text-zinc-600 italic">Sin cambios aún · añade uno para empezar</span>
-          )}
+          {/* Scrollable chips — overflow isolated here */}
+          <div className="flex items-center gap-3 flex-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            {changes.length === 0 && (
+              <span className="text-[9px] text-zinc-600 italic flex-shrink-0">Sin cambios aún · añade uno para empezar</span>
+            )}
 
-          {/* Change chips — larger and with ref upload */}
-          {changes.map((ch, idx) => {
-            const pal = CHANGE_PALETTE[idx % CHANGE_PALETTE.length];
-            const hex = pal.hex;
-            return (
-              <div key={ch.id}
-                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl flex-shrink-0 transition-all"
-                style={ch.paintData && ch.description.trim()
-                  ? { background: hex + '18', color: hex, border: '1px solid ' + hex + '50' }
-                  : { background: 'rgba(255,255,255,0.04)', color: '#666', border: '1px solid rgba(255,255,255,0.08)' }
-                }
-              >
-                {/* Color dot or global indicator */}
-                {ch.isGlobal
-                  ? <Globe size={11} className="flex-shrink-0" style={{ color: hex }} />
-                  : <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: hex }} />
-                }
+            {/* Change chips — larger and with ref upload */}
+            {changes.map((ch, idx) => {
+              const pal = CHANGE_PALETTE[idx % CHANGE_PALETTE.length];
+              const hex = pal.hex;
+              return (
+                <div key={ch.id}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl flex-shrink-0 transition-all"
+                  style={ch.isGlobal || (ch.paintData && ch.description.trim())
+                    ? { background: hex + '18', color: hex, border: '1px solid ' + hex + '50' }
+                    : { background: 'rgba(255,255,255,0.04)', color: '#666', border: '1px solid rgba(255,255,255,0.08)' }
+                  }
+                >
+                  {/* Color dot or global indicator */}
+                  {ch.isGlobal
+                    ? <Globe size={11} className="flex-shrink-0" style={{ color: hex }} />
+                    : <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: hex }} />
+                  }
 
-                {/* Description */}
-                <span className="text-[10px] font-black uppercase tracking-wide max-w-[160px] truncate">
-                  {ch.description || 'Sin descripción'}
-                </span>
+                  {/* Description */}
+                  <span className="text-[10px] font-black uppercase tracking-wide max-w-[160px] truncate">
+                    {ch.description || 'Sin descripción'}
+                  </span>
 
-                {/* Reference image preview or upload */}
-                <label className="flex items-center gap-1 cursor-pointer flex-shrink-0">
-                  {ch.referenceImage ? (
-                    <img src={ch.referenceImage} alt="ref"
-                      className="w-8 h-8 rounded-lg object-cover border-2 flex-shrink-0"
-                      style={{ borderColor: hex + '80' }} />
-                  ) : (
-                    <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wide transition-all hover:opacity-80"
-                      style={{ background: hex + '15', color: hex, border: '1px dashed ' + hex + '50' }}>
-                      <ImageIcon size={10} /> Ref
-                    </span>
+                  {/* Reference image preview or upload — only for painted changes */}
+                  {!ch.isGlobal && (
+                    <label className="flex items-center gap-1 cursor-pointer flex-shrink-0">
+                      {ch.referenceImage ? (
+                        <img src={ch.referenceImage} alt="ref"
+                          className="w-8 h-8 rounded-lg object-cover border-2 flex-shrink-0"
+                          style={{ borderColor: hex + '80' }} />
+                      ) : (
+                        <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wide transition-all hover:opacity-80"
+                          style={{ background: hex + '15', color: hex, border: '1px dashed ' + hex + '50' }}>
+                          <ImageIcon size={10} /> Ref
+                        </span>
+                      )}
+                      <input type="file" accept="image/*" className="hidden"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = ev => {
+                            const url = ev.target?.result as string;
+                            setChanges(prev => prev.map(c => c.id === ch.id ? { ...c, referenceImage: url } : c));
+                          };
+                          reader.readAsDataURL(file);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
                   )}
-                  <input type="file" accept="image/*" className="hidden"
-                    onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = ev => {
-                        const url = ev.target?.result as string;
-                        setChanges(prev => prev.map(c => c.id === ch.id ? { ...c, referenceImage: url } : c));
-                      };
-                      reader.readAsDataURL(file);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
 
-                {/* Delete */}
-                <button onClick={() => deleteChange(ch.id)}
-                  className="text-zinc-600 hover:text-rose-400 transition-colors flex-shrink-0 ml-1">
-                  <Trash2 size={11} />
+                  {/* Delete */}
+                  <button onClick={() => deleteChange(ch.id)}
+                    className="text-zinc-600 hover:text-rose-400 transition-colors flex-shrink-0 ml-1">
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>{/* end scrollable chips */}
+
+          {/* ── Action buttons — OUTSIDE overflow-x-auto so dropdowns aren't clipped ── */}
+          <div className="flex items-center gap-2 flex-shrink-0 pl-3" style={{ borderLeft: '1px solid rgba(255,255,255,0.07)' }}>
+
+            {/* Global change inline input */}
+            {showGlobalInput && (
+              <div className="flex items-center gap-2" style={{ minWidth: 340 }}>
+                <Globe size={11} className="text-purple-400 flex-shrink-0" />
+                <input
+                  autoFocus
+                  value={globalDesc}
+                  onChange={e => setGlobalDesc(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addGlobalChange(globalDesc); if (e.key === 'Escape') { setShowGlobalInput(false); setGlobalDesc(''); } }}
+                  placeholder="Describe el cambio global…"
+                  className="flex-1 bg-black/40 border border-purple-500/30 rounded-lg px-3 py-2 text-[10px] text-zinc-200 placeholder-zinc-600 outline-none focus:border-purple-500/60"
+                />
+                <button onClick={() => addGlobalChange(globalDesc)}
+                  className="px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap"
+                  style={{ background: 'rgba(168,85,247,0.2)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.4)' }}>
+                  ✓
+                </button>
+                <button onClick={() => { setShowGlobalInput(false); setGlobalDesc(''); }}
+                  className="px-2 py-2 rounded-lg bg-white/[0.04] text-zinc-500 border border-white/[0.06] text-[10px] font-black hover:text-zinc-300 transition-colors">
+                  ✕
                 </button>
               </div>
-            );
-          })}
+            )}
 
-          {/* Add painted change button */}
-          {!addingChange && !showGlobalInput && (
-            <button onClick={startAddChange}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex-shrink-0"
-              style={{ background: 'rgba(251,113,133,0.12)', color: '#fb7185', border: '1px solid rgba(251,113,133,0.3)' }}>
-              <Plus size={11} /> Pintar área
-            </button>
-          )}
-
-          {/* Add GLOBAL change button — no painting required */}
-          {!addingChange && !showGlobalInput && (
-            <button onClick={() => setShowGlobalInput(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex-shrink-0"
-              style={{ background: 'rgba(168,85,247,0.12)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.3)' }}>
-              <Globe size={11} /> Global
-            </button>
-          )}
-
-          {/* Camera presets button */}
-          {!addingChange && !showGlobalInput && (
-            <div className="relative flex-shrink-0">
-              <button
-                onClick={() => setShowCameraMenu(v => !v)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
-                style={{ background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
-                <Camera size={11} /> Cámara ▾
+            {!addingChange && !showGlobalInput && (<>
+              {/* Pintar área */}
+              <button onClick={startAddChange}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex-shrink-0 whitespace-nowrap"
+                style={{ background: 'rgba(251,113,133,0.12)', color: '#fb7185', border: '1px solid rgba(251,113,133,0.3)' }}>
+                <Plus size={11} /> Zona
               </button>
-              {showCameraMenu && (
-                <div className="absolute bottom-full mb-2 left-0 z-50 rounded-xl overflow-hidden shadow-2xl"
-                     style={{ background: '#1a1a28', border: '1px solid rgba(99,102,241,0.3)', minWidth: 200 }}>
-                  <div className="px-3 py-2 text-[8px] font-black uppercase tracking-widest text-indigo-400"
-                       style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>Presets de cámara</div>
-                  {CAMERA_PRESETS.map(preset => (
-                    <button key={preset.label}
-                      onClick={() => addGlobalChange(preset.prompt)}
-                      className="w-full text-left px-3 py-2 text-[9px] font-medium text-zinc-300 hover:bg-indigo-500/20 hover:text-white transition-colors">
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
-          {/* Global change inline input */}
-          {showGlobalInput && (
-            <div className="flex items-center gap-2 flex-1 min-w-[300px]">
-              <Globe size={11} className="text-purple-400 flex-shrink-0" />
-              <input
-                autoFocus
-                value={globalDesc}
-                onChange={e => setGlobalDesc(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') addGlobalChange(globalDesc); if (e.key === 'Escape') { setShowGlobalInput(false); setGlobalDesc(''); } }}
-                placeholder="Describe el cambio global (ej: cambiar ángulo de cámara)…"
-                className="flex-1 bg-black/40 border border-purple-500/30 rounded-lg px-3 py-2 text-[10px] text-zinc-200 placeholder-zinc-600 outline-none focus:border-purple-500/60"
-              />
-              <button onClick={() => addGlobalChange(globalDesc)}
-                className="px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap flex-shrink-0"
-                style={{ background: 'rgba(168,85,247,0.2)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.4)' }}>
-                ✓ Añadir
+              {/* Global */}
+              <button onClick={() => setShowGlobalInput(true)}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex-shrink-0 whitespace-nowrap"
+                style={{ background: 'rgba(168,85,247,0.12)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.3)' }}>
+                <Globe size={11} /> Global
               </button>
-              <button onClick={() => { setShowGlobalInput(false); setGlobalDesc(''); }}
-                className="px-3 py-2 rounded-lg bg-white/[0.04] text-zinc-500 border border-white/[0.06] text-[10px] font-black hover:text-zinc-300 transition-colors whitespace-nowrap flex-shrink-0">
-                ✕
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+
+              {/* Camera — dropdown goes UPWARD, no overflow clipping because parent has no overflow-x-auto */}
+              <div className="relative flex-shrink-0">
+                <button
+                  onClick={() => setShowCameraMenu(v => !v)}
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap"
+                  style={{ background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
+                  <Camera size={11} /> Cámara ▾
+                </button>
+                {showCameraMenu && (
+                  <div className="absolute bottom-full mb-2 right-0 z-[9999] rounded-xl overflow-hidden shadow-2xl"
+                       style={{ background: '#1a1a28', border: '1px solid rgba(99,102,241,0.3)', minWidth: 220 }}>
+                    <div className="px-3 py-2 text-[8px] font-black uppercase tracking-widest text-indigo-400"
+                         style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>Presets de cámara</div>
+                    {CAMERA_PRESETS.map(preset => (
+                      <button key={preset.label}
+                        onClick={() => addGlobalChange(preset.prompt)}
+                        className="w-full text-left px-3 py-2.5 text-[9px] font-medium text-zinc-300 hover:bg-indigo-500/20 hover:text-white transition-colors">
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>)}
+
+          </div>{/* end action buttons */}
+        </div>{/* end bottom bar row */}
+      </div>{/* end canvas+bottom flex column */}
 
       {/* ── Call Preview Modal ─────────────────────────────────────────── */}
       {callPreview && (
