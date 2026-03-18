@@ -2750,6 +2750,53 @@ const NanoBananaStudio = memo(({
     setCallPreview({ colorMapUrl, fullPrompt });
   };
 
+    const onGenerateFromCall = async (colorMapUrl: string, customPrompt: string) => {
+    setCallPreview(null); // close preview
+    setGenStatus('running');
+    setProgress(0);
+
+    const interval = setInterval(() => {
+      setProgress(p => { const n = p + (isPro ? 0.6 : 1.2); return n > 92 ? 92 : n; });
+    }, 400);
+
+    // ref1 = current base image, ref2 = color map
+    const refImages = [
+      ...(currentImage ? [currentImage] : []),
+      colorMapUrl,
+    ];
+
+    try {
+      const res = await fetch('/api/gemini/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: customPrompt,
+          images: refImages,
+          aspect_ratio: aspectRatio,
+          resolution: isFlash25 ? '1k' : resolution,
+          model: modelKey,
+          thinking: thinking && isPro,
+        }),
+      });
+      clearInterval(interval);
+      setProgress(100);
+      if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || `HTTP ${res.status}`); }
+      const json = await res.json();
+      if (json.output) {
+        setCurrentImage(json.output);
+        setGeneratedOnce(true);
+        setGenStatus('success');
+        onGenerated(json.output);
+      } else throw new Error('No output');
+    } catch (e: any) {
+      clearInterval(interval);
+      alert('Error: ' + e.message);
+      setGenStatus('error');
+    } finally {
+      setTimeout(() => setProgress(0), 1000);
+    }
+  };
+
     return createPortal(
     <div className="fixed inset-0 z-[9999] flex" style={{ background: '#0f0f10' }}>
       {/* ── Canvas area ──────────────────────────────────────────────────── */}
@@ -3003,6 +3050,21 @@ const NanoBananaStudio = memo(({
                 />
                 <p className="text-[8px] text-zinc-600">Las referencias se mandan en el orden: ref1=imagen base, ref2=mapa de colores. El prompt es el texto de arriba.</p>
               </div>
+            </div>
+            {/* Send button */}
+            <div className="px-6 py-4 border-t border-white/[0.07] flex justify-end gap-3">
+              <button onClick={() => setCallPreview(null)}
+                className="px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider text-zinc-500 border border-white/[0.08] hover:text-zinc-300 transition-colors">
+                Cancelar
+              </button>
+              <button
+                onClick={() => onGenerateFromCall(callPreview.colorMapUrl, callPreview.fullPrompt)}
+                disabled={genStatus === 'running'}
+                className="px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-2 transition-all disabled:opacity-40"
+                style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#111' }}
+              >
+                <Sparkles size={13} /> Generar imagen
+              </button>
             </div>
           </div>
         </div>
