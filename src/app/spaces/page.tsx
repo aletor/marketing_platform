@@ -564,16 +564,16 @@ const SpacesContent = () => {
   }, [screenToFlowPosition, nodes, edges, setNodes, setEdges, pushHistory]);
 
 
-  // ── Node click: persist z-index until another node is clicked ──────────
+  // ── Node click: global z-order counter — each click brings that node above all others
+  // Every previously clicked node keeps its own relative position in the stack.
   const onNodeClick = useCallback((_evt: React.MouseEvent, node: any) => {
-    if (lastClickedRef.current === node.id) return; // already on top
-    const prev = lastClickedRef.current;
-    lastClickedRef.current = node.id;
-    setNodes(nds => nds.map(n => {
-      if (n.id === node.id) return { ...n, style: { ...n.style, zIndex: 9999 } };
-      if (n.id === prev)   return { ...n, style: { ...n.style, zIndex: undefined } };
-      return n;
-    }));
+    lastClickedRef.current = (lastClickedRef.current ?? 0) + 1;
+    const nextZ = lastClickedRef.current;
+    setNodes(nds => nds.map(n =>
+      n.id === node.id
+        ? { ...n, style: { ...n.style, zIndex: nextZ } }
+        : n
+    ));
   }, [setNodes]);
 
   // ── Auto-layout (A key) ──────────────────────────────────────────────────
@@ -726,7 +726,7 @@ const SpacesContent = () => {
 
   
   // ── Track last-clicked node for persistent z-index ──────────────────────
-  const lastClickedRef = useRef<string | null>(null);
+  const lastClickedRef = useRef<number>(0); // global z-order counter
 
   // ── Track Shift key for canvas pan ──────────────────────────────────────
   const [shiftHeld, setShiftHeld] = useState(false);
