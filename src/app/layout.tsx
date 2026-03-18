@@ -10,6 +10,7 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "Media Node",
   description: "Advanced AI-powered media creation and composition engine.",
+  icons: { icon: "/favicon.png", apple: "/favicon.png" },
 };
 
 import { AppLayout } from "@/components/layout/AppLayout";

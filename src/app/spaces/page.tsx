@@ -744,28 +744,55 @@ const SpacesContent = () => {
     };
   }, []);
 
-  // ── Allow canvas zoom from anywhere (including over inputs) ─────────────
-  // The browser normally captures wheel events over <input type="number">
-  // to increment/decrement the value, preventing ReactFlow from seeing them.
-  // We intercept at capture phase and preventDefault so the input value doesn't
-  // change, while the event still bubbles to ReactFlow's zoom handler.
+  // ── Allow canvas zoom from anywhere (including over inputs / textareas) ──
+  // Problem: ReactFlow's zoom listener is on .react-flow__pane, which is a
+  // DOM SIBLING of .react-flow__nodes — events from inside nodes don't bubble
+  // to it. So we must manually call setViewport when wheel fires over inputs.
+  const viewportRef = useRef({ zoom: 1, x: 0, y: 0 });
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement;
       const tag = target.tagName;
-      // Number inputs capture wheel to change value; textareas capture to scroll.
-      // Block both so ReactFlow zoom always fires.
-      const isNumberInput = tag === 'INPUT' && (target as HTMLInputElement).type === 'number';
-      const isTextarea    = tag === 'TEXTAREA';
-      if (isNumberInput || isTextarea) {
-        e.preventDefault(); // stop browser's default (value change / scroll)
-        // Event still propagates → ReactFlow zoom fires normally
-      }
+      const isInput =
+        (tag === 'INPUT' && (target as HTMLInputElement).type !== 'submit') ||
+        tag === 'TEXTAREA';
+      if (!isInput) return;
+
+      // Only act when inside the ReactFlow canvas (not the sidebar etc.)
+      const rfRoot = document.querySelector('.react-flow__renderer');
+      if (!rfRoot || !rfRoot.contains(target)) return;
+
+      e.preventDefault(); // stop scroll / value-change
+
+      // Manually compute new zoom centered on the mouse position
+      const SENSITIVITY = 0.001;
+      const vp = viewportRef.current;
+      const rawScale = Math.pow(0.998, e.deltaY);
+      const newZoom  = Math.min(4, Math.max(0.1, vp.zoom * rawScale));
+      if (Math.abs(newZoom - vp.zoom) < 0.0001) return;
+
+      const rect = rfRoot.getBoundingClientRect();
+      const mx   = e.clientX - rect.left;
+      const my   = e.clientY - rect.top;
+      const ratio = newZoom / vp.zoom;
+      const newX  = mx - ratio * (mx - vp.x);
+      const newY  = my - ratio * (my - vp.y);
+
+      const next = { x: newX, y: newY, zoom: newZoom };
+      viewportRef.current = next;
+      setViewport(next);
     };
-    // { capture: true } fires before the element's own handler
     window.addEventListener('wheel', onWheel, { capture: true, passive: false });
     return () => window.removeEventListener('wheel', onWheel, { capture: true });
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setViewport]);
+
+  // Keep viewportRef in sync with ReactFlow viewport changes (drag, pinch, etc.)
+  // so our manual zoom starts from the correct position.
+  const onMoveHandler = useCallback((evt: any, vp: any) => {
+    viewportRef.current = vp;
+    syncFinalNode(vp);
+  }, [syncFinalNode]);
 
 
   // Access Security
@@ -2066,7 +2093,7 @@ const SpacesContent = () => {
           onNodeClick={onNodeClick}
           onNodeDragStop={onNodeDragStop}
           onConnectEnd={onConnectEnd}
-          onMove={(_evt, vp) => syncFinalNode(vp)}
+          onMove={onMoveHandler}
 
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
