@@ -2423,6 +2423,7 @@ interface NBChange {
   id: string;
   paintData: string | null;   // canvas PNG dataURL
   description: string;
+  targetObject: string;       // what object is in this area (e.g. "mosquito gigante")
   color: string;              // brush UI color (user picks freely)
   assignedColor: { name: string; hex: string }; // auto-assigned from CHANGE_PALETTE
 }
@@ -2547,6 +2548,7 @@ const NanoBananaStudio = memo(({
   const [activeChangeId, setActiveChangeId] = useState<string|null>(null);
   const [addingChange, setAddingChange] = useState(false);
   const [newDesc, setNewDesc] = useState('');
+  const [newTargetObject, setNewTargetObject] = useState('');
   const [brushColor, setBrushColor] = useState('#ff3366');
   const [brushSize, setBrushSize] = useState(12);
   const pendingPaintRef = useRef<string|null>(null);
@@ -2583,6 +2585,12 @@ const NanoBananaStudio = memo(({
 
   const isPro = modelKey === 'pro3';
   const isFlash25 = modelKey === 'flash25';
+
+  // Block left sidebar hover while studio is fullscreen
+  useEffect(() => {
+    document.body.classList.add('nb-studio-open');
+    return () => document.body.classList.remove('nb-studio-open');
+  }, []);
 
   // ── Generate ──────────────────────────────────────────────────────────────
   const onGenerate = async () => {
@@ -2646,7 +2654,7 @@ const NanoBananaStudio = memo(({
     const id = `chg_${Date.now()}`;
     setChanges(prev => {
       const assigned = CHANGE_PALETTE[prev.length % CHANGE_PALETTE.length];
-      return [...prev, { id, paintData: null, description: '', color: brushColor, assignedColor: assigned }];
+      return [...prev, { id, paintData: null, description: '', targetObject: '', color: brushColor, assignedColor: assigned }];
     });
     setActiveChangeId(id);
     setAddingChange(true);
@@ -2657,7 +2665,7 @@ const NanoBananaStudio = memo(({
   const confirmChange = () => {
     if (!activeChangeId) return;
     setChanges(prev => prev.map(c => c.id === activeChangeId
-      ? { ...c, paintData: pendingPaintRef.current, description: newDesc }
+      ? { ...c, paintData: pendingPaintRef.current, description: newDesc, targetObject: newTargetObject }
       : c
     ));
     setActiveChangeId(null);
@@ -2670,6 +2678,7 @@ const NanoBananaStudio = memo(({
     setActiveChangeId(null);
     setAddingChange(false);
     setNewDesc('');
+    setNewTargetObject('');
   };
 
   const deleteChange = (id: string) => {
@@ -2766,7 +2775,13 @@ const NanoBananaStudio = memo(({
     // Build the prompt
     const changeLines = changes
       .filter(c => c.description.trim())
-      .map(c => `en el área ${c.assignedColor.name} de la referencia 2: ${c.description.trim()}`)
+      .map(c => {
+        const obj = c.targetObject?.trim();
+        const area = obj
+          ? `en el área ${c.assignedColor.name} de la referencia 2 (donde está: ${obj})`
+          : `en el área ${c.assignedColor.name} de la referencia 2`;
+        return `${area}: ${c.description.trim()}`;
+      })
       .join('\n');
 
     const fullPrompt = [
@@ -2965,13 +2980,25 @@ const NanoBananaStudio = memo(({
                   </div>
                 </div>
 
+                {/* Target object */}
+                <div>
+                  <p className="text-[8px] text-zinc-500 mb-1">¿Qué objeto hay en esta área? <span className="text-zinc-600">(ayuda a Gemini a localizarlo)</span></p>
+                  <input
+                    type="text"
+                    value={newTargetObject}
+                    onChange={e => setNewTargetObject(e.target.value)}
+                    placeholder="Ej: mosquito gigante, pato, paracaidista…"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1.5 text-[9px] text-zinc-300 placeholder-zinc-600"
+                  />
+                </div>
+
                 {/* Description */}
                 <div>
-                  <p className="text-[8px] text-zinc-500 mb-1">Descripción del cambio</p>
+                  <p className="text-[8px] text-zinc-500 mb-1">Qué quieres hacer en este área</p>
                   <textarea
                     value={newDesc}
                     onChange={e => setNewDesc(e.target.value)}
-                    placeholder="Ej: eliminar la botella de este área"
+                    placeholder="Ej: ponerle la cara de Goku, eliminar, cambiar por una cebra…"
                     rows={3}
                     className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1.5 text-[9px] text-zinc-300 resize-none placeholder-zinc-600"
                   />
@@ -3002,6 +3029,9 @@ const NanoBananaStudio = memo(({
                          style={{ color: c.assignedColor?.hex || '#888' }}>
                         Cambio {idx + 1} · {c.assignedColor?.name || 'color'}
                       </p>
+                      {c.targetObject && (
+                        <p className="text-[8px] text-zinc-600 italic mb-0.5">📍 {c.targetObject}</p>
+                      )}
                       <p className="text-[9px] text-zinc-400 leading-snug">{c.description || '(sin descripción)'}</p>
                       {c.paintData && (
                         <img src={c.paintData} alt="" className="mt-1.5 w-full h-8 object-cover rounded opacity-60" />

@@ -373,6 +373,18 @@
   box-shadow: 4px 0 80px rgba(0, 0, 0, 0.5);
 }
 
+/* Suppress sidebar hover when NanaBanana Studio is fullscreen */
+body.nb-studio-open .spaces-sidebar,
+body.nb-studio-open .spaces-sidebar:hover {
+  width: 16px !important;
+  background: rgba(0,0,0,0.01) !important;
+  backdrop-filter: blur(0px) !important;
+  border-right: 1px solid transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  pointer-events: none !important;
+}
+
 /* Collapsible Content Control */
 .collapsible-content {
   opacity: 0;
