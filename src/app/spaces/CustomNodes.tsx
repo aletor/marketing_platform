@@ -625,7 +625,7 @@ export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) =
           if (imgSrc) {
             try {
               const img = await loadCanvasImage(imgSrc);
-              ctx.drawImage(img, lx, ly, lh, lh);
+              ctx.drawImage(img, lx, ly, lw, lh);
             } catch (e) { console.warn('[Composer] layer load fail', e); }
           }
         }
@@ -836,10 +836,13 @@ const PaintLayerCanvas = ({ layer, canvasContainerRef, isSel, mode, onPaintSave 
       const img = new Image();
       img.onload = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       };
       img.src = layer.paintData;
     }
+    // else: leave canvas transparent — no further init needed
   });
 
   const getXY = (e: React.PointerEvent) => {
@@ -902,7 +905,7 @@ const PaintLayerCanvas = ({ layer, canvasContainerRef, isSel, mode, onPaintSave 
     const ctx = canvas?.getContext('2d');
     if (ctx) { ctx.closePath(); ctx.globalCompositeOperation = 'source-over'; }
     isDrawingRef.current = false;
-    if (canvas) onPaintSave(layer.id, canvas.toDataURL('image/png'));
+    if (canvas) onPaintSave(layer.id, canvas.toDataURL('image/png')); // PNG preserves alpha channel
   };
 
   return (
@@ -1158,7 +1161,7 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
             }}
             onPointerDown={() => setSelectedId(null)}
           >
-            {allDisplayLayers.map((layer, idx) => {
+            {allDisplayLayers.filter(l => l.type !== 'paint').map((layer, idx) => {
               const la = layer as any;
               const isImg = la._isImageInput || la.type === 'image';
               const imgSrc = la._src || la.src;
