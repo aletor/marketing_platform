@@ -47,7 +47,7 @@ import {
   Pencil,
   Square,
   Trash2,
-  EyeOff} from 'lucide-react';
+  EyeOff, Camera} from 'lucide-react';
 import './spaces.css';
 import { NODE_REGISTRY } from './nodeRegistry';
 
@@ -2517,6 +2517,24 @@ const buildReferenceGrid = (
 };
 
 
+// Camera presets for NanaBanana Studio
+const CAMERA_PRESETS = [
+  { label: 'Órbita 45° izq',   prompt: 'Rotate the camera viewpoint 45 degrees to the left, keeping the scene centered and well-composed.' },
+  { label: 'Órbita 45° der',   prompt: 'Rotate the camera viewpoint 45 degrees to the right, keeping the scene centered and well-composed.' },
+  { label: 'Órbita 90° izq',   prompt: 'Rotate the camera viewpoint 90 degrees to the left, showing a side view of the scene.' },
+  { label: 'Órbita 90° der',   prompt: 'Rotate the camera viewpoint 90 degrees to the right, showing a side view of the scene.' },
+  { label: 'Vista aérea',       prompt: "Change to a bird's-eye aerial view, looking straight down at the scene from above." },
+  { label: 'Vista baja',        prompt: 'Change to a dramatic low-angle shot, looking up at the scene from below.' },
+  { label: 'Zoom in',           prompt: 'Zoom the camera in significantly closer to the main subject of the scene.' },
+  { label: 'Zoom out',          prompt: 'Zoom the camera out to show much more of the environment and surrounding context.' },
+  { label: 'Vista frontal',     prompt: 'Change to a straight-on frontal view, centered and symmetrical.' },
+  { label: 'Vista 3/4',         prompt: 'Change to a 3/4 angle view, slightly to one side for a dynamic composition.' },
+  { label: 'Plano detalle',     prompt: 'Change to a macro/close-up detail shot focusing on the main element of the scene.' },
+  { label: 'Plano general',     prompt: 'Change to a wide establishing shot showing the full environment and all elements.' },
+  { label: 'Traveling izq',     prompt: 'Simulate a lateral camera movement (traveling) to the left, revealing more of the scene on the right.' },
+  { label: 'Traveling der',     prompt: 'Simulate a lateral camera movement (traveling) to the right, revealing more of the scene on the left.' },
+];
+
 interface NBChange {
   id: string;
   paintData: string | null;   // canvas PNG dataURL
@@ -2525,6 +2543,7 @@ interface NBChange {
   color: string;              // brush UI color (user picks freely)
   assignedColor: { name: string; hex: string }; // auto-assigned from CHANGE_PALETTE
   referenceImage: string | null; // optional visual reference (data URL) for this change
+  isGlobal?: boolean;         // if true: no paintData needed — applies to whole image
 }
 
 interface NanoBananaStudioProps {
@@ -2658,6 +2677,9 @@ const NanoBananaStudio = memo(({
 
   // ── Change layers ────────────────────────────────────────────────────────
   const [changes, setChanges] = useState<NBChange[]>([]);
+  const [showGlobalInput, setShowGlobalInput] = useState(false);
+  const [globalDesc, setGlobalDesc] = useState('');
+  const [showCameraMenu, setShowCameraMenu] = useState(false);
   // Prompt cache: only re-call AI when changes actually change
   const [cachedPromptData, setCachedPromptData] = useState<{ changesKey: string; preview: { colorMapUrl: string; fullPrompt: string } } | null>(null);
   const [analyzingCall, setAnalyzingCall] = useState(false);
@@ -2832,6 +2854,26 @@ const NanoBananaStudio = memo(({
     setNewTargetObject('');
   };
 
+  const addGlobalChange = (desc: string) => {
+    if (!desc.trim()) return;
+    const idx = changes.length;
+    const assigned = CHANGE_PALETTE[idx % CHANGE_PALETTE.length];
+    const newChange: NBChange = {
+      id: `glb_${Date.now()}`,
+      paintData: null,
+      description: desc.trim(),
+      targetObject: 'global',
+      color: assigned.hex,
+      assignedColor: assigned,
+      referenceImage: null,
+      isGlobal: true,
+    };
+    setChanges(prev => [...prev, newChange]);
+    setGlobalDesc('');
+    setShowGlobalInput(false);
+    setShowCameraMenu(false);
+  };
+
   const deleteChange = (id: string) => {
     setCachedPromptData(null); // invalidate cache
     setChanges(prev => prev.filter(c => c.id !== id));
@@ -2844,7 +2886,7 @@ const NanoBananaStudio = memo(({
 
   // ── Generate Call: build color-map image + full prompt ──────────────────
   const onGenerateCall = async () => {
-    const validChanges = changes.filter(c => c.paintData && c.description.trim());
+    const validChanges = changes.filter(c => (c.isGlobal ? c.description.trim() : (c.paintData && c.description.trim())));
     if (validChanges.length === 0) {
       alert('Añade al menos un cambio con área dibujada y descripción antes de generar la llamada.');
       return;
@@ -2941,7 +2983,7 @@ const NanoBananaStudio = memo(({
     let fullPrompt = '';
     let markedRef2DataUrl: string | null = null;
     try {
-      const validChanges = changes.filter(c => c.paintData && c.description.trim());
+      const validChanges = changes.filter(c => (c.isGlobal ? c.description.trim() : (c.paintData && c.description.trim())));
 
       // Build "marked base image" = base image with each paint stroke overlaid in its assigned color
       // Uses imgRef.current (already loaded in DOM) to avoid CORS issues with S3 presigned URLs.
@@ -3056,7 +3098,8 @@ const NanoBananaStudio = memo(({
         'REFERENCIA 1: imagen base. Mantén todo lo que no se indica cambiar.',
         'REFERENCIA 2: mapa de colores con áreas de cambio.',
         '',
-        ...validChanges.map(c => `En el área ${c.assignedColor.name} de la referencia 2: ${c.description}`),
+        ...validChanges.filter(c => !c.isGlobal).map(c => `En el área ${c.assignedColor.name} de la referencia 2: ${c.description}`),
+        ...validChanges.filter(c => c.isGlobal).map(c => `CAMBIO GLOBAL: ${c.description}`),
       ].join('\n');
     } finally {
       setAnalyzingCall(false);
@@ -3202,7 +3245,7 @@ const NanoBananaStudio = memo(({
         {/* Generate buttons in top bar */}
         <button
           onClick={onGenerateCall}
-          disabled={addingChange || analyzingCall || changes.filter(c=>c.paintData && c.description.trim()).length === 0}
+          disabled={addingChange || analyzingCall || changes.filter(c=>c.isGlobal ? c.description.trim() : (c.paintData && c.description.trim())).length === 0}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all disabled:opacity-30"
           style={{ background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}
         >
@@ -3408,8 +3451,11 @@ const NanoBananaStudio = memo(({
                   : { background: 'rgba(255,255,255,0.04)', color: '#666', border: '1px solid rgba(255,255,255,0.08)' }
                 }
               >
-                {/* Color dot */}
-                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: hex }} />
+                {/* Color dot or global indicator */}
+                {ch.isGlobal
+                  ? <Globe size={11} className="flex-shrink-0" style={{ color: hex }} />
+                  : <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: hex }} />
+                }
 
                 {/* Description */}
                 <span className="text-[10px] font-black uppercase tracking-wide max-w-[160px] truncate">
@@ -3452,13 +3498,72 @@ const NanoBananaStudio = memo(({
             );
           })}
 
-          {/* Add change button — larger */}
-          {!addingChange && (
+          {/* Add painted change button */}
+          {!addingChange && !showGlobalInput && (
             <button onClick={startAddChange}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex-shrink-0"
               style={{ background: 'rgba(251,113,133,0.12)', color: '#fb7185', border: '1px solid rgba(251,113,133,0.3)' }}>
-              <Plus size={11} /> Añadir cambio
+              <Plus size={11} /> Pintar área
             </button>
+          )}
+
+          {/* Add GLOBAL change button — no painting required */}
+          {!addingChange && !showGlobalInput && (
+            <button onClick={() => setShowGlobalInput(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex-shrink-0"
+              style={{ background: 'rgba(168,85,247,0.12)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.3)' }}>
+              <Globe size={11} /> Global
+            </button>
+          )}
+
+          {/* Camera presets button */}
+          {!addingChange && !showGlobalInput && (
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={() => setShowCameraMenu(v => !v)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+                style={{ background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
+                <Camera size={11} /> Cámara ▾
+              </button>
+              {showCameraMenu && (
+                <div className="absolute bottom-full mb-2 left-0 z-50 rounded-xl overflow-hidden shadow-2xl"
+                     style={{ background: '#1a1a28', border: '1px solid rgba(99,102,241,0.3)', minWidth: 200 }}>
+                  <div className="px-3 py-2 text-[8px] font-black uppercase tracking-widest text-indigo-400"
+                       style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>Presets de cámara</div>
+                  {CAMERA_PRESETS.map(preset => (
+                    <button key={preset.label}
+                      onClick={() => addGlobalChange(preset.prompt)}
+                      className="w-full text-left px-3 py-2 text-[9px] font-medium text-zinc-300 hover:bg-indigo-500/20 hover:text-white transition-colors">
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Global change inline input */}
+          {showGlobalInput && (
+            <div className="flex items-center gap-2 flex-1 min-w-[300px]">
+              <Globe size={11} className="text-purple-400 flex-shrink-0" />
+              <input
+                autoFocus
+                value={globalDesc}
+                onChange={e => setGlobalDesc(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addGlobalChange(globalDesc); if (e.key === 'Escape') { setShowGlobalInput(false); setGlobalDesc(''); } }}
+                placeholder="Describe el cambio global (ej: cambiar ángulo de cámara)…"
+                className="flex-1 bg-black/40 border border-purple-500/30 rounded-lg px-3 py-2 text-[10px] text-zinc-200 placeholder-zinc-600 outline-none focus:border-purple-500/60"
+              />
+              <button onClick={() => addGlobalChange(globalDesc)}
+                className="px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap flex-shrink-0"
+                style={{ background: 'rgba(168,85,247,0.2)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.4)' }}>
+                ✓ Añadir
+              </button>
+              <button onClick={() => { setShowGlobalInput(false); setGlobalDesc(''); }}
+                className="px-3 py-2 rounded-lg bg-white/[0.04] text-zinc-500 border border-white/[0.06] text-[10px] font-black hover:text-zinc-300 transition-colors whitespace-nowrap flex-shrink-0">
+                ✕
+              </button>
+            </div>
           )}
         </div>
       </div>
