@@ -1593,6 +1593,7 @@ export const ImageExportNode = memo(({ id, data, selected }: NodeProps<any>) => 
   const [format, setFormat] = useState<'png' | 'jpeg'>('png');
   const [isExporting, setIsExporting] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [detectedSize, setDetectedSize] = useState<{ w: number; h: number } | null>(null);
 
   // Refs for synchronous form-based download (bypasses Chrome async security blocks)
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -1647,6 +1648,29 @@ export const ImageExportNode = memo(({ id, data, selected }: NodeProps<any>) => 
     }].filter(l => l.value || l.color);
   }, [sourceNode, edges, nodes]);
 
+  // Detect native image dimensions from source
+  const imageUrl = sourceNode?.data?.value as string | undefined;
+  useEffect(() => {
+    if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) {
+      // For composer or non-URL sources, try stored dimensions
+      const w = (sourceNode?.data as any)?.width;
+      const h = (sourceNode?.data as any)?.height;
+      if (w && h) setDetectedSize({ w, h });
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        setDetectedSize({ w: img.naturalWidth, h: img.naturalHeight });
+      }
+    };
+    img.src = imageUrl;
+  }, [imageUrl, sourceNode]);
+
+  // Resolved export dimensions: native size > stored > 1920×1080 fallback
+  const exportW = detectedSize?.w || (sourceNode?.data as any)?.width || 1920;
+  const exportH = detectedSize?.h || (sourceNode?.data as any)?.height || 1080;
+
   const handleExport = () => {
     if (!sourceNode) return alert("Connect an image first!");
     if (!formRef.current || !layersInputRef.current || !filenameInputRef.current || !formatInputRef.current) return;
@@ -1671,10 +1695,10 @@ export const ImageExportNode = memo(({ id, data, selected }: NodeProps<any>) => 
     formData.append('layers', JSON.stringify(layers));
     formData.append('filename', filename);
     formData.append('format', format);
-    formData.append('width', '1920');
-    formData.append('height', '1080');
-    formData.append('previewWidth', '1920');
-    formData.append('previewHeight', '1080');
+    formData.append('width', String(exportW));
+    formData.append('height', String(exportH));
+    formData.append('previewWidth', String(exportW));
+    formData.append('previewHeight', String(exportH));
 
     fetch('/api/spaces/compose', { method: 'POST', body: formData })
       .then(r => r.blob())
@@ -1712,10 +1736,10 @@ export const ImageExportNode = memo(({ id, data, selected }: NodeProps<any>) => 
         <input ref={layersInputRef} type="hidden" name="layers" />
         <input ref={filenameInputRef} type="hidden" name="filename" />
         <input ref={formatInputRef} type="hidden" name="format" />
-        <input type="hidden" name="width" value="1920" />
-        <input type="hidden" name="height" value="1080" />
-        <input type="hidden" name="previewWidth" value="1920" />
-        <input type="hidden" name="previewHeight" value="1080" />
+        <input type="hidden" name="width" value={String(exportW)} />
+        <input type="hidden" name="height" value={String(exportH)} />
+        <input type="hidden" name="previewWidth" value={String(exportW)} />
+        <input type="hidden" name="previewHeight" value={String(exportH)} />
       </form>
 
       <div className="handle-wrapper handle-left">
@@ -1750,7 +1774,7 @@ export const ImageExportNode = memo(({ id, data, selected }: NodeProps<any>) => 
         </button>
 
         <div className="mb-2 flex justify-between items-center text-[8px] font-mono text-gray-500 uppercase">
-          <span>1920x1080 PX</span>
+          <span>{exportW}×{exportH} PX{detectedSize ? ' · NATIVE' : ' · FALLBACK'}</span>
           <span>COMPOSITION MODE</span>
         </div>
 
