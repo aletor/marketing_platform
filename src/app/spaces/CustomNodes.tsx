@@ -64,18 +64,22 @@ interface BaseNodeData {
 
 interface ComposerLayer {
   id: string;
-  type: 'image' | 'color' | 'rect' | 'text';
+  type: 'image' | 'color' | 'rect' | 'circle' | 'gradient' | 'text';
   label: string;
   x: number; y: number; w: number; h: number;
   opacity: number;
   visible: boolean;
   locked: boolean;
   // type-specific
-  src?: string;    // image
-  color?: string;  // color fill / solid bg
-  fill?: string;   // rect fill
-  radius?: number; // rect border-radius
-  text?: string;   // text layer
+  src?: string;          // image
+  color?: string;        // color layer
+  fill?: string;         // rect / circle fill
+  radius?: number;       // rect corner radius
+  // gradient
+  gradientFrom?: string;
+  gradientTo?: string;
+  gradientAngle?: number; // degrees
+  text?: string;
   fontSize?: number;
   fontColor?: string;
 }
@@ -563,34 +567,55 @@ export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) =
 
       for (const layer of allLayersForRender) {
         ctx.globalAlpha = layer.opacity ?? 1;
-        if (layer.type === 'color' || (layer.type === 'image' && layer.color)) {
+        const lx = layer.x ?? 0, ly = layer.y ?? 0, lw = layer.w ?? 1920, lh = layer.h ?? 1080;
+        if (layer.type === 'color') {
           ctx.fillStyle = (layer as any).color || '#000';
-          ctx.fillRect(layer.x ?? 0, layer.y ?? 0, layer.w ?? 1920, layer.h ?? 1080);
+          ctx.fillRect(lx, ly, lw, lh);
+        } else if (layer.type === 'gradient') {
+          const angle = ((layer as any).gradientAngle ?? 0) * (Math.PI / 180);
+          const cx2 = lx + lw / 2, cy2 = ly + lh / 2;
+          const len = Math.sqrt(lw * lw + lh * lh) / 2;
+          const grd = ctx.createLinearGradient(
+            cx2 - Math.cos(angle) * len, cy2 - Math.sin(angle) * len,
+            cx2 + Math.cos(angle) * len, cy2 + Math.sin(angle) * len,
+          );
+          grd.addColorStop(0, (layer as any).gradientFrom || '#1e293b');
+          grd.addColorStop(1, (layer as any).gradientTo || '#0f172a');
+          ctx.fillStyle = grd;
+          ctx.fillRect(lx, ly, lw, lh);
         } else if (layer.type === 'rect') {
           ctx.fillStyle = (layer as any).fill || '#ffffff';
-          if ((layer as any).radius) {
-            const r = (layer as any).radius;
-            const x = layer.x ?? 0, y = layer.y ?? 0, w = layer.w ?? 200, h = layer.h ?? 100;
+          const r = Math.min((layer as any).radius ?? 0, lw / 2, lh / 2);
+          if (r > 0) {
             ctx.beginPath();
-            ctx.moveTo(x + r, y);
-            ctx.lineTo(x + w - r, y);
-            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-            ctx.lineTo(x + w, y + h - r);
-            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-            ctx.lineTo(x + r, y + h);
-            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-            ctx.lineTo(x, y + r);
-            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.moveTo(lx + r, ly);
+            ctx.lineTo(lx + lw - r, ly);
+            ctx.quadraticCurveTo(lx + lw, ly, lx + lw, ly + r);
+            ctx.lineTo(lx + lw, ly + lh - r);
+            ctx.quadraticCurveTo(lx + lw, ly + lh, lx + lw - r, ly + lh);
+            ctx.lineTo(lx + r, ly + lh);
+            ctx.quadraticCurveTo(lx, ly + lh, lx, ly + lh - r);
+            ctx.lineTo(lx, ly + r);
+            ctx.quadraticCurveTo(lx, ly, lx + r, ly);
             ctx.closePath();
             ctx.fill();
           } else {
-            ctx.fillRect(layer.x ?? 0, layer.y ?? 0, layer.w ?? 200, layer.h ?? 100);
+            ctx.fillRect(lx, ly, lw, lh);
           }
-        } else if (layer.type === 'image' && (layer as any).src) {
-          try {
-            const img = await loadCanvasImage((layer as any).src);
-            ctx.drawImage(img, layer.x ?? 0, layer.y ?? 0, layer.w ?? img.naturalWidth, layer.h ?? img.naturalHeight);
-          } catch (e) { console.warn('[Composer] layer load fail', e); }
+        } else if (layer.type === 'circle') {
+          ctx.fillStyle = (layer as any).fill || '#ffffff';
+          const rx2 = lw / 2, ry2 = lh / 2;
+          ctx.beginPath();
+          ctx.ellipse(lx + rx2, ly + ry2, rx2, ry2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (layer.type === 'image') {
+          const imgSrc = (layer as any).src || (layer as any)._src;
+          if (imgSrc) {
+            try {
+              const img = await loadCanvasImage(imgSrc);
+              ctx.drawImage(img, lx, ly, lw, lh);
+            } catch (e) { console.warn('[Composer] layer load fail', e); }
+          }
         }
         ctx.globalAlpha = 1;
       }
@@ -795,42 +820,70 @@ interface ComposerStudioProps {
 }
 
 const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClose }: ComposerStudioProps) => {
-  // Merge imageLayers into a single unified layer list tagged with _isImageInput
-  // so they can be positioned/reordered just like internal layers.
+  // ── Unified layer state ─────────────────────────────────────────────────
+  // imageLayers are merged in as _isImageInput=true, so they can be dragged
+  // and reordered. On save, we split them back out.
   const [layers, setLayers] = useState<ComposerLayer[]>(() => {
     const imgAsLayers: ComposerLayer[] = imageLayers.map(il => ({
       id: il.id,
       type: 'image' as const,
-      label: il.label || il.id,
-      x: il.x ?? 0,
-      y: il.y ?? 0,
-      w: il.w ?? 960,
-      h: il.h ?? 540,
-      opacity: il.opacity ?? 1,
-      visible: il.visible !== false,
-      locked: il.locked ?? false,
-      _src: il.src,          // store original src
-      _isImageInput: true,   // flag to identify on save
+      label: il.label || 'Image Input',
+      x: il.x ?? 0, y: il.y ?? 0, w: il.w ?? 960, h: il.h ?? 540,
+      opacity: il.opacity ?? 1, visible: il.visible !== false, locked: false,
+      _src: il.src, _isImageInput: true,
     } as any));
     return [...imgAsLayers, ...initLayers];
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [drag, setDrag] = useState<{ id: string; sx: number; sy: number; ix: number; iy: number; iw: number; ih: number; mode: string } | null>(null);
+  const [drag, setDrag] = useState<{
+    id: string; sx: number; sy: number;
+    ix: number; iy: number; iw: number; ih: number; mode: string;
+  } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  // Keyboard nudge
+  const selectedLayer = layers.find(l => l.id === selectedId) ?? null;
+
+  // ── Helpers ────────────────────────────────────────────────────────────
+  const updateLayer = (id: string, patch: Partial<ComposerLayer> & Record<string, any>) =>
+    setLayers(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l));
+  const deleteLayer = (id: string) => { setLayers(prev => prev.filter(l => l.id !== id)); setSelectedId(null); };
+  const moveUp = (id: string) => setLayers(prev => {
+    const i = prev.findIndex(l => l.id === id);
+    if (i >= prev.length - 1) return prev;
+    const n = [...prev]; [n[i], n[i + 1]] = [n[i + 1], n[i]]; return n;
+  });
+  const moveDown = (id: string) => setLayers(prev => {
+    const i = prev.findIndex(l => l.id === id);
+    if (i <= 0) return prev;
+    const n = [...prev]; [n[i], n[i - 1]] = [n[i - 1], n[i]]; return n;
+  });
+
+  // ── Add shapes ─────────────────────────────────────────────────────────
+  const addShape = (type: ComposerLayer['type'], extra: Partial<ComposerLayer> & Record<string, any> = {}) => {
+    const id = `${type}-${Date.now()}`;
+    const base: ComposerLayer = {
+      id, type, label: type.charAt(0).toUpperCase() + type.slice(1),
+      x: 400, y: 300, w: 400, h: 300, opacity: 1, visible: true, locked: false,
+    };
+    const layer = { ...base, ...extra };
+    setLayers(prev => [...prev, layer]);
+    setSelectedId(id);
+  };
+
+  // ── Keyboard ───────────────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!selectedId) return;
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT') return; // don't capture when typing
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        // Hard-delete: remove layer entirely
-        setLayers(prev => prev.filter(l => l.id !== selectedId));
-        setSelectedId(null);
+        const l = layers.find(x => x.id === selectedId);
+        if (l && !(l as any)._isImageInput) deleteLayer(selectedId);
         e.preventDefault();
         return;
       }
       const step = e.shiftKey ? 10 : 1;
-      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         setLayers(prev => prev.map(l => {
           if (l.id !== selectedId) return l;
           if (e.key === 'ArrowUp') return { ...l, y: l.y - step };
@@ -844,33 +897,29 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [selectedId]);
+  }, [selectedId, layers]);
 
-  const onLayerPointerDown = (e: React.PointerEvent, id: string, mode = 'move') => {
-    e.stopPropagation();
-    const l = layers.find(x => x.id === id);
-    if (!l || l.locked) return;
-    setSelectedId(id);
-    setDrag({ id, sx: e.clientX, sy: e.clientY, ix: l.x, iy: l.y, iw: l.w, ih: l.h, mode });
-  };
-
+  // ── Drag / resize ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!drag) return;
     const onMove = (e: PointerEvent) => {
       if (!canvasRef.current) return;
       const rect = canvasRef.current.getBoundingClientRect();
-      const sx = 1920 / rect.width;
-      const sy = 1080 / rect.height;
-      const dx = (e.clientX - drag.sx) * sx;
-      const dy = (e.clientY - drag.sy) * sy;
+      const scaleX = 1920 / rect.width;
+      const scaleY = 1080 / rect.height;
+      const dx = (e.clientX - drag.sx) * scaleX;
+      const dy = (e.clientY - drag.sy) * scaleY;
       setLayers(prev => prev.map(l => {
         if (l.id !== drag.id) return l;
-        if (drag.mode === 'move') return { ...l, x: drag.ix + dx, y: drag.iy + dy };
-        if (drag.mode === 'se') return { ...l, w: Math.max(20, drag.iw + dx), h: Math.max(20, drag.ih + dy) };
-        if (drag.mode === 'sw') return { ...l, x: drag.ix + dx, w: Math.max(20, drag.iw - dx), h: Math.max(20, drag.ih + dy) };
-        if (drag.mode === 'ne') return { ...l, y: drag.iy + dy, w: Math.max(20, drag.iw + dx), h: Math.max(20, drag.ih - dy) };
-        if (drag.mode === 'nw') return { ...l, x: drag.ix + dx, y: drag.iy + dy, w: Math.max(20, drag.iw - dx), h: Math.max(20, drag.ih - dy) };
-        return l;
+        const MIN = 10;
+        switch (drag.mode) {
+          case 'move': return { ...l, x: drag.ix + dx, y: drag.iy + dy };
+          case 'se': return { ...l, w: Math.max(MIN, drag.iw + dx), h: Math.max(MIN, drag.ih + dy) };
+          case 'sw': return { ...l, x: drag.ix + dx, w: Math.max(MIN, drag.iw - dx), h: Math.max(MIN, drag.ih + dy) };
+          case 'ne': return { ...l, y: drag.iy + dy, w: Math.max(MIN, drag.iw + dx), h: Math.max(MIN, drag.ih - dy) };
+          case 'nw': return { ...l, x: drag.ix + dx, y: drag.iy + dy, w: Math.max(MIN, drag.iw - dx), h: Math.max(MIN, drag.ih - dy) };
+          default: return l;
+        }
       }));
     };
     const onUp = () => setDrag(null);
@@ -879,50 +928,73 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
     return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
   }, [drag]);
 
-  const addRect = () => {
-    const l: ComposerLayer = { id: `rect-${Date.now()}`, type: 'rect', label: 'Rectangle', x: 400, y: 300, w: 400, h: 200, fill: '#3b82f6', opacity: 1, visible: true, locked: false, radius: 0 };
-    setLayers(prev => [...prev, l]);
-    setSelectedId(l.id);
-  };
-  const addColor = () => {
-    const l: ComposerLayer = { id: `color-${Date.now()}`, type: 'color', label: 'Solid Color', x: 0, y: 0, w: 1920, h: 1080, color: '#1e293b', opacity: 1, visible: true, locked: false };
-    setLayers(prev => [...prev, l]);
-    setSelectedId(l.id);
+  // ── Save & close ───────────────────────────────────────────────────────
+  const handleSave = () => {
+    // Only save non-image-input layers as internal layers
+    onUpdateLayers(layers.filter((l: any) => !l._isImageInput));
+    onClose();
   };
 
-  const selectedLayer = layers.find(l => l.id === selectedId);
+  // ── Render preview ─────────────────────────────────────────────────────
+  // Get a CSS background for a layer (used in layer list thumbnails)
+  const layerThumbStyle = (l: ComposerLayer & Record<string, any>): React.CSSProperties => {
+    if (l._isImageInput) return { background: '#db2777' };
+    if (l.type === 'gradient') return {
+      background: `linear-gradient(${l.gradientAngle ?? 0}deg, ${l.gradientFrom || '#1e293b'}, ${l.gradientTo || '#0f172a'})`,
+    };
+    return { backgroundColor: l.fill || l.color || '#888' };
+  };
 
   const allDisplayLayers = layers.filter(l => l.visible !== false);
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex flex-col" onPointerDown={() => setSelectedId(null)}>
-      {/* Top bar */}
-      <div className="h-14 border-b border-white/5 flex items-center px-6 gap-4 flex-shrink-0">
+    <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex flex-col">
+      {/* ── Top bar ─────────────────────────────────────────────────────── */}
+      <div
+        className="h-14 border-b border-white/5 flex items-center px-6 gap-2 flex-shrink-0"
+        onPointerDown={e => e.stopPropagation()}
+      >
         <Layers className="text-cyan-400" size={16} />
         <span className="text-[11px] font-black uppercase tracking-widest text-white">Composer Studio</span>
-        <div className="h-4 w-px bg-white/10" />
-        <button onClick={addColor} className="nodrag text-[9px] font-black px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors">+ Color</button>
-        <button onClick={addRect} className="nodrag text-[9px] font-black px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors flex items-center gap-1"><Square size={9} /> Rect</button>
+        <div className="h-4 w-px bg-white/10 mx-2" />
+        {/* Shape buttons */}
+        <button onPointerDown={e => e.stopPropagation()} onClick={() => addShape('color', { x: 0, y: 0, w: 1920, h: 1080, color: '#1e293b', fill: undefined })}
+          className="text-[9px] font-black px-2.5 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors">
+          + Color
+        </button>
+        <button onPointerDown={e => e.stopPropagation()} onClick={() => addShape('gradient', { x: 0, y: 0, w: 1920, h: 1080, gradientFrom: '#1e3a5f', gradientTo: '#0f172a', gradientAngle: 135 })}
+          className="text-[9px] font-black px-2.5 py-1.5 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 transition-colors">
+          ↗ Gradient
+        </button>
+        <button onPointerDown={e => e.stopPropagation()} onClick={() => addShape('rect', { fill: '#3b82f6', radius: 0 })}
+          className="text-[9px] font-black px-2.5 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors flex items-center gap-1">
+          <Square size={9} /> Rect
+        </button>
+        <button onPointerDown={e => e.stopPropagation()} onClick={() => addShape('circle', { fill: '#10b981' })}
+          className="text-[9px] font-black px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors flex items-center gap-1">
+          ○ Circle
+        </button>
         <div className="ml-auto flex items-center gap-3">
-          <button onClick={() => {
-            // Split back: only save non-image-input layers as internal layers
-            onUpdateLayers(layers.filter((l: any) => !l._isImageInput));
-            onClose();
-          }} className="bg-cyan-500 hover:bg-cyan-400 text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all">
+          <button onPointerDown={e => e.stopPropagation()} onClick={handleSave}
+            className="bg-cyan-500 hover:bg-cyan-400 text-black px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all">
             Save & Close
           </button>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors"><X size={18} /></button>
+          <button onPointerDown={e => e.stopPropagation()} onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+            <X size={18} />
+          </button>
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Canvas */}
-        <div className="flex-1 flex items-center justify-center p-6 bg-[#080808]">
+        {/* ── Canvas ──────────────────────────────────────────────────── */}
+        <div className="flex-1 flex items-center justify-center p-6 bg-[#080808]"
+          onPointerDown={() => setSelectedId(null)}
+        >
           <div
             ref={canvasRef}
             className="relative bg-[#050505] border border-white/10 rounded-xl shadow-2xl overflow-hidden select-none"
             style={{
-              width: 'min(90vw, calc((100vh - 120px) * 16/9))',
+              width: 'min(calc(100vw - 400px), calc((100vh - 140px) * 16/9))',
               aspectRatio: '16/9',
               backgroundImage: 'radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)',
               backgroundSize: '24px 24px',
@@ -930,40 +1002,62 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
             onPointerDown={() => setSelectedId(null)}
           >
             {allDisplayLayers.map((layer, idx) => {
-              const isImg = !!(layer as any)._src || !!(layer as any).src || !!(layer as any)._isImageInput;
-              const imgSrc = (layer as any)._src || (layer as any).src;
+              const la = layer as any;
+              const isImg = la._isImageInput || la.type === 'image';
+              const imgSrc = la._src || la.src;
               const isSel = selectedId === layer.id;
-              const lx = (layer.x / 1920) * 100;
-              const ly = (layer.y / 1080) * 100;
-              const lw = layer.w ? `${(layer.w / 1920) * 100}%` : '100%';
-              const lh = layer.h ? `${(layer.h / 1080) * 100}%` : '100%';
-              const bgColor = layer.fill || layer.color;
+              const lx = `${(layer.x / 1920) * 100}%`;
+              const ly = `${(layer.y / 1080) * 100}%`;
+              const lw = `${(layer.w / 1920) * 100}%`;
+              const lh = `${(layer.h / 1080) * 100}%`;
+
+              let innerStyle: React.CSSProperties = {};
+              if (layer.type === 'gradient') {
+                innerStyle = {
+                  background: `linear-gradient(${la.gradientAngle ?? 0}deg, ${la.gradientFrom || '#1e293b'}, ${la.gradientTo || '#0f172a'})`,
+                };
+              } else if (layer.type === 'circle') {
+                innerStyle = { backgroundColor: la.fill || '#fff', borderRadius: '50%' };
+              } else if (!isImg) {
+                innerStyle = {
+                  backgroundColor: la.fill || la.color || '#888',
+                  borderRadius: la.radius ? `${la.radius}px` : 0,
+                };
+              }
 
               return (
                 <div
                   key={`${layer.id}-${idx}`}
-                  className={`absolute cursor-move ${isSel ? 'z-50' : ''}`}
-                  style={{ left: `${lx}%`, top: `${ly}%`, width: lw, height: lh, zIndex: idx, opacity: layer.opacity }}
-                  onPointerDown={(e) => { e.stopPropagation(); setSelectedId(layer.id); if (!layer.locked) setDrag({ id: layer.id, sx: e.clientX, sy: e.clientY, ix: layer.x, iy: layer.y, iw: layer.w, ih: layer.h, mode: 'move' }); }}
+                  className={`absolute ${isSel ? 'z-50' : ''} ${!layer.locked ? 'cursor-move' : 'cursor-default'}`}
+                  style={{ left: lx, top: ly, width: lw, height: lh, zIndex: idx, opacity: layer.opacity }}
+                  onPointerDown={e => {
+                    e.stopPropagation();
+                    setSelectedId(layer.id);
+                    if (!layer.locked)
+                      setDrag({ id: layer.id, sx: e.clientX, sy: e.clientY, ix: layer.x, iy: layer.y, iw: layer.w, ih: layer.h, mode: 'move' });
+                  }}
                 >
-                  {isImg ? (
-                    <img src={imgSrc} className="w-full h-full object-contain block pointer-events-none" alt="" />
-                  ) : (
-                    <div className="w-full h-full" style={{ backgroundColor: bgColor || '#888', borderRadius: layer.radius ? `${layer.radius}px` : 0 }} />
-                  )}
+                  {isImg && imgSrc
+                    ? <img src={imgSrc} className="w-full h-full object-contain block pointer-events-none" alt="" />
+                    : <div className="w-full h-full pointer-events-none" style={innerStyle} />
+                  }
                   {isSel && !layer.locked && (
                     <>
-                      <div className="absolute inset-0 ring-2 ring-cyan-400 rounded pointer-events-none" />
-                      {/* Resize handles */}
-                      {(['nw','ne','sw','se'] as const).map(pos => (
-                        <div
-                          key={pos}
-                          className={`absolute w-3 h-3 bg-white border-2 border-cyan-400 rounded-sm cursor-${pos}-resize z-10`}
+                      <div className="absolute inset-0 ring-2 ring-cyan-400 pointer-events-none" style={{ borderRadius: layer.type === 'circle' ? '50%' : (layer as any).radius ? `${(layer as any).radius}px` : 0 }} />
+                      {(['nw', 'ne', 'sw', 'se'] as const).map(pos => (
+                        <div key={pos}
+                          className="absolute w-3 h-3 bg-white border-2 border-cyan-400 rounded-sm z-10"
                           style={{
-                            top: pos.startsWith('n') ? -6 : undefined, bottom: pos.startsWith('s') ? -6 : undefined,
-                            left: pos.endsWith('w') ? -6 : undefined, right: pos.endsWith('e') ? -6 : undefined,
+                            top: pos.startsWith('n') ? -6 : undefined,
+                            bottom: pos.startsWith('s') ? -6 : undefined,
+                            left: pos.endsWith('w') ? -6 : undefined,
+                            right: pos.endsWith('e') ? -6 : undefined,
+                            cursor: `${pos}-resize`,
                           }}
-                          onPointerDown={(e) => { e.stopPropagation(); setDrag({ id: layer.id, sx: e.clientX, sy: e.clientY, ix: layer.x, iy: layer.y, iw: layer.w, ih: layer.h, mode: pos }); }}
+                          onPointerDown={e => {
+                            e.stopPropagation();
+                            setDrag({ id: layer.id, sx: e.clientX, sy: e.clientY, ix: layer.x, iy: layer.y, iw: layer.w, ih: layer.h, mode: pos });
+                          }}
                         />
                       ))}
                     </>
@@ -974,88 +1068,156 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
           </div>
         </div>
 
-        {/* Side panel */}
-        <div className="w-60 border-l border-white/5 flex flex-col bg-black/40 backdrop-blur-sm overflow-y-auto">
-          <div className="p-3 border-b border-white/5">
-            <div className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-2">Layers</div>
+        {/* ── Side panel ────────────────────────────────────────────── */}
+        <div
+          className="w-80 border-l border-white/5 flex flex-col bg-black/60 backdrop-blur-sm overflow-y-auto flex-shrink-0"
+          onPointerDown={e => e.stopPropagation()}  /* ← key fix: prevent outer div from clearing selection */
+        >
+          {/* Layer list */}
+          <div className="p-4 border-b border-white/5">
+            <div className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-3">Layers</div>
             <div className="space-y-1">
               {[...layers].reverse().map(l => {
-                const isImgInput = (l as any)._isImageInput;
+                const la = l as any;
+                const isImgInput = la._isImageInput;
+                const isSel = selectedId === l.id;
                 return (
-                <div key={l.id} onClick={() => setSelectedId(l.id)}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border cursor-pointer transition-all ${selectedId === l.id ? 'bg-cyan-500/20 border-cyan-500/30 text-white' : 'bg-white/[0.02] border-white/5 text-white/50 hover:bg-white/5'}`}>
-                  {isImgInput
-                    ? <ImageIcon size={9} className="flex-shrink-0 text-pink-400" />
-                    : <div className="w-3 h-3 rounded-sm border border-white/10 flex-shrink-0" style={{ backgroundColor: (l as any).fill || (l as any).color || '#888' }} />
-                  }
-                  <span className="text-[9px] font-bold flex-1 truncate">{l.label}</span>
-                  <button onClick={(e) => { e.stopPropagation(); setLayers(prev => prev.map(x => x.id === l.id ? { ...x, visible: !x.visible } : x)); }} className="opacity-40 hover:opacity-100">
-                    {l.visible !== false ? <Eye size={9} /> : <EyeOff size={9} />}
-                  </button>
-                  {!isImgInput && (
-                    <button onClick={(e) => { e.stopPropagation(); setLayers(prev => prev.filter(x => x.id !== l.id)); if (selectedId === l.id) setSelectedId(null); }} className="opacity-40 hover:opacity-100 hover:text-rose-400">
-                      <Trash2 size={9} />
+                  <div key={l.id}
+                    onClick={() => setSelectedId(l.id)}
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border cursor-pointer transition-all group ${isSel ? 'bg-cyan-500/20 border-cyan-500/40 text-white' : 'bg-white/[0.03] border-white/5 text-white/50 hover:bg-white/5 hover:text-white/80'}`}
+                  >
+                    {/* Thumbnail */}
+                    <div className="w-5 h-5 rounded-md flex-shrink-0 border border-white/10 overflow-hidden flex items-center justify-center"
+                      style={layerThumbStyle(l as any)}>
+                      {isImgInput && <ImageIcon size={10} className="text-white/70" />}
+                    </div>
+                    <span className="text-[9px] font-semibold flex-1 truncate">{l.label}</span>
+                    {/* Move up/down */}
+                    <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={e => { e.stopPropagation(); moveUp(l.id); }} className="p-0.5 hover:text-white text-white/30">
+                        <ChevronUp size={8} />
+                      </button>
+                      <button onClick={e => { e.stopPropagation(); moveDown(l.id); }} className="p-0.5 hover:text-white text-white/30">
+                        <ChevronDown size={8} />
+                      </button>
+                    </div>
+                    {/* Visibility */}
+                    <button onClick={e => { e.stopPropagation(); updateLayer(l.id, { visible: !l.visible }); }} className="opacity-40 hover:opacity-100">
+                      {l.visible !== false ? <Eye size={9} /> : <EyeOff size={9} />}
                     </button>
-                  )}
-                </div>
+                    {/* Delete (not for image inputs) */}
+                    {!isImgInput && (
+                      <button onClick={e => { e.stopPropagation(); deleteLayer(l.id); }} className="opacity-40 hover:opacity-100 hover:text-rose-400">
+                        <Trash2 size={9} />
+                      </button>
+                    )}
+                  </div>
                 );
               })}
+              {layers.length === 0 && (
+                <div className="text-center py-4 text-[8px] text-white/20">No layers yet — add shapes above</div>
+              )}
             </div>
           </div>
 
           {/* Properties panel */}
           {selectedLayer && (
-            <div className="p-3 space-y-3">
-              <div className="text-[8px] font-black text-white/30 uppercase tracking-widest">Properties</div>
-              {/* Color/fill */}
-              {(selectedLayer.type === 'rect' || selectedLayer.type === 'color') && (
+            <div className="p-4 space-y-4" onPointerDown={e => e.stopPropagation()}>
+              <div className="text-[8px] font-black text-white/30 uppercase tracking-widest">Properties — {selectedLayer.type}</div>
+
+              {/* Color (solid) */}
+              {(selectedLayer.type === 'rect' || selectedLayer.type === 'circle' || selectedLayer.type === 'color') && (
                 <div>
-                  <label className="text-[8px] text-white/40">Color</label>
-                  <input type="color" value={selectedLayer.fill || selectedLayer.color || '#3b82f6'}
-                    onChange={e => setLayers(prev => prev.map(l => l.id === selectedId ? { ...l, fill: e.target.value, color: e.target.value } : l))}
-                    className="w-full h-8 rounded cursor-pointer border border-white/10 bg-transparent" />
+                  <label className="text-[9px] text-white/50 mb-1 block">Color</label>
+                  <input type="color"
+                    value={(selectedLayer as any).fill || (selectedLayer as any).color || '#3b82f6'}
+                    onChange={e => updateLayer(selectedLayer.id, { fill: e.target.value, color: e.target.value })}
+                    className="w-full h-9 rounded-lg cursor-pointer border border-white/10 bg-transparent"
+                  />
                 </div>
               )}
+
+              {/* Gradient */}
+              {selectedLayer.type === 'gradient' && (
+                <>
+                  <div>
+                    <label className="text-[9px] text-white/50 mb-1 block">From color</label>
+                    <input type="color"
+                      value={(selectedLayer as any).gradientFrom || '#1e293b'}
+                      onChange={e => updateLayer(selectedLayer.id, { gradientFrom: e.target.value })}
+                      className="w-full h-9 rounded-lg cursor-pointer border border-white/10 bg-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] text-white/50 mb-1 block">To color</label>
+                    <input type="color"
+                      value={(selectedLayer as any).gradientTo || '#0f172a'}
+                      onChange={e => updateLayer(selectedLayer.id, { gradientTo: e.target.value })}
+                      className="w-full h-9 rounded-lg cursor-pointer border border-white/10 bg-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] text-white/50 block">Angle {(selectedLayer as any).gradientAngle ?? 0}°</label>
+                    <input type="range" min="0" max="360"
+                      value={(selectedLayer as any).gradientAngle ?? 0}
+                      onChange={e => updateLayer(selectedLayer.id, { gradientAngle: parseInt(e.target.value) })}
+                      className="w-full mt-1"
+                    />
+                  </div>
+                </>
+              )}
+
               {/* Opacity */}
               <div>
-                <label className="text-[8px] text-white/40">Opacity {Math.round((selectedLayer.opacity ?? 1) * 100)}%</label>
-                <input type="range" min="0" max="1" step="0.01" value={selectedLayer.opacity ?? 1}
-                  onChange={e => setLayers(prev => prev.map(l => l.id === selectedId ? { ...l, opacity: parseFloat(e.target.value) } : l))}
-                  className="w-full" />
+                <label className="text-[9px] text-white/50 block">Opacity {Math.round((selectedLayer.opacity ?? 1) * 100)}%</label>
+                <input type="range" min="0" max="1" step="0.01"
+                  value={selectedLayer.opacity ?? 1}
+                  onChange={e => updateLayer(selectedLayer.id, { opacity: parseFloat(e.target.value) })}
+                  className="w-full mt-1"
+                />
               </div>
-              {/* Radius for rect */}
+
+              {/* Corner radius for rect */}
               {selectedLayer.type === 'rect' && (
                 <div>
-                  <label className="text-[8px] text-white/40">Corner radius {selectedLayer.radius ?? 0}px</label>
-                  <input type="range" min="0" max="200" value={selectedLayer.radius ?? 0}
-                    onChange={e => setLayers(prev => prev.map(l => l.id === selectedId ? { ...l, radius: parseInt(e.target.value) } : l))}
-                    className="w-full" />
+                  <label className="text-[9px] text-white/50 block">Radius {(selectedLayer as any).radius ?? 0}px</label>
+                  <input type="range" min="0" max="300"
+                    value={(selectedLayer as any).radius ?? 0}
+                    onChange={e => updateLayer(selectedLayer.id, { radius: parseInt(e.target.value) })}
+                    className="w-full mt-1"
+                  />
                 </div>
               )}
-              {/* Position */}
-              <div className="grid grid-cols-2 gap-1">
-                {(['x','y','w','h'] as const).map(k => (
-                  <div key={k}>
-                    <label className="text-[8px] text-white/40">{k.toUpperCase()}</label>
-                    <input type="number" value={Math.round((selectedLayer as any)[k] ?? 0)}
-                      onChange={e => setLayers(prev => prev.map(l => l.id === selectedId ? { ...l, [k]: parseInt(e.target.value) } : l))}
-                      className="w-full bg-white/5 border border-white/10 rounded px-1 py-0.5 text-[9px] text-white" />
-                  </div>
-                ))}
+
+              {/* Position & size */}
+              <div>
+                <label className="text-[9px] text-white/50 mb-2 block">Position & Size (px)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['x', 'y', 'w', 'h'] as const).map(k => (
+                    <div key={k}>
+                      <label className="text-[8px] text-white/30 block mb-0.5">{k.toUpperCase()}</label>
+                      <input type="number"
+                        value={Math.round((selectedLayer as any)[k] ?? 0)}
+                        onChange={e => updateLayer(selectedLayer.id, { [k]: parseInt(e.target.value) || 0 })}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-[9px] text-white focus:outline-none focus:border-cyan-500/50"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="h-10 border-t border-white/5 flex items-center justify-center gap-8 text-[8px] font-black text-white/20 uppercase tracking-widest flex-shrink-0">
-        <span>DRAG to move</span>
-        <span className="text-white/10">|</span>
-        <span>HANDLES to resize</span>
-        <span className="text-white/10">|</span>
-        <span>ARROWS to nudge (+SHIFT×10)</span>
-        <span className="text-white/10">|</span>
+      {/* Footer hints */}
+      <div
+        className="h-8 border-t border-white/5 flex items-center justify-center gap-8 text-[7px] font-black text-white/15 uppercase tracking-widest flex-shrink-0"
+        onPointerDown={e => e.stopPropagation()}
+      >
+        <span>DRAG to move</span><span className="text-white/5">|</span>
+        <span>HANDLES to resize</span><span className="text-white/5">|</span>
+        <span>ARROWS to nudge (+SHIFT×10)</span><span className="text-white/5">|</span>
         <span>DELETE to remove</span>
       </div>
     </div>
