@@ -64,7 +64,7 @@ interface BaseNodeData {
 
 interface ComposerLayer {
   id: string;
-  type: 'image' | 'color' | 'rect' | 'circle' | 'gradient' | 'text';
+  type: 'image' | 'color' | 'rect' | 'circle' | 'gradient' | 'text' | 'paint';
   label: string;
   x: number; y: number; w: number; h: number;
   opacity: number;
@@ -82,6 +82,10 @@ interface ComposerLayer {
   text?: string;
   fontSize?: number;
   fontColor?: string;
+  // paint layer
+  paintData?: string;      // dataURL of drawn canvas, transparent bg
+  paintBrushSize?: number; // px
+  paintColor?: string;     // hex
 }
 
 const NodeLabel = ({ id, label, defaultLabel }: { id: string, label?: string, defaultLabel: string }) => {
@@ -608,12 +612,20 @@ export const ImageComposerNode = memo(({ id, data, selected }: NodeProps<any>) =
           ctx.beginPath();
           ctx.ellipse(lx + rx2, ly + ry2, rx2, ry2, 0, 0, Math.PI * 2);
           ctx.fill();
+        } else if (layer.type === 'paint') {
+          const paintSrc = (layer as any).paintData;
+          if (paintSrc) {
+            try {
+              const img = await loadCanvasImage(paintSrc);
+              ctx.drawImage(img, lx, ly, lw, lh);
+            } catch (e) { console.warn('[Composer] paint layer load fail', e); }
+          }
         } else if (layer.type === 'image') {
           const imgSrc = (layer as any).src || (layer as any)._src;
           if (imgSrc) {
             try {
               const img = await loadCanvasImage(imgSrc);
-              ctx.drawImage(img, lx, ly, lw, lh);
+              ctx.drawImage(img, lx, ly, lh, lh);
             } catch (e) { console.warn('[Composer] layer load fail', e); }
           }
         }
@@ -790,6 +802,136 @@ interface ComposerStudioProps {
   onClose: () => void;
 }
 
+// ── PaintLayerCanvas — freehand drawing on a transparent canvas layer ──────
+interface PaintLayerCanvasProps {
+  layer: ComposerLayer & { paintData?: string; paintBrushSize?: number; paintColor?: string };
+  canvasContainerRef: React.RefObject<HTMLDivElement | null>;
+  isSel: boolean;
+  mode: 'brush' | 'eraser';
+  onPaintSave: (id: string, dataURL: string) => void;
+}
+const PaintLayerCanvas = ({ layer, canvasContainerRef, isSel, mode, onPaintSave }: PaintLayerCanvasProps) => {
+  const canvasRef      = useRef<HTMLCanvasElement>(null);
+  const cursorRef      = useRef<HTMLDivElement>(null);
+  const isDrawingRef   = useRef(false);
+  const modeRef        = useRef<'brush' | 'eraser'>('brush');
+  const colorRef       = useRef(layer.paintColor || '#ffffff');
+  const brushSizeRef   = useRef(layer.paintBrushSize || 12);
+
+  // Keep refs in sync
+  useEffect(() => { colorRef.current = layer.paintColor || '#ffffff'; }, [layer.paintColor]);
+  useEffect(() => { modeRef.current = mode; }, [mode]);
+  useEffect(() => { brushSizeRef.current = layer.paintBrushSize || 12; }, [layer.paintBrushSize]);
+
+  // Load existing paint when layer first mounts
+  const initialized = useRef(false);
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    if (layer.paintData) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      };
+      img.src = layer.paintData;
+    }
+  });
+
+  const getXY = (e: React.PointerEvent) => {
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top)  * (canvas.height / rect.height),
+    };
+  };
+
+  const updateCursor = (e: React.PointerEvent, visible: boolean) => {
+    const dot = cursorRef.current;
+    const canvas = canvasRef.current;
+    if (!dot || !canvas) return;
+    if (!visible) { dot.style.display = 'none'; return; }
+    const rect = canvas.getBoundingClientRect();
+    const scale = rect.width / canvas.width;
+    const sz = brushSizeRef.current * scale * (modeRef.current === 'eraser' ? 3 : 1);
+    dot.style.display = 'block';
+    dot.style.left  = `${e.clientX - rect.left}px`;
+    dot.style.top   = `${e.clientY - rect.top}px`;
+    dot.style.width = dot.style.height = `${sz}px`;
+    dot.style.borderColor = modeRef.current === 'eraser' ? 'rgba(255,255,255,0.6)' : colorRef.current;
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!isSel) return; // only draw when layer is selected
+    e.preventDefault(); e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    const { x, y } = getXY(e);
+    const pressure = e.pressure > 0 ? e.pressure : 1;
+    const sz = modeRef.current === 'eraser' ? brushSizeRef.current * 3 : brushSizeRef.current * pressure;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.lineWidth = sz;
+    ctx.globalCompositeOperation = modeRef.current === 'eraser' ? 'destination-out' : 'source-over';
+    ctx.strokeStyle = colorRef.current;
+    ctx.beginPath(); ctx.moveTo(x, y);
+    isDrawingRef.current = true;
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    updateCursor(e, isSel);
+    if (!isDrawingRef.current) return;
+    e.preventDefault(); e.stopPropagation();
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    const { x, y } = getXY(e);
+    const pressure = e.pressure > 0 ? e.pressure : 1;
+    ctx.lineWidth = modeRef.current === 'eraser' ? brushSizeRef.current * 3 : brushSizeRef.current * pressure;
+    ctx.lineTo(x, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y);
+  };
+
+  const onPointerUp = () => {
+    if (!isDrawingRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (ctx) { ctx.closePath(); ctx.globalCompositeOperation = 'source-over'; }
+    isDrawingRef.current = false;
+    if (canvas) onPaintSave(layer.id, canvas.toDataURL('image/png'));
+  };
+
+  return (
+    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 100 }}>
+      <canvas
+        ref={canvasRef}
+        width={1920} height={1080}
+        className="absolute inset-0 w-full h-full"
+        style={{
+          touchAction: 'none',
+          pointerEvents: isSel ? 'all' : 'none',
+          cursor: isSel ? 'crosshair' : 'default',
+        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerLeave={() => { if (cursorRef.current) cursorRef.current.style.display = 'none'; }}
+      />
+      {isSel && (
+        <div ref={cursorRef} style={{
+          position: 'absolute', display: 'none', pointerEvents: 'none',
+          borderRadius: '50%', border: '1.5px solid', transform: 'translate(-50%,-50%)',
+          boxShadow: '0 0 0 1px rgba(0,0,0,0.5)',
+        }} />
+      )}
+    </div>
+  );
+};
+
 const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClose }: ComposerStudioProps) => {
   // ── Unified layer state ─────────────────────────────────────────────────
   // imageLayers are merged in as _isImageInput=true, so they can be dragged
@@ -812,6 +954,7 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragLayerId, setDragLayerId] = useState<string | null>(null);
   const [lockCanvasClick, setLockCanvasClick] = useState(false); // when true: select only via layer panel
+  const [paintMode, setPaintMode] = useState<'brush' | 'eraser'>('brush');
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [drag, setDrag] = useState<{
     id: string; sx: number; sy: number;
@@ -849,6 +992,11 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
     });
     setDragLayerId(null);
     setDragOverId(null);
+  };
+
+  // ── Paint layer save ────────────────────────────────────────────────────
+  const onPaintSave = (layerId: string, dataURL: string) => {
+    setLayers(prev => prev.map(l => l.id === layerId ? { ...l, paintData: dataURL } : l));
   };
 
   // ── Add shapes ─────────────────────────────────────────────────────────
@@ -943,6 +1091,7 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
   // Get a CSS background for a layer (used in layer list thumbnails)
   const layerThumbStyle = (l: ComposerLayer & Record<string, any>): React.CSSProperties => {
     if (l._isImageInput) return { background: '#db2777' };
+    if (l.type === 'paint') return { background: 'linear-gradient(135deg, #be185d, #7c3aed)' };
     if (l.type === 'gradient') return {
       background: `linear-gradient(${l.gradientAngle ?? 0}deg, ${l.gradientFrom || '#1e293b'}, ${l.gradientTo || '#0f172a'})`,
     };
@@ -977,6 +1126,10 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
         <button onPointerDown={e => e.stopPropagation()} onClick={() => addShape('circle', { fill: '#10b981' })}
           className="text-[9px] font-black px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors flex items-center gap-1">
           ○ Circle
+        </button>
+        <button onPointerDown={e => e.stopPropagation()} onClick={() => addShape('paint', { x: 0, y: 0, w: 1920, h: 1080, paintBrushSize: 12, paintColor: '#ffffff' })}
+          className="text-[9px] font-black px-2.5 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:bg-rose-500/30 transition-colors flex items-center gap-1">
+          <Paintbrush size={9} /> Paint
         </button>
         <div className="ml-auto flex items-center gap-3">
           <button onPointerDown={e => e.stopPropagation()} onClick={handleSave}
@@ -1069,6 +1222,17 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
                 </div>
               );
             })}
+            {/* Paint layers get their own interactive canvas overlay */}
+            {layers.filter(l => l.type === 'paint' && l.visible !== false).map(l => (
+              <PaintLayerCanvas
+                key={`paint-${l.id}`}
+                layer={l as any}
+                canvasContainerRef={canvasRef}
+                isSel={selectedId === l.id}
+                mode={selectedId === l.id ? paintMode : 'brush'}
+                onPaintSave={onPaintSave}
+              />
+            ))}
           </div>
         </div>
 
@@ -1146,6 +1310,51 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
           {selectedLayer && (
             <div className="p-4 space-y-4" onPointerDown={e => e.stopPropagation()}>
               <div className="text-[8px] font-black text-white/30 uppercase tracking-widest">Properties — {selectedLayer.type}</div>
+
+              {/* Paint layer tools */}
+              {selectedLayer.type === 'paint' && (
+                <>
+                  <div>
+                    <label className="text-[9px] text-white/50 mb-1 block">Brush color</label>
+                    <input type="color"
+                      value={(selectedLayer as any).paintColor || '#ffffff'}
+                      onChange={e => { updateLayer(selectedLayer.id, { paintColor: e.target.value }); setPaintMode('brush'); }}
+                      className="w-full h-9 rounded-lg cursor-pointer border border-white/10 bg-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] text-white/50 block">Brush size {(selectedLayer as any).paintBrushSize || 12}px</label>
+                    <input type="range" min="1" max="80"
+                      value={(selectedLayer as any).paintBrushSize || 12}
+                      onChange={e => updateLayer(selectedLayer.id, { paintBrushSize: parseInt(e.target.value) })}
+                      className="w-full mt-1"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setPaintMode('brush')}
+                      className={`flex-1 text-[9px] font-black py-1.5 rounded-lg border transition-all flex items-center justify-center gap-1 ${paintMode === 'brush' ? 'bg-rose-500/20 border-rose-500/40 text-rose-400' : 'bg-white/5 border-white/10 text-white/30 hover:text-white/60'}`}>
+                      <Paintbrush size={10} /> Pincel
+                    </button>
+                    <button
+                      onClick={() => setPaintMode('eraser')}
+                      className={`flex-1 text-[9px] font-black py-1.5 rounded-lg border transition-all flex items-center justify-center gap-1 ${paintMode === 'eraser' ? 'bg-zinc-500/20 border-zinc-500/40 text-zinc-300' : 'bg-white/5 border-white/10 text-white/30 hover:text-white/60'}`}>
+                      <Eraser size={10} /> Borrar
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => {
+                      // Clear paint layer
+                      updateLayer(selectedLayer.id, { paintData: undefined });
+                    }}
+                    className="w-full text-[9px] font-black py-1.5 rounded-lg border border-rose-500/20 text-rose-400/60 hover:text-rose-400 hover:border-rose-500/40 transition-all">
+                    Limpiar capa
+                  </button>
+                  <p className="text-[7px] text-white/20 leading-relaxed">
+                    Selecciona esta capa y dibuja directamente sobre el canvas. Shift=50px en flechas.
+                  </p>
+                </>
+              )}
 
               {/* Color (solid) */}
               {(selectedLayer.type === 'rect' || selectedLayer.type === 'circle' || selectedLayer.type === 'color') && (
