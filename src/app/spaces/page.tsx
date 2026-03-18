@@ -729,6 +729,26 @@ const SpacesContent = () => {
     };
   }, []);
 
+  // ── Allow canvas zoom from anywhere (including over inputs) ─────────────
+  // The browser normally captures wheel events over <input type="number">
+  // to increment/decrement the value, preventing ReactFlow from seeing them.
+  // We intercept at capture phase and preventDefault so the input value doesn't
+  // change, while the event still bubbles to ReactFlow's zoom handler.
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement;
+      const isNumberInput = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'number';
+      if (isNumberInput) {
+        e.preventDefault(); // stop browser from changing the number value
+        // Event still propagates → ReactFlow zoom fires normally
+      }
+    };
+    // { capture: true } fires before the input's own handler
+    window.addEventListener('wheel', onWheel, { capture: true, passive: false });
+    return () => window.removeEventListener('wheel', onWheel, { capture: true });
+  }, []);
+
+
   // Access Security
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passcode, setPasscode] = useState('');
