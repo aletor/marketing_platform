@@ -2772,29 +2772,45 @@ const NanoBananaStudio = memo(({
 
     const colorMapUrl = offscreen.toDataURL('image/png');
 
-    // Build the prompt
-    const changeLines = changes
-      .filter(c => c.description.trim())
-      .map(c => {
-        const obj = c.targetObject?.trim();
-        const area = obj
-          ? `en el área ${c.assignedColor.name} de la referencia 2 (donde está: ${obj})`
-          : `en el área ${c.assignedColor.name} de la referencia 2`;
-        return `${area}: ${c.description.trim()}`;
-      })
-      .join('\n');
-
-    const fullPrompt = [
-      `REFERENCIA 1: imagen base (mantén todo lo que no se indica cambiar).`,
-      `REFERENCIA 2: mapa de colores con áreas marcadas.`,
-      ``,
-      changeLines || '(sin cambios descritos)',
-      ``,
-      `Instrucción general: ${prompt}`,
-    ].join('\n');
+    // ── Single AI call: Gemini Flash sees base image + color map + descriptions ──
+    // Returns a complete, object-aware prompt in one shot.
+    setAnalyzingCall(true);
+    let fullPrompt = '';
+    try {
+      const validChanges = changes.filter(c => c.paintData && c.description.trim());
+      const aiRes = await fetch('/api/gemini/analyze-areas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          baseImage: currentImage,
+          colorMapImage: colorMapUrl,
+          changes: validChanges.map(c => ({ color: c.assignedColor.name, description: c.description.trim() })),
+        }),
+      });
+      const aiJson = await aiRes.json();
+      if (aiRes.ok && aiJson.prompt) {
+        fullPrompt = aiJson.prompt;
+      } else {
+        throw new Error(aiJson.error || 'No prompt returned');
+      }
+    } catch (e: any) {
+      console.warn('[analyze-areas] AI call failed, using fallback:', e.message);
+      // Fallback: basic prompt without object identification
+      const validChanges = changes.filter(c => c.description.trim());
+      fullPrompt = [
+        'REFERENCIA 1: imagen base. Mantén todo lo que no se indica cambiar.',
+        'REFERENCIA 2: mapa de colores con áreas de cambio.',
+        '',
+        ...validChanges.map(c => `En el área ${c.assignedColor.name} de la referencia 2: ${c.description}`),
+      ].join('\n');
+    } finally {
+      setAnalyzingCall(false);
+    }
 
     setCallPreview({ colorMapUrl, fullPrompt });
   };
+
+  const [analyzingCall, setAnalyzingCall] = useState(false);
 
     const onGenerateFromCall = async (colorMapUrl: string, customPrompt: string) => {
     setCallPreview(null); // close preview
@@ -3058,11 +3074,14 @@ const NanoBananaStudio = memo(({
           {/* "Generar llamada" preview button */}
           <button
             onClick={onGenerateCall}
-            disabled={addingChange || changes.filter(c=>c.paintData).length === 0}
+            disabled={addingChange || analyzingCall || changes.filter(c=>c.paintData && c.description.trim()).length === 0}
             className="w-full py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-30 border"
             style={{ borderColor: 'rgba(99,102,241,0.5)', background: 'rgba(99,102,241,0.12)', color: '#a5b4fc' }}
           >
-            <Eye size={13} /> Generar llamada
+            {analyzingCall
+              ? <><Loader2 size={13} className="animate-spin" /> Analizando…</>
+              : <><Eye size={13} /> Generar llamada</>
+            }
           </button>
 
           {/* "Generar imagen" main button */}
