@@ -2489,7 +2489,7 @@ const buildReferenceGrid = (
       ctx.lineWidth = 1;
       ctx.strokeRect(x + 0.5, y + 0.5, CELL_W - 1, CELL_H - 1);
     })
-  ).then(() => canvas.toDataURL('image/jpeg', 0.85));
+  ).then(() => canvas.toDataURL('image/png')); // PNG lossless — no quality degradation
 };
 
 
@@ -2957,7 +2957,7 @@ const NanoBananaStudio = memo(({
               strokeImg.src = change.paintData!;
             });
           }
-          markedBaseUrl = marked.toDataURL('image/jpeg', 0.92);
+          markedBaseUrl = marked.toDataURL('image/png'); // PNG lossless — preserve quality for AI reference
         } catch (e) {
           console.warn('[marked-base] Canvas draw failed, using color map fallback:', e);
         }
