@@ -80,22 +80,24 @@ export async function POST(req: NextRequest) {
 
 Se te proporcionan dos imágenes:
 - IMAGEN 1: la imagen original/base
-- IMAGEN 2: un mapa de colores donde cada región de color sólido señala un área específica
+- IMAGEN 2: la MISMA imagen con trazos de pintura de colores encima. Cada trazo de color indica el ÁREA EXACTA que el usuario quiere modificar.
 
-El usuario quiere hacer los siguientes cambios. Para cada área se indica su COLOR y su POSICIÓN EXACTA en la imagen (porcentaje desde izquierda y desde arriba):
+El usuario quiere hacer los siguientes cambios (el color del trazo corresponde al nombre indicado):
 ${changeList}
 
 Tu tarea:
-1. Para cada área, localiza en la IMAGEN 1 el objeto que está en esa posición exacta (usa las coordenadas porcentuales como guía principal)
-2. Identifica qué objeto concreto es ese — sé muy específico (no "el sujeto" sino "la señora de camisa blanca del centro", "el chico en skate de la izquierda", "el pato grande de la derecha", etc.)
+1. Mira la IMAGEN 2: localiza EXACTAMENTE el trazo de color indicado (${(changes as AreaChange[]).map(c => c.color).join(', ')})
+2. Identifica qué objeto concreto hay DEBAJO/EN ESE TRAZO en la imagen — sé MUY específico y preciso. El trazo está pintado directamente sobre el elemento a cambiar.
+   Ejemplos de buena identificación: "la persona tumbada en la arena a la izquierda", "el chico en skate en la rampa", "el pato grande de la derecha con gafas"
+   Ejemplos INCORRECTOS: "el sujeto", "el objeto", "el elemento de la izquierda"
 3. Genera un prompt en español para NanaBanana con este formato exacto:
 
 REFERENCIA 1: imagen base. Mantén todo lo que no se indica cambiar, conservando composición, iluminación y estilo.
 REFERENCIA 2: mapa de colores con áreas de cambio.
 
-[Una línea por cambio: "En el área [color] de la referencia 2 (donde está [objeto identificado precisamente]): [instrucción]"]
+[Una línea por cambio: "En el área [color] de la referencia 2 (donde está [objeto identificado con precisión]): [instrucción]"]
 
-ADVERTENCIA: NO confundas objetos cercanos. Si la posición dice 55% izquierda/45% arriba, busca el objeto en ESA posición exacta en la IMAGEN 1, no el objeto más cercano.
+CRÍTICO: El trazo de pintura en la IMAGEN 2 indica el elemento EXACTO. No elijas el elemento más grande o más llamativo de la zona — elige el que tiene el trazo encima.
 
 Devuelve SOLO el prompt, sin explicaciones ni texto adicional.`;
 

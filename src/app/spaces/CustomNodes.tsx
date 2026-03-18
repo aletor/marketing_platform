@@ -2531,6 +2531,14 @@ const NanaBananaPaintCanvas = memo(({
 });
 NanaBananaPaintCanvas.displayName = 'NanaBananaPaintCanvas';
 
+// Helper: convert hex color to [r, g, b]
+const hexToRgb = (hex: string): [number, number, number] => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return [r, g, b];
+};
+
 const NanoBananaStudio = memo(({
   nodeId, initialImage, lastGenerated, modelKey, aspectRatio, resolution,
   thinking, prompt, onClose, onGenerated,
@@ -2828,12 +2836,60 @@ const NanoBananaStudio = memo(({
       return;
     }
 
-    // ── Single AI call: Gemini Flash sees base image + color map + descriptions ──
-    // Returns a complete, object-aware prompt in one shot.
+    // ── Single AI call: Gemini Flash sees base image + MARKED base image + descriptions ──
+    // The "marked image" = base + paint strokes overlaid directly → AI sees exactly which pixels
     setAnalyzingCall(true);
     let fullPrompt = '';
     try {
       const validChanges = changes.filter(c => c.paintData && c.description.trim());
+
+      // Build "marked base image" = base image with each paint stroke overlaid in its assigned color
+      // This is superior to the abstract color map because AI sees exactly which element is highlighted
+      let markedBaseUrl = colorMapUrl; // fallback to color map if base image unavailable
+      if (currentImage) {
+        await new Promise<void>(resolve => {
+          const baseImg = new Image();
+          baseImg.crossOrigin = 'anonymous';
+          baseImg.onload = async () => {
+            const marked = document.createElement('canvas');
+            marked.width = W; marked.height = H;
+            const mc = marked.getContext('2d')!;
+            // Draw base image
+            mc.drawImage(baseImg, 0, 0, W, H);
+            // Draw each paint stroke overlay with assigned color (semi-transparent)
+            for (const change of validChanges) {
+              if (!change.paintData) continue;
+              await new Promise<void>(r2 => {
+                const strokeImg = new Image();
+                strokeImg.onload = () => {
+                  // Colorize: draw stroke in assigned color
+                  const tmp = document.createElement('canvas');
+                  tmp.width = W; tmp.height = H;
+                  const tc = tmp.getContext('2d')!;
+                  tc.drawImage(strokeImg, 0, 0, W, H);
+                  // Tint the stroke pixels with the assigned color
+                  const id = tc.getImageData(0, 0, W, H);
+                  const [r, g, b] = hexToRgb(change.assignedColor.hex);
+                  for (let i = 0; i < id.data.length; i += 4) {
+                    if (id.data[i + 3] > 30) {
+                      id.data[i] = r; id.data[i + 1] = g; id.data[i + 2] = b;
+                      id.data[i + 3] = Math.min(200, id.data[i + 3] * 2);
+                    }
+                  }
+                  tc.putImageData(id, 0, 0);
+                  mc.drawImage(tmp, 0, 0);
+                  r2();
+                };
+                strokeImg.src = change.paintData!;
+              });
+            }
+            markedBaseUrl = marked.toDataURL('image/jpeg', 0.92);
+            resolve();
+          };
+          baseImg.onerror = () => resolve();
+          baseImg.src = currentImage!;
+        });
+      }
 
       // Build position metadata: center of each area as % of image (for AI spatial guidance)
       const positionData: Record<string, { cx: number; cy: number }> = {};
@@ -2874,11 +2930,10 @@ const NanoBananaStudio = memo(({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           baseImage: currentImage,
-          colorMapImage: colorMapUrl,
+          colorMapImage: markedBaseUrl, // now a marked base image, not abstract color map
           changes: validChanges.map(c => ({
             color: c.assignedColor.name,
             description: c.description.trim(),
-            // Position as % from top-left (helps AI cross-ref with base image)
             posX: positionData[c.assignedColor.name]?.cx ?? null,
             posY: positionData[c.assignedColor.name]?.cy ?? null,
           })),
