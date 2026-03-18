@@ -3784,13 +3784,20 @@ export const NanoBananaNode = memo(({ id, data, selected }: NodeProps<any>) => {
             </span>
           </>
         ) : (
-          /* No output yet — show input image faded OR placeholder */
+          /* No output yet — show input image at full opacity as reference preview */
           refImgPreview ? (
             <>
-              <img src={refImgPreview} alt="Input" className="w-full h-full object-cover opacity-30" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
-                <Sparkles size={22} className="text-amber-500/60" />
-                <span className="text-[8px] font-black uppercase tracking-wider text-zinc-500">Abre Studio</span>
+              <img src={refImgPreview} alt="Input" className="w-full h-full object-cover" />
+              {/* "Generate" prompt badge — subtle bottom overlay */}
+              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 py-1"
+                   style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
+                <span className="text-[7px] font-black uppercase tracking-wider text-white/60">REF · sin generar</span>
+                <button
+                  onClick={() => setShowStudio(true)}
+                  className="text-[7px] font-black uppercase tracking-wider text-yellow-400 hover:text-yellow-300 transition-colors nodrag flex items-center gap-1"
+                >
+                  <Maximize2 size={8} /> Studio →
+                </button>
               </div>
             </>
           ) : (
