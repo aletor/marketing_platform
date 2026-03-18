@@ -3361,61 +3361,96 @@ const NanoBananaStudio = memo(({
             {changes.filter(c => c.id !== activeChangeId || !addingChange).length > 0 && (
               <div className="space-y-2">
                 {changes.filter(c => c.id !== activeChangeId || !addingChange).map((c, idx) => (
-                  <div key={c.id} className="flex items-start gap-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                    <div className="w-3 h-3 rounded-full mt-0.5 flex-shrink-0 border-2 border-black/30"
-                         style={{ background: c.assignedColor?.hex || c.color }} title={c.assignedColor?.name} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[8px] font-black uppercase tracking-wider mb-0.5"
+                  <div key={c.id} className="rounded-xl overflow-hidden border border-white/[0.06]"
+                       style={{ background: 'rgba(255,255,255,0.025)' }}>
+
+                    {/* ── Top row: color dot + label + trash ── */}
+                    <div className="flex items-center gap-2 px-2.5 pt-2 pb-1">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-black/20"
+                           style={{ background: c.assignedColor?.hex || c.color }} />
+                      <p className="flex-1 text-[8px] font-black uppercase tracking-wider truncate"
                          style={{ color: c.assignedColor?.hex || '#888' }}>
                         Cambio {idx + 1} · {c.assignedColor?.name || 'color'}
                       </p>
-
-                      <p className="text-[9px] text-zinc-400 leading-snug">{c.description || '(sin descripción)'}</p>
-                      {c.paintData && (
-                        <img src={c.paintData} alt="" className="mt-1.5 w-full h-8 object-cover rounded opacity-60" />
-                      )}
-                      {/* Reference image thumbnail */}
-                      {c.referenceImage && (
-                        <div className="mt-1.5 relative group/ref">
-                          <img src={c.referenceImage} alt="ref" className="w-full h-10 object-cover rounded border border-violet-500/30" />
-                          <button
-                            onClick={() => setChanges(prev => prev.map(ch => ch.id === c.id ? { ...ch, referenceImage: null } : ch))}
-                            className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-0.5 text-zinc-400 hover:text-rose-400 opacity-0 group-hover/ref:opacity-100 transition-opacity"
-                          >
-                            <X size={8} />
-                          </button>
-                          <span className="absolute bottom-0.5 left-1 text-[6px] text-violet-300 font-black uppercase opacity-80">REF</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-1 items-end flex-shrink-0">
-                      {/* 📎 Reference image upload */}
-                      <label
-                        title="Añadir imagen de referencia visual"
-                        className="cursor-pointer text-zinc-600 hover:text-violet-400 transition-colors"
-                      >
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            const reader = new FileReader();
-                            reader.onload = ev => {
-                              const dataUrl = ev.target?.result as string;
-                              setChanges(prev => prev.map(ch => ch.id === c.id ? { ...ch, referenceImage: dataUrl } : ch));
-                            };
-                            reader.readAsDataURL(file);
-                            e.target.value = '';
-                          }}
-                        />
-                        <ImageIcon size={12} />
-                      </label>
-                      <button onClick={() => deleteChange(c.id)} className="text-zinc-600 hover:text-rose-400 transition-colors">
-                        <Trash2 size={13} />
+                      <button onClick={() => deleteChange(c.id)}
+                              className="text-zinc-700 hover:text-rose-400 transition-colors flex-shrink-0">
+                        <Trash2 size={12} />
                       </button>
                     </div>
+
+                    {/* ── Description ── */}
+                    <p className="text-[9px] text-zinc-400 leading-snug px-2.5 pb-2">
+                      {c.description || '(sin descripción)'}
+                    </p>
+
+                    {/* ── Paint stroke thumbnail ── */}
+                    {c.paintData && (
+                      <img src={c.paintData} alt="" className="w-full h-6 object-cover opacity-50" />
+                    )}
+
+                    {/* ── Reference image zone ── */}
+                    <label className="block cursor-pointer group/ref">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = ev => {
+                            const dataUrl = ev.target?.result as string;
+                            setChanges(prev => prev.map(ch => ch.id === c.id ? { ...ch, referenceImage: dataUrl } : ch));
+                          };
+                          reader.readAsDataURL(file);
+                          e.target.value = '';
+                        }}
+                      />
+
+                      {c.referenceImage ? (
+                        /* Has reference — show thumbnail with replace overlay */
+                        <div className="relative">
+                          <img src={c.referenceImage} alt="ref"
+                               className="w-full h-20 object-cover" />
+                          {/* Overlay on hover: replace */}
+                          <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-1
+                                          opacity-0 group-hover/ref:opacity-100 transition-opacity">
+                            <ImageIcon size={14} className="text-violet-300" />
+                            <span className="text-[7px] font-black uppercase text-violet-300 tracking-wider">Cambiar ref</span>
+                          </div>
+                          {/* Delete ref button */}
+                          <button
+                            onClick={e => {
+                              e.preventDefault();
+                              setChanges(prev => prev.map(ch => ch.id === c.id ? { ...ch, referenceImage: null } : ch));
+                            }}
+                            className="absolute top-1 right-1 bg-black/70 rounded-full p-0.5 text-zinc-400
+                                       hover:text-rose-400 transition-colors"
+                          >
+                            <X size={9} />
+                          </button>
+                          <span className="absolute bottom-1 left-1.5 text-[6px] font-black uppercase text-violet-300"
+                                style={{ textShadow: '0 1px 3px #000' }}>REF VISUAL</span>
+                        </div>
+                      ) : (
+                        /* No reference — dashed upload CTA */
+                        <div className="mx-2 mb-2 mt-1 rounded-lg border border-dashed border-white/[0.12]
+                                        group-hover/ref:border-violet-500/50 transition-colors
+                                        flex items-center gap-2 px-3 py-2">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center
+                                          bg-violet-500/10 group-hover/ref:bg-violet-500/20 transition-colors">
+                            <ImageIcon size={13} className="text-violet-400" />
+                          </div>
+                          <div>
+                            <p className="text-[8px] font-black text-zinc-400 group-hover/ref:text-violet-400 transition-colors">
+                              Añadir referencia visual
+                            </p>
+                            <p className="text-[7px] text-zinc-600">Ej: &quot;sustituir por esta silla&quot;</p>
+                          </div>
+                        </div>
+                      )}
+                    </label>
+
                   </div>
                 ))}
               </div>
