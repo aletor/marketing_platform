@@ -2844,51 +2844,47 @@ const NanoBananaStudio = memo(({
       const validChanges = changes.filter(c => c.paintData && c.description.trim());
 
       // Build "marked base image" = base image with each paint stroke overlaid in its assigned color
-      // This is superior to the abstract color map because AI sees exactly which element is highlighted
-      let markedBaseUrl = colorMapUrl; // fallback to color map if base image unavailable
-      if (currentImage) {
-        await new Promise<void>(resolve => {
-          const baseImg = new Image();
-          baseImg.crossOrigin = 'anonymous';
-          baseImg.onload = async () => {
-            const marked = document.createElement('canvas');
-            marked.width = W; marked.height = H;
-            const mc = marked.getContext('2d')!;
-            // Draw base image
-            mc.drawImage(baseImg, 0, 0, W, H);
-            // Draw each paint stroke overlay with assigned color (semi-transparent)
-            for (const change of validChanges) {
-              if (!change.paintData) continue;
-              await new Promise<void>(r2 => {
-                const strokeImg = new Image();
-                strokeImg.onload = () => {
-                  // Colorize: draw stroke in assigned color
-                  const tmp = document.createElement('canvas');
-                  tmp.width = W; tmp.height = H;
-                  const tc = tmp.getContext('2d')!;
-                  tc.drawImage(strokeImg, 0, 0, W, H);
-                  // Tint the stroke pixels with the assigned color
-                  const id = tc.getImageData(0, 0, W, H);
-                  const [r, g, b] = hexToRgb(change.assignedColor.hex);
-                  for (let i = 0; i < id.data.length; i += 4) {
-                    if (id.data[i + 3] > 30) {
-                      id.data[i] = r; id.data[i + 1] = g; id.data[i + 2] = b;
-                      id.data[i + 3] = Math.min(200, id.data[i + 3] * 2);
-                    }
+      // Uses imgRef.current (already loaded in DOM) to avoid CORS issues with S3 presigned URLs.
+      let markedBaseUrl = colorMapUrl; // fallback to abstract color map if ref unavailable
+      const domImg = imgRef.current;
+      if (domImg && domImg.complete && domImg.naturalWidth > 0) {
+        try {
+          const marked = document.createElement('canvas');
+          marked.width = W; marked.height = H;
+          const mc = marked.getContext('2d')!;
+          // Draw base image from the already-loaded DOM element (no CORS fetch needed)
+          mc.drawImage(domImg, 0, 0, W, H);
+          // Draw each paint stroke overlay with assigned color (semi-transparent)
+          for (const change of validChanges) {
+            if (!change.paintData) continue;
+            await new Promise<void>(r2 => {
+              const strokeImg = new Image();
+              strokeImg.onload = () => {
+                // Colorize: draw stroke in assigned color
+                const tmp = document.createElement('canvas');
+                tmp.width = W; tmp.height = H;
+                const tc = tmp.getContext('2d')!;
+                tc.drawImage(strokeImg, 0, 0, W, H);
+                // Tint the stroke pixels with the assigned color
+                const id = tc.getImageData(0, 0, W, H);
+                const [r3, g3, b3] = hexToRgb(change.assignedColor.hex);
+                for (let i = 0; i < id.data.length; i += 4) {
+                  if (id.data[i + 3] > 30) {
+                    id.data[i] = r3; id.data[i + 1] = g3; id.data[i + 2] = b3;
+                    id.data[i + 3] = Math.min(220, id.data[i + 3] * 3);
                   }
-                  tc.putImageData(id, 0, 0);
-                  mc.drawImage(tmp, 0, 0);
-                  r2();
-                };
-                strokeImg.src = change.paintData!;
-              });
-            }
-            markedBaseUrl = marked.toDataURL('image/jpeg', 0.92);
-            resolve();
-          };
-          baseImg.onerror = () => resolve();
-          baseImg.src = currentImage!;
-        });
+                }
+                tc.putImageData(id, 0, 0);
+                mc.drawImage(tmp, 0, 0);
+                r2();
+              };
+              strokeImg.src = change.paintData!;
+            });
+          }
+          markedBaseUrl = marked.toDataURL('image/jpeg', 0.92);
+        } catch (e) {
+          console.warn('[marked-base] Canvas draw failed, using color map fallback:', e);
+        }
       }
 
       // Build position metadata: center of each area as % of image (for AI spatial guidance)
@@ -2936,6 +2932,8 @@ const NanoBananaStudio = memo(({
             description: c.description.trim(),
             posX: positionData[c.assignedColor.name]?.cx ?? null,
             posY: positionData[c.assignedColor.name]?.cy ?? null,
+            paintData: c.paintData ?? null,
+            assignedColorHex: c.assignedColor.hex,
           })),
         }),
       });
