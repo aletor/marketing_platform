@@ -2563,6 +2563,12 @@ const NanoBananaStudio = memo(({
   const [brushSize, setBrushSize] = useState(12);
   const pendingPaintRef = useRef<string|null>(null);
 
+  // ── Pan / Zoom viewer (purely visual) ─────────────────────────────────────
+  const [viewZoom, setViewZoom] = useState(1);
+  const [viewPan, setViewPan]   = useState({ x: 0, y: 0 });
+  const isPanning = useRef(false);
+  const panStart  = useRef({ mx: 0, my: 0, px: 0, py: 0 });
+
   // ── Canvas size ─────────────────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -2934,8 +2940,45 @@ const NanoBananaStudio = memo(({
     return createPortal(
     <div className="fixed inset-0 z-[9999] flex" style={{ background: '#0f0f10' }}>
       {/* ── Canvas area ──────────────────────────────────────────────────── */}
-      <div ref={containerRef} className="flex-1 relative overflow-hidden flex items-center justify-center"
-           style={{ background: '#111' }}>
+      <div
+          ref={containerRef}
+          className="flex-1 relative overflow-hidden"
+          style={{ background: '#111' }}
+          onWheel={e => {
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+            const rect = containerRef.current!.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            setViewZoom(z => {
+              const nz = Math.min(Math.max(z * factor, 0.5), 8);
+              const scale = nz / z;
+              setViewPan(p => ({ x: mx - scale * (mx - p.x), y: my - scale * (my - p.y) }));
+              return nz;
+            });
+          }}
+          onPointerDown={e => {
+            if (e.button === 1 || (e.button === 0 && e.altKey)) {
+              e.preventDefault();
+              isPanning.current = true;
+              panStart.current = { mx: e.clientX, my: e.clientY, px: viewPan.x, py: viewPan.y };
+              containerRef.current?.setPointerCapture(e.pointerId);
+            }
+          }}
+          onPointerMove={e => {
+            if (!isPanning.current) return;
+            setViewPan({ x: panStart.current.px + e.clientX - panStart.current.mx, y: panStart.current.py + e.clientY - panStart.current.my });
+          }}
+          onPointerUp={() => { isPanning.current = false; }}
+          onDoubleClick={() => { setViewZoom(1); setViewPan({ x: 0, y: 0 }); }}
+        >
+        {/* Zoom/pan inner wrapper */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transform: `translate(${viewPan.x}px,${viewPan.y}px) scale(${viewZoom})`,
+          transformOrigin: '0 0', willChange: 'transform'
+        }}>
         {/* Image */}
         {currentImage ? (
           <img
@@ -2979,6 +3022,8 @@ const NanoBananaStudio = memo(({
           />
         ))}
 
+        </div>{/* end zoom-transform inner wrapper */}
+
         {/* Progress bar */}
         {genStatus === 'running' && (
           <div className="absolute bottom-0 left-0 right-0">
@@ -2996,7 +3041,17 @@ const NanoBananaStudio = memo(({
         {addingChange && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded-full flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-            Dibuja el área a cambiar
+            Dibuja · Alt+arrastrar = mover vista
+
+        {/* Zoom level reset */}
+        {viewZoom !== 1 && (
+          <button
+            onClick={() => { setViewZoom(1); setViewPan({ x: 0, y: 0 }); }}
+            className="absolute bottom-4 right-4 text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg bg-black/80 border border-white/10 text-zinc-300 hover:text-white backdrop-blur-sm"
+          >
+            ✕ {Math.round(viewZoom * 100)}% · doble clic = reset
+          </button>
+        )}
           </div>
         )}
       </div>
@@ -3114,21 +3169,9 @@ const NanoBananaStudio = memo(({
                   </div>
                 </div>
 
-                {/* Target object */}
-                <div>
-                  <p className="text-[8px] text-zinc-500 mb-1">¿Qué objeto hay en esta área? <span className="text-zinc-600">(ayuda a Gemini a localizarlo)</span></p>
-                  <input
-                    type="text"
-                    value={newTargetObject}
-                    onChange={e => setNewTargetObject(e.target.value)}
-                    placeholder="Ej: mosquito gigante, pato, paracaidista…"
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-2 py-1.5 text-[9px] text-zinc-300 placeholder-zinc-600"
-                  />
-                </div>
-
                 {/* Description */}
                 <div>
-                  <p className="text-[8px] text-zinc-500 mb-1">Qué quieres hacer en este área</p>
+                  <p className="text-[8px] text-zinc-500 mb-1">¿Qué quieres hacer en esta área? <span className="text-zinc-600 italic">(la IA detects el objeto automáticamente)</span></p>
                   <textarea
                     value={newDesc}
                     onChange={e => setNewDesc(e.target.value)}
@@ -3163,9 +3206,7 @@ const NanoBananaStudio = memo(({
                          style={{ color: c.assignedColor?.hex || '#888' }}>
                         Cambio {idx + 1} · {c.assignedColor?.name || 'color'}
                       </p>
-                      {c.targetObject && (
-                        <p className="text-[8px] text-zinc-600 italic mb-0.5">📍 {c.targetObject}</p>
-                      )}
+
                       <p className="text-[9px] text-zinc-400 leading-snug">{c.description || '(sin descripción)'}</p>
                       {c.paintData && (
                         <img src={c.paintData} alt="" className="mt-1.5 w-full h-8 object-cover rounded opacity-60" />
