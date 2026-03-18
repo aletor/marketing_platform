@@ -811,6 +811,7 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragLayerId, setDragLayerId] = useState<string | null>(null);
+  const [lockCanvasClick, setLockCanvasClick] = useState(false); // when true: select only via layer panel
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [drag, setDrag] = useState<{
     id: string; sx: number; sy: number;
@@ -1035,10 +1036,9 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
                   style={{ left: lx, top: ly, width: lw, height: lh, zIndex: idx, opacity: layer.opacity }}
                   onPointerDown={e => {
                     e.stopPropagation();
-                    // Only start drag if this layer is already selected via the panel
-                    if (!layer.locked && selectedId === layer.id)
+                    if (!lockCanvasClick) setSelectedId(layer.id);
+                    if (!layer.locked && (selectedId === layer.id || !lockCanvasClick))
                       setDrag({ id: layer.id, sx: e.clientX, sy: e.clientY, ix: layer.x, iy: layer.y, iw: layer.w, ih: layer.h, mode: 'move' });
-                    // Do NOT select on canvas click — use layer panel to select
                   }}
                 >
                   {isImg && imgSrc
@@ -1079,7 +1079,20 @@ const ComposerStudio = ({ layers: initLayers, imageLayers, onUpdateLayers, onClo
         >
           {/* Layer list */}
           <div className="p-4 border-b border-white/5">
-            <div className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-3">Layers</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[8px] font-black text-white/30 uppercase tracking-widest">Layers</div>
+              <button
+                onClick={() => setLockCanvasClick(prev => !prev)}
+                title={lockCanvasClick ? 'Select by layer panel only' : 'Click canvas to select'}
+                className={`flex items-center gap-1.5 text-[7px] font-black px-2 py-1 rounded-lg border transition-all ${lockCanvasClick ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' : 'bg-white/5 border-white/10 text-white/30 hover:text-white/60'}`}
+              >
+                <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                  <rect x="1" y="4" width="8" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                  <path d="M3 4V3a2 2 0 014 0v1" stroke="currentColor" strokeWidth="1.2"/>
+                </svg>
+                {lockCanvasClick ? 'Layer only' : 'Click select'}
+              </button>
+            </div>
             <div className="space-y-1">
               {[...layers].reverse().map(l => {
                 const la = l as any;
