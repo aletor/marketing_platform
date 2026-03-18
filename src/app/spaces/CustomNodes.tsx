@@ -2563,11 +2563,26 @@ const NanoBananaStudio = memo(({
   const [brushSize, setBrushSize] = useState(12);
   const pendingPaintRef = useRef<string|null>(null);
 
-  // ── Pan / Zoom viewer (purely visual) ─────────────────────────────────────
-  const [viewZoom, setViewZoom] = useState(1);
-  const [viewPan, setViewPan]   = useState({ x: 0, y: 0 });
-  const isPanning = useRef(false);
-  const panStart  = useRef({ mx: 0, my: 0, px: 0, py: 0 });
+  // ── Pan / Zoom viewer (ref-based, no re-render = smooth) ──────────────────
+  const vZoom  = useRef(1);
+  const vPan   = useRef({ x: 0, y: 0 });
+  const vIsDragging = useRef(false);
+  const vDragStart  = useRef({ mx: 0, my: 0, px: 0, py: 0 });
+  const zoomWrapRef = useRef<HTMLDivElement>(null);
+  const zoomLabelRef = useRef<HTMLButtonElement>(null);
+  const applyViewTransform = () => {
+    if (!zoomWrapRef.current) return;
+    zoomWrapRef.current.style.transform =
+      `translate(${vPan.current.x}px,${vPan.current.y}px) scale(${vZoom.current})`;
+    if (zoomLabelRef.current) {
+      const pct = Math.round(vZoom.current * 100);
+      zoomLabelRef.current.style.display = vZoom.current === 1 ? 'none' : 'flex';
+      zoomLabelRef.current.textContent = `✕ ${pct}% · doble clic`;
+    }
+  };
+  const resetViewTransform = () => {
+    vZoom.current = 1; vPan.current = { x: 0, y: 0 }; applyViewTransform();
+  };
 
   // ── Canvas size ─────────────────────────────────────────────────────────
   const containerRef = useRef<HTMLDivElement>(null);
@@ -2943,40 +2958,45 @@ const NanoBananaStudio = memo(({
       <div
           ref={containerRef}
           className="flex-1 relative overflow-hidden"
-          style={{ background: '#111' }}
+          style={{ background: '#111', cursor: addingChange ? 'crosshair' : 'grab' }}
           onWheel={e => {
             e.preventDefault();
-            const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+            const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
             const rect = containerRef.current!.getBoundingClientRect();
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
-            setViewZoom(z => {
-              const nz = Math.min(Math.max(z * factor, 0.5), 8);
-              const scale = nz / z;
-              setViewPan(p => ({ x: mx - scale * (mx - p.x), y: my - scale * (my - p.y) }));
-              return nz;
-            });
+            const nz = Math.min(Math.max(vZoom.current * factor, 0.25), 10);
+            const scale = nz / vZoom.current;
+            vPan.current = { x: mx - scale * (mx - vPan.current.x), y: my - scale * (my - vPan.current.y) };
+            vZoom.current = nz;
+            applyViewTransform();
           }}
           onPointerDown={e => {
-            if (e.button === 1 || (e.button === 0 && e.altKey)) {
+            // pan on any left click when NOT drawing (addingChange handled by canvas on top)
+            if (e.button === 0 && !addingChange) {
               e.preventDefault();
-              isPanning.current = true;
-              panStart.current = { mx: e.clientX, my: e.clientY, px: viewPan.x, py: viewPan.y };
+              vIsDragging.current = true;
+              vDragStart.current = { mx: e.clientX, my: e.clientY, px: vPan.current.x, py: vPan.current.y };
               containerRef.current?.setPointerCapture(e.pointerId);
+              if (containerRef.current) containerRef.current.style.cursor = 'grabbing';
             }
           }}
           onPointerMove={e => {
-            if (!isPanning.current) return;
-            setViewPan({ x: panStart.current.px + e.clientX - panStart.current.mx, y: panStart.current.py + e.clientY - panStart.current.my });
+            if (!vIsDragging.current) return;
+            vPan.current = { x: vDragStart.current.px + e.clientX - vDragStart.current.mx, y: vDragStart.current.py + e.clientY - vDragStart.current.my };
+            applyViewTransform();
           }}
-          onPointerUp={() => { isPanning.current = false; }}
-          onDoubleClick={() => { setViewZoom(1); setViewPan({ x: 0, y: 0 }); }}
+          onPointerUp={() => {
+            vIsDragging.current = false;
+            if (containerRef.current) containerRef.current.style.cursor = addingChange ? 'crosshair' : 'grab';
+          }}
+          onDoubleClick={() => resetViewTransform()}
         >
-        {/* Zoom/pan inner wrapper */}
-        <div style={{
+        {/* Zoom/pan inner wrapper — direct DOM, no React setState */}
+        <div ref={zoomWrapRef} style={{
           position: 'absolute', inset: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transform: `translate(${viewPan.x}px,${viewPan.y}px) scale(${viewZoom})`,
+          transform: 'translate(0px,0px) scale(1)',
           transformOrigin: '0 0', willChange: 'transform'
         }}>
         {/* Image */}
@@ -3041,17 +3061,15 @@ const NanoBananaStudio = memo(({
         {addingChange && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded-full flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-            Dibuja · Alt+arrastrar = mover vista
+            Dibuja el área a cambiar · arrastra para mover la vista
 
-        {/* Zoom level reset */}
-        {viewZoom !== 1 && (
-          <button
-            onClick={() => { setViewZoom(1); setViewPan({ x: 0, y: 0 }); }}
-            className="absolute bottom-4 right-4 text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg bg-black/80 border border-white/10 text-zinc-300 hover:text-white backdrop-blur-sm"
-          >
-            ✕ {Math.round(viewZoom * 100)}% · doble clic = reset
-          </button>
-        )}
+        {/* Zoom level reset — controlled via DOM ref */}
+        <button
+          ref={zoomLabelRef}
+          onClick={() => resetViewTransform()}
+          style={{ display: 'none' }}
+          className="absolute bottom-4 right-4 text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg bg-black/80 border border-white/10 text-zinc-300 hover:text-white backdrop-blur-sm transition-colors"
+        />
           </div>
         )}
       </div>
