@@ -16,14 +16,23 @@ import {
   Command
 } from 'lucide-react';
 
-const LabCard = ({ title, description, href, icon: Icon, color }: {
+const LabCard = ({
+  title,
+  description,
+  href,
+  icon: Icon,
+  color,
+  external,
+}: {
   title: string;
   description: string;
   href: string;
-  icon: any;
+  icon: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>;
   color: string;
-}) => (
-  <Link href={href} className="group relative block p-px rounded-2xl overflow-hidden hover:scale-[1.02] transition-all duration-300 shadow-xl">
+  external?: boolean;
+}) => {
+  const inner = (
+    <>
     {/* Border Glow */}
     <div className={`absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500`} style={{ background: `linear-gradient(135deg, ${color}, transparent)` }} />
     
@@ -43,21 +52,52 @@ const LabCard = ({ title, description, href, icon: Icon, color }: {
       
       <div className="mt-6 flex items-center gap-2 text-[10px] font-mono text-gray-500 uppercase tracking-widest">
         <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
-        Experimental Module
+        {external ? "External app" : "Experimental Module"}
       </div>
     </div>
-  </Link>
-);
+    </>
+  );
+
+  const className =
+    "group relative block p-px rounded-2xl overflow-hidden hover:scale-[1.02] transition-all duration-300 shadow-xl";
+
+  if (external) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+      >
+        {inner}
+      </a>
+    );
+  }
+
+  return <Link href={href} className={className}>{inner}</Link>;
+};
 
 export default function LabsPage() {
+  const composerExternal =
+    typeof process.env.NEXT_PUBLIC_MEDIA_COMPOSER_URL === "string" &&
+    process.env.NEXT_PUBLIC_MEDIA_COMPOSER_URL.length > 0
+      ? process.env.NEXT_PUBLIC_MEDIA_COMPOSER_URL.replace(/\/$/, "")
+      : "";
+
   const labs = [
-    {
-      title: "AI Spaces",
-      description: "Advanced node-based workflow builder with Sidebar DnD and LLM tools.",
-      href: "/spaces",
-      icon: Workflow,
-      color: "#f43f5e"
-    },
+    ...(composerExternal
+      ? [
+          {
+            title: "Media Composer",
+            description:
+              "Node-based media workflow (app separada). Abre en una pestaña nueva.",
+            href: composerExternal,
+            icon: Workflow,
+            color: "#f43f5e",
+            external: true,
+          },
+        ]
+      : []),
     {
       title: "Node Studio",
       description: "Original visual node-based video editor with Grok & Runway integration.",

@@ -23,6 +23,7 @@ import {
   ChevronUp,
   MessageSquare
 } from "lucide-react";
+import { readResponseJson } from "@/lib/read-response-json";
 
 export default function KnowledgeBasePage() {
   const [files, setFiles] = useState<File[]>([]);
@@ -94,8 +95,9 @@ export default function KnowledgeBasePage() {
     try {
       const resp = await fetch(`/api/knowledge/view?key=${encodeURIComponent(doc.s3Path)}`);
       if (!resp.ok) throw new Error("Error generating view URL");
-      const { url } = await resp.json();
-      window.open(url, '_blank');
+      const parsed = await readResponseJson<{ url?: string }>(resp, "GET /api/knowledge/view");
+      if (!parsed?.url) throw new Error("Error generating view URL");
+      window.open(parsed.url, '_blank');
     } catch (e) {
       setMessage({ text: "No se pudo abrir el archivo original", type: "error" });
     }
@@ -113,7 +115,8 @@ export default function KnowledgeBasePage() {
         body: formData,
       });
       if (!response.ok) throw new Error("Error subiendo archivos");
-      const data = await response.json();
+      const data = await readResponseJson<{ message?: string }>(response, "POST /api/knowledge/upload");
+      if (!data?.message) throw new Error("Error subiendo archivos");
       setMessage({ text: data.message, type: "success" });
       setFiles([]);
       fetchData();
@@ -149,8 +152,9 @@ export default function KnowledgeBasePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
+      const data = await readResponseJson<{ error?: string }>(response, "POST /api/knowledge/url");
+      if (!data) throw new Error("Respuesta inválida del servidor");
+      if (!response.ok) throw new Error(data.error || "Error al procesar la URL");
       setMessage({ text: "URL añadida con éxito", type: "success" });
       setUrl("");
       fetchData();
@@ -166,9 +170,13 @@ export default function KnowledgeBasePage() {
     setMessage({ text: "Analizando documentos con IA...", type: "info" });
     try {
       const response = await fetch("/api/knowledge/analyze", { method: "POST" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-      setMessage({ text: data.message, type: "success" });
+      const data = await readResponseJson<{ error?: string; message?: string }>(
+        response,
+        "POST /api/knowledge/analyze"
+      );
+      if (!data) throw new Error("Respuesta inválida del servidor");
+      if (!response.ok) throw new Error(data.error || "Error al analizar");
+      setMessage({ text: data.message || "OK", type: "success" });
       fetchData(); 
     } catch (error) {
       setMessage({ text: "Error analizando documentos.", type: "error" });
@@ -179,11 +187,9 @@ export default function KnowledgeBasePage() {
 
   const fetchData = async () => {
     try {
-       const res = await fetch("/api/knowledge/data");
-       if(res.ok) {
-         const data = await res.json();
-         setDocuments(data.documents || []);
-       }
+      const res = await fetch("/api/knowledge/data");
+      const data = await readResponseJson<{ documents?: any[] }>(res, "GET /api/knowledge/data");
+      if (data?.documents) setDocuments(data.documents);
     } catch (e) {
       console.error(e);
     }

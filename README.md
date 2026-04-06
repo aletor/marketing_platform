@@ -1,3 +1,11 @@
+# Marketing platform (FOLDDER)
+
+Next.js app: dashboard, campañas, biblioteca, conocimiento, generación de contenido y labs. El canvas **Media Composer** (antes “Spaces”) vive en el repo [mediacomposer](https://github.com/aletor/mediacomposer); enlázalo con `NEXT_PUBLIC_MEDIA_COMPOSER_URL`. Guía de despliegue en dos Vercel: **[DEPLOY.md](./DEPLOY.md)**.
+
+Package name: `marketing-platform` (ver `package.json`).
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

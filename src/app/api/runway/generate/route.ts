@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import RunwayML from '@runwayml/sdk';
 
-const runway = new RunwayML({
-  apiKey: process.env.RUNWAYML_API_KEY,
-});
+function getRunwayClient() {
+  const apiKey =
+    process.env.RUNWAYML_API_KEY || process.env.RUNWAYML_API_SECRET || "";
+  return new RunwayML({ apiKey });
+}
 
 export async function POST(req: Request) {
   try {
@@ -12,6 +14,8 @@ export async function POST(req: Request) {
     if (!promptText) {
       return NextResponse.json({ error: "Prompt text is required" }, { status: 400 });
     }
+
+    const runway = getRunwayClient();
 
     console.log(`[Runway API] Starting ${duration}s generation task...`);
 

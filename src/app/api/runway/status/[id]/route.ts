@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import RunwayML from '@runwayml/sdk';
 
-const runway = new RunwayML({
-  apiKey: process.env.RUNWAYML_API_KEY,
-});
+function getRunwayClient() {
+  const apiKey =
+    process.env.RUNWAYML_API_KEY || process.env.RUNWAYML_API_SECRET || "";
+  return new RunwayML({ apiKey });
+}
 
 export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
   try {
@@ -13,6 +15,7 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
       return NextResponse.json({ error: "Task ID is required" }, { status: 400 });
     }
 
+    const runway = getRunwayClient();
     const task = await runway.tasks.retrieve(taskId) as any;
 
     return NextResponse.json({
